@@ -1,0 +1,30 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Data and trained models (too big for git — share separately)
+ml/data/
+*.csv
+*.joblib
+*.pkl
+
+# Local-only docs
+*.pdf
