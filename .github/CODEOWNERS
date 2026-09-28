@@ -1,0 +1,5 @@
+# PRs auto-request review from the owner of each directory.
+# Add each owner here once the workstreams are assigned.
+*        @NicGroenewald
+/ml/     @NicGroenewald
+/docs/   @NicGroenewald @ibratx @NikolozChilachava @solomon-bit76
