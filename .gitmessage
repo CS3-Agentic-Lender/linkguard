@@ -1,0 +1,7 @@
+ALG-<n> <imperative summary, lowercase after the key, no full stop>
+
+# One ticket per commit: the same ALG-<n> key as your branch.
+# Example: ALG-12 add subdomain count feature
+# No other ticket key anywhere in this message.
+# No AI attribution lines (Co-Authored-By: Claude / Generated with ...).
+# Lines starting with # are ignored.

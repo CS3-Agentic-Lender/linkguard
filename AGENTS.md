@@ -1,4 +1,4 @@
-# LinkGuard (LG)
+# LinkGuard (ALG)
 
 MTU Year 3 Agile Processes project (2026/27), CS Group 4. A web app where a user pastes a suspicious link and gets back a risk level (safe, suspicious, high risk), the specific reasons it looks dangerous, and plain-language advice on what to do next. The model is trained on the PhiUSIIL Phishing URL Dataset (UCI, 235,795 labelled URLs, 54 features). Built incrementally in Scrum sprints.
 
@@ -17,11 +17,11 @@ Don't swap a listed technology for an alternative without a team decision record
 
 ## Jira
 
-Board: https://alprojectcs3.atlassian.net, space key `LG`. The same site also hosts another team project (space `AL`). Never read, create or edit `AL` tickets from this repo.
+Board: https://alprojectcs3.atlassian.net, space key `ALG`. The same site also hosts another team project (space `AL`). Never read, create or edit `AL` tickets from this repo.
 
 | Level | Holds |
 |---|---|
-| Epic | One workstream: LG-1 Data & Feature Engineering, LG-2 ML Model & Training, LG-3 Backend API, LG-4 Frontend |
+| Epic | A group of related user stories from the product backlog, grouped by user value (not by person or subsystem) |
 | Story | One user story ("As a user, I ..."), parented to an epic |
 | Task | Technical or non-feature work (setup, CI, docs, retros), parented to an epic when one fits |
 | Subtask | One person's piece of a story |
@@ -43,7 +43,7 @@ For any screen or component, load `ui-ux-pro-max` first. It is the single source
 
 ### Issue tracker
 
-Jira space `LG`, accessed through the Atlassian MCP tools. See `docs/agents/issue-tracker.md`.
+Jira space `ALG`, accessed through the Atlassian MCP tools. See `docs/agents/issue-tracker.md`.
 
 Before any work that reads or updates a ticket, call `atlassianUserInfo` to check the connection. If the Atlassian tools are missing, or return an auth error, stop and ask the user to log in again:
 
@@ -62,7 +62,7 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 
 ## Sprints
 
-Marked against `docs/spec/` (rubric summary in `docs/spec/README.md`). Three sprints: 1 Data Input, 2 Data Visualisation, 3 Knowledge Extraction. Each works on all four epics; the sprint goal follows its stage. The Scrum Master is different every sprint and the Product Owner rotates too, never the same person as the SM. Roster and the full checklist are in `docs/sprints/README.md`.
+Marked against `docs/spec/` (rubric summary in `docs/spec/README.md`). Three sprints: 1 Data Input, 2 Data Visualisation, 3 Knowledge Extraction. Each sprint delivers a thin end-to-end slice across all four subsystems (`data`, `ml`, `backend`, `frontend`); the sprint goal follows its stage. The Scrum Master is different every sprint and the Product Owner rotates too, never the same person as the SM. Roster and the full checklist are in `docs/sprints/README.md`.
 
 Before real work starts, confirm the sprint has: roles set, stories with acceptance criteria, priority and story points, one human assignee each, and a Jira sprint with start and end dates. If any is missing, tell the user and stop; don't start on the ticket.
 
@@ -76,20 +76,20 @@ Marks are individual and graded on Jira and git history, so record work under th
 |---|---|
 | `main` | What we demo. Only changes through a release PR from `dev` at the end of each sprint. Protected: PR + one approval, no direct pushes. |
 | `dev` | Default branch. Every feature branch starts from it and merges back into it. |
-| `feature/LG-<n>-...` | One ticket's work. |
+| `feature/ALG-<n>-...` | One ticket's work. |
 
 ### The ticket key rules everything
 
-GitHub for Atlassian reads the `LG-<number>` key out of the branch name, the commit messages, the PR title and the PR **description**, and links the work to that ticket. Jira automation then moves the ticket (branch created → In Progress, PR opened → In Review, PR merged → Done). A stray key in a PR description links, and later closes, the wrong ticket.
+GitHub for Atlassian reads the `ALG-<number>` key out of the branch name, the commit messages, the PR title and the PR **description**, and links the work to that ticket. Jira automation then moves the ticket (branch created → In Progress, PR opened → In Review, PR merged → Done). A stray key in a PR description links, and later closes, the wrong ticket.
 
-So the branch name, every commit message, the PR title and the PR body together carry **exactly one** key: the ticket being worked on. Anywhere else, name the other ticket in words ("the feature extractor ticket"), never as `LG-7`, and link the two tickets in Jira instead.
+So the branch name, every commit message, the PR title and the PR body together carry **exactly one** key: the ticket being worked on. Anywhere else, name the other ticket in words ("the feature extractor ticket"), never as `ALG-7`, and link the two tickets in Jira instead.
 
 Work on a Subtask uses the **Subtask's** key, not its parent Story's.
 
 ### Before starting
 
 1. Get the ticket key from the user, or find it in Jira. No ticket, no work: stop and ask which ticket to use, or create one (`docs/agents/issue-tracker.md`). Never invent a key.
-2. Read the ticket with `getJiraIssue` to confirm the key exists, belongs to space `LG`, and matches the work. A key that 404s is the wrong key.
+2. Read the ticket with `getJiraIssue` to confirm the key exists, belongs to space `ALG`, and matches the work. A key that 404s is the wrong key.
 3. Check the ticket is in the active sprint, pointed, has acceptance criteria and is assigned to the person doing it.
 4. Branch from up-to-date `dev`: `git fetch origin && git switch -c <branch> origin/dev`.
 
@@ -97,12 +97,12 @@ Work on a Subtask uses the **Subtask's** key, not its parent Story's.
 
 | Thing | Format | Example |
 |---|---|---|
-| Branch | `feature/LG-<number>-short-description`, lowercase, hyphens, no other key | `feature/LG-12-url-feature-extractor` |
-| Commit subject | `LG-<number> <imperative summary>`, lowercase after the key, no full stop | `LG-12 add subdomain count feature` |
-| PR title | `LG-<number> <Sentence case summary>` | `LG-12 Add URL feature extractor` |
+| Branch | `feature/ALG-<number>-short-description`, lowercase, hyphens, no other key | `feature/ALG-12-url-feature-extractor` |
+| Commit subject | `ALG-<number> <imperative summary>`, lowercase after the key, no full stop | `ALG-12 add subdomain count feature` |
+| PR title | `ALG-<number> <Sentence case summary>` | `ALG-12 Add URL feature extractor` |
 | Release PR (`dev` → `main`) | `Sprint <n> release`, no ticket key in title or body | `Sprint 1 release` |
 
-A commit that fixes a review comment keeps the same key; never renumber mid-branch. `chore/`, `fix/` and bare branch names are not used: every branch is `feature/LG-…`, whatever the work type.
+A commit that fixes a review comment keeps the same key; never renumber mid-branch. `chore/`, `fix/` and bare branch names are not used: every branch is `feature/ALG-…`, whatever the work type.
 
 ### Opening the PR
 

@@ -1,6 +1,6 @@
 # Sprint process
 
-Three sprints, matching the spec: **1 Data Input, 2 Data Visualisation, 3 Knowledge Extraction**. Every sprint works on all four epics (`data`, `ml`, `backend`, `frontend`) as a thin end-to-end slice, and the sprint goal is worded around its stage. Between sprints we review each other's work and write new tickets for what needs improving, then start the next sprint.
+Three sprints, matching the spec: **1 Data Input, 2 Data Visualisation, 3 Knowledge Extraction**. Every sprint delivers a thin end-to-end slice across all four subsystems (`data`, `ml`, `backend`, `frontend`), and the sprint goal is worded around its stage. Between sprints we review each other's work and write new tickets for what needs improving, then start the next sprint.
 
 ## Roles (rotate every sprint)
 
@@ -23,10 +23,10 @@ Do these in order. Nothing is coded until all are done.
 2. **Backlog ready**: every story has a description, acceptance criteria, **priority**, a subsystem label (`data`, `ml`, `backend`, `frontend`, `docs`) and the epic as parent.
 3. **Sprint planning meeting held**: sprint goal written; stories pulled into the sprint; each story **pointed together** (1, 2, 3, 5, 8) and given one human assignee. Workload is balanced across the four members.
 4. **Jira sprint started** with start and end dates (the burndown chart is empty without dates and points).
-5. **Pick a ticket**: assign it to yourself and read it in Jira. The key must be `LG-<n>`, the Jira space key. Never invent one; a key that 404s is the wrong key.
-6. **Branch from up-to-date `dev`**: `git fetch origin && git switch -c feature/LG-<n>-short-description origin/dev`.
-7. **Secret scan hook on**: `git config core.hooksPath .githooks`.
-8. Then work, commit as `LG-<n> summary`, open a PR into `dev` titled `LG-<n> Summary`, with exactly one key everywhere.
+5. **Pick a ticket**: assign it to yourself and read it in Jira. The key must be `ALG-<n>`, the Jira space key. Never invent one; a key that 404s is the wrong key.
+6. **Branch from up-to-date `dev`**: `git fetch origin && git switch -c feature/ALG-<n>-short-description origin/dev`.
+7. **Secret scan hook and commit template on**: `git config core.hooksPath .githooks` and `git config commit.template .gitmessage`.
+8. Then work, commit as `ALG-<n> summary`, open a PR into `dev` titled `ALG-<n> Summary`, with exactly one key everywhere.
 
 ## During the sprint
 
