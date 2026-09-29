@@ -2,7 +2,9 @@
 
 Phishing link warning system. Paste a suspicious link, get a risk level, the reasons it looks dangerous, and plain-language advice on what to do next.
 
-CS3 Agile Processes project — CS Group 4: Nicholas Groenewald, Nikoloz Chilachava, Ibrahima Toure Ba, Solomon Sosanya.
+CS3 Agile Processes project — CS Group 4: Nicholas Groenewald, Nikoloz Chilachava, Ibrahima Toure Ba, Solomon Sosanya (Dunmi).
+
+Marked on the [project specification](docs/spec/README.md); three sprints (Data Input, Data Visualisation, Knowledge Extraction) with a rotating Scrum Master and Product Owner. See [docs/sprints/README.md](docs/sprints/README.md) for the checklist to finish **before any real work** and the evidence each sprint needs.
 
 ## Layout
 
@@ -16,7 +18,8 @@ CS3 Agile Processes project — CS Group 4: Nicholas Groenewald, Nikoloz Chilach
 
 Full rules are in [AGENTS.md](AGENTS.md), which every AI agent reads (`CLAUDE.md` imports it). The short version:
 
-1. Pick a ticket in the [LG Jira space](https://alprojectcs3.atlassian.net) and assign it to yourself. No ticket, no work.
+0. Sprint planning done first: roles set, stories pointed with acceptance criteria and assignees, Jira sprint started ([checklist](docs/sprints/README.md)).
+1. Pick a ticket in the [LG Jira space](https://alprojectcs3.atlassian.net) and assign it to yourself. No ticket, no work. `LG` is the Jira space key: every branch, commit and PR title starts with `LG-<n>` so Jira can track it.
 2. Branch from `dev`: `feature/LG-<n>-short-description`
 3. Every commit starts with the key: `LG-12 add subdomain count feature`
 4. Open a PR into `dev` titled `LG-12 Add URL feature extractor`. One approval from a teammate, `Secret scan` green.

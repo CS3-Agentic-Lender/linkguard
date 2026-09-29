@@ -60,6 +60,14 @@ Don't guess what a ticket says and don't skip Jira updates because the connectio
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+## Sprints
+
+Marked against `docs/spec/` (rubric summary in `docs/spec/README.md`). Three sprints: 1 Data Input, 2 Data Visualisation, 3 Knowledge Extraction. Each works on all four epics; the sprint goal follows its stage. The Scrum Master is different every sprint and the Product Owner rotates too, never the same person as the SM. Roster and the full checklist are in `docs/sprints/README.md`.
+
+Before real work starts, confirm the sprint has: roles set, stories with acceptance criteria, priority and story points, one human assignee each, and a Jira sprint with start and end dates. If any is missing, tell the user and stop; don't start on the ticket.
+
+Marks are individual and graded on Jira and git history, so record work under the right person and ticket, and keep sprint evidence (`docs/sprints/sprint-<n>.md`) up to date.
+
 ## Workflow
 
 ### Branches
@@ -82,7 +90,8 @@ Work on a Subtask uses the **Subtask's** key, not its parent Story's.
 
 1. Get the ticket key from the user, or find it in Jira. No ticket, no work: stop and ask which ticket to use, or create one (`docs/agents/issue-tracker.md`). Never invent a key.
 2. Read the ticket with `getJiraIssue` to confirm the key exists, belongs to space `LG`, and matches the work. A key that 404s is the wrong key.
-3. Branch from up-to-date `dev`: `git fetch origin && git switch -c <branch> origin/dev`.
+3. Check the ticket is in the active sprint, pointed, has acceptance criteria and is assigned to the person doing it.
+4. Branch from up-to-date `dev`: `git fetch origin && git switch -c <branch> origin/dev`.
 
 ### Formats
 
