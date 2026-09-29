@@ -42,7 +42,7 @@ Do these in order. Nothing is coded until all are done.
 4. Open the `Sprint <n> release` PR from `dev` to `main` (no ticket key in title or body).
 5. Choose the next SM and PO.
 6. Complete `docs/sprints/sprint-<n>.md` (copy [sprint-template.md](sprint-template.md)).
-7. Check every member has a Confluence page for each ticket they completed, in their folder for this sprint.
+7. Check every member has written their `Sprint <n> summary (<First name>)` page in their Confluence folder for this sprint. The sprint report is built from these pages.
 
 ## Evidence each sprint must have
 
