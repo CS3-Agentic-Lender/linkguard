@@ -19,13 +19,22 @@ Marked on the [project specification](docs/spec/README.md); three sprints (Data 
 Full rules are in [AGENTS.md](AGENTS.md), which every AI agent reads (`CLAUDE.md` imports it). The short version:
 
 0. Sprint planning done first: roles set, stories pointed with acceptance criteria and assignees, Jira sprint started ([checklist](docs/sprints/README.md)).
-1. Pick a ticket in the [ALG Jira space](https://alprojectcs3.atlassian.net) and assign it to yourself. No ticket, no work. `ALG` is the Jira space key: every branch, commit and PR title starts with `ALG-<n>` so Jira can track it.
+1. Work only on tickets **assigned to you in the active sprint** in the [ALG Jira space](https://alprojectcs3.atlassian.net). Tickets are assigned at sprint planning. No ticket, no work. `ALG` is the Jira space key: every branch, commit and PR title starts with `ALG-<n>` so Jira can track it.
 2. Branch from `dev`: `feature/ALG-<n>-short-description`
 3. Every commit starts with the key: `ALG-12 add subdomain count feature`
 4. Open a PR into `dev` titled `ALG-12 Add URL feature extractor`. One approval from a teammate, `Secret scan` green.
 5. At the end of each sprint, `dev` merges into `main` through a `Sprint <n> release` PR.
 
 Use exactly **one** ticket key across the branch, commits, PR title and PR body. Jira links and moves whichever tickets it finds there.
+
+## Sprint rules
+
+Strict, for every member and every AI agent. Full wording is in [AGENTS.md](AGENTS.md#sprint-scope-strict).
+
+- **Only your sprint work.** Work only on the tickets assigned to you in the active sprint. Don't build ahead into later sprints, pick up unassigned tickets or other people's work, or build extras beyond the acceptance criteria.
+- **Scope changes go through the Scrum Master.** They are agreed at standup and made in Jira. Finished early? Say so at standup.
+- **AI agents enforce this.** Before writing code, an agent checks the ticket is in the active sprint, assigned to you, and not Done. If not, it stops.
+- **Document every completed ticket in Confluence** (space *Agile LinkGuard*), in your own folder under that sprint's folder. Use one page per ticket, titled `ALG-<n> <summary>`, with what you did, how it works, diagrams or UI flows where useful, evidence and the PR link. A ticket isn't Done until its page exists.
 
 ## Setup
 

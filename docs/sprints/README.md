@@ -23,7 +23,7 @@ Do these in order. Nothing is coded until all are done.
 2. **Backlog ready**: every story has a description, acceptance criteria, **priority**, a subsystem label (`data`, `ml`, `backend`, `frontend`, `docs`) and the epic as parent.
 3. **Sprint planning meeting held**: sprint goal written; stories pulled into the sprint; each story **pointed together** (1, 2, 3, 5, 8) and given one human assignee. Workload is balanced across the four members.
 4. **Jira sprint started** with start and end dates (the burndown chart is empty without dates and points).
-5. **Pick a ticket**: assign it to yourself and read it in Jira. The key must be `ALG-<n>`, the Jira space key. Never invent one; a key that 404s is the wrong key.
+5. **Take a ticket assigned to you in this sprint** and read it in Jira. Nothing outside your sprint tickets (see the sprint rules in the README). The key must be `ALG-<n>`, the Jira space key. Never invent one; a key that 404s is the wrong key.
 6. **Branch from up-to-date `dev`**: `git fetch origin && git switch -c feature/ALG-<n>-short-description origin/dev`.
 7. **Secret scan hook and commit template on**: `git config core.hooksPath .githooks` and `git config commit.template .gitmessage`.
 8. Then work, commit as `ALG-<n> summary`, open a PR into `dev` titled `ALG-<n> Summary`, with exactly one key everywhere.
@@ -42,6 +42,7 @@ Do these in order. Nothing is coded until all are done.
 4. Open the `Sprint <n> release` PR from `dev` to `main` (no ticket key in title or body).
 5. Choose the next SM and PO.
 6. Complete `docs/sprints/sprint-<n>.md` (copy [sprint-template.md](sprint-template.md)).
+7. Check every member has a Confluence page for each ticket they completed, in their folder for this sprint.
 
 ## Evidence each sprint must have
 

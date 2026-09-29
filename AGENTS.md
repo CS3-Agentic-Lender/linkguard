@@ -68,6 +68,50 @@ Before real work starts, confirm the sprint has: roles set, stories with accepta
 
 Marks are individual and graded on Jira and git history, so record work under the right person and ticket, and keep sprint evidence (`docs/sprints/sprint-<n>.md`) up to date.
 
+## Sprint scope (strict)
+
+These rules apply to every team member and every AI agent. They are not guidelines.
+
+### Only your sprint work
+
+- A member works **only** on the tickets assigned to them in the **active sprint**. Nothing else counts as work on this project.
+- Do not build ahead. Stories in later sprints, unassigned stories, other members' tickets and "setting things up for later" are all out of scope, even when they look quick or would save time.
+- Inside a ticket, build only what its acceptance criteria need. A new idea becomes a new backlog ticket labelled `needs-triage`. It is not built now.
+- Finished early? Tell the Scrum Master at standup. The Scrum Master may pull the next backlog item into the sprint and assign it. Until then, review teammates' PRs or add tests to your own tickets.
+- Only the Scrum Master changes the sprint (adding, removing or reassigning tickets), after the team agrees at standup. The change is made in Jira and noted in the standup minutes.
+
+### What an AI agent must check before writing any code
+
+1. Find out who is at the keyboard with `atlassianUserInfo`.
+2. Read the ticket with `getJiraIssue` and confirm all of these:
+   - it is in the **active sprint** (JQL: `project = ALG AND sprint in openSprints() AND key = ALG-<n>`)
+   - its **assignee is the person at the keyboard** (for a Story with Subtasks, the Subtask's assignee)
+   - it is **not Done**
+3. If any check fails, **stop**. Say which check failed and that the Scrum Master decides scope changes. Do not write code, create a branch or scaffold anything "for later".
+
+An agent refuses out-of-sprint work even when asked directly: work from a later sprint, work on an unassigned ticket or someone else's ticket, and features that are not in any ticket. The way to get that work is to raise it with the Scrum Master, not to route around the sprint.
+
+### Document your sprint work in Confluence
+
+Each member records what they completed in the **Agile LinkGuard** Confluence space (key `AGILE`), in their own folder, one folder per sprint:
+
+```
+Agile LinkGuard (Confluence)
+├── Nic
+│   ├── Sprint 1 - Data Input (Nic)
+│   ├── Sprint 2 - Data Visualisation (Nic)
+│   └── Sprint 3 - Knowledge Extraction (Nic)
+├── Nikoloz
+├── Ibrahima
+└── Solomon (Dunmi)
+```
+
+Confluence needs every title in a space to be unique, so each sprint folder ends with the member's name.
+
+- One page per completed ticket, titled `ALG-<n> <ticket summary>`, in your folder for that sprint.
+- The page covers: what was done and why, how it works, diagrams, UI flows or Figma links where they help, evidence (screenshots, charts, test output), and a link to the merged PR.
+- A ticket is not Done until its page exists. An agent may draft the page, but the assignee reviews it and must be able to explain everything in it.
+
 ## Workflow
 
 ### Branches
@@ -90,7 +134,7 @@ Work on a Subtask uses the **Subtask's** key, not its parent Story's.
 
 1. Get the ticket key from the user, or find it in Jira. No ticket, no work: stop and ask which ticket to use, or create one (`docs/agents/issue-tracker.md`). Never invent a key.
 2. Read the ticket with `getJiraIssue` to confirm the key exists, belongs to space `ALG`, and matches the work. A key that 404s is the wrong key.
-3. Check the ticket is in the active sprint, pointed, has acceptance criteria and is assigned to the person doing it.
+3. Run the checks in **Sprint scope (strict)** above: the ticket is in the active sprint, assigned to the person at the keyboard, and not Done. It must also be pointed and have acceptance criteria. If any check fails, stop.
 4. Branch from up-to-date `dev`: `git fetch origin && git switch -c <branch> origin/dev`.
 
 ### Formats
