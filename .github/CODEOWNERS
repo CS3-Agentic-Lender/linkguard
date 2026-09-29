@@ -1,5 +1,3 @@
-# PRs auto-request review from the owner of each directory.
-# Add each owner here once the workstreams are assigned.
-*        @NicGroenewald
-/ml/     @NicGroenewald
-/docs/   @NicGroenewald @ibratx @NikolozChilachava @solomon-bit76
+# No fixed code owners: work is shared out at each sprint planning.
+# Every PR requests review from the whole team (GitHub skips the author).
+*  @NicGroenewald @NikolozChilachava @ibratx @solomon-bit76
