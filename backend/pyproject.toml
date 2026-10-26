@@ -1,0 +1,26 @@
+[project]
+name = "linkguard-backend"
+version = "0.1.0"
+description = "FastAPI service that checks pasted links for LinkGuard."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    # FastAPI's TestClient needs httpx.
+    "httpx>=0.28",
+]
+
+[tool.uv]
+# Not an installable package: uv only manages the environment.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Puts backend/ on the import path, so `from app...` works whether pytest
+# runs from backend/ or from the repo root (`pytest backend/tests`).
+pythonpath = ["."]
