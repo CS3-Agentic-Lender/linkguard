@@ -41,6 +41,8 @@ Board: https://alprojectcs3.atlassian.net, space key `ALG`. The same site also h
 
 Label every item with its subsystem. Once triaged it also gets one state label (see Triage labels below). Every ticket has a human assignee before work starts.
 
+**Before creating, refining or checking any ticket, read [`docs/agents/jira-standard.md`](docs/agents/jira-standard.md)**: the fields each work type needs, the description layout, the alignment check and story points.
+
 ### Refining a ticket
 
 A ticket may be **refined**: acceptance criteria sharpened, detail added, or a story split into smaller ones, as long as the Product Owner agrees. A ticket is never deleted, emptied or rewritten into different work. Refinement is recorded as a comment on the ticket saying what changed and why.
