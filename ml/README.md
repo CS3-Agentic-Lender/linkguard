@@ -67,6 +67,19 @@ The raw file and our cleaned data use **opposite** label codes:
 
 Cleaning sets new label = 1 − raw label (`ml/cleaning/labels.py`), so phishing, the class we warn users about, is 1. Anything that reads the raw CSV directly, such as `01_load_dataset.ipynb`, still sees the raw coding.
 
+## The cleaned file
+
+`ml/notebooks/03_clean_dataset.ipynb` saves the cleaned data to `ml/data/phiusiil_cleaned.csv`, which is ignored by git like the raw file. Read it with `load_cleaned()` from `ml/cleaning/storage.py`, not a plain `pd.read_csv`. pandas' defaults would turn blank titles and the `na` (Namibia) domain into missing values.
+
+It keeps all 56 columns, but not all of them are model inputs:
+
+| Columns | Use |
+|---|---|
+| `URL` | Raw text only. The feature extractor reads it to work out URL features. It is never a feature itself. |
+| `FILENAME`, `Domain`, `TLD`, `Title` | **Not features.** Kept for reference and checks. |
+| `label` | The target: 1 = phishing, 0 = legitimate (flipped from the raw file). |
+| Every other column | Numeric features. Which ones the model actually uses is decided by the leakage check, not here. |
+
 ## Source and licence
 
 | | |

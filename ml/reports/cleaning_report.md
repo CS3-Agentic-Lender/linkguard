@@ -40,3 +40,9 @@ Running the cleaning a second time from the raw file gives the same counts and i
 ## Result
 
 235,795 raw rows → **235,370 cleaned rows**, 425 removed in total. Every column is kept.
+
+## Cleaned file
+
+- Saved from this run to `ml/data/phiusiil_cleaned.csv`. The folder is gitignored, so the file is never committed.
+- Read back with `load_cleaned()`: 235,370 rows, 56 columns, 0 missing values, identical to the cleaned data.
+- `FILENAME`, `Domain`, `TLD` and `Title` are not features. `URL` is kept only as raw text for the feature extractor. See the column note in `ml/README.md`.
