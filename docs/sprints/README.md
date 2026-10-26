@@ -21,7 +21,7 @@ Do these in order. Nothing is coded until all are done.
 
 1. **Roles set**: SM and PO for this sprint written in the table above (SM has not been SM before, SM is not PO).
 2. **Backlog ready**: every story has a description, acceptance criteria, **priority**, a subsystem label (`data`, `ml`, `backend`, `frontend`, `docs`) and the epic as parent.
-3. **Sprint planning meeting held**: sprint goal written; stories pulled into the sprint; each story **pointed together** (1, 2, 3, 5, 8) and given one human assignee. Workload is balanced across the four members.
+3. **Sprint planning meeting held**: sprint goal written; stories pulled into the sprint; each story **pointed together** (1, 2, 3, 5, 8, 13) and given one human assignee. Workload is balanced across the four members.
 4. **Jira sprint started** with start and end dates (the burndown chart is empty without dates and points).
 5. **Take a ticket assigned to you in this sprint** and read it in Jira. Nothing outside your sprint tickets (see the sprint rules in the README). The key must be `ALG-<n>`, the Jira space key. Never invent one; a key that 404s is the wrong key.
 6. **Branch from up-to-date `dev`**: `git fetch origin && git switch -c feature/ALG-<n>-short-description origin/dev`.
