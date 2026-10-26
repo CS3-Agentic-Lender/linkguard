@@ -1,0 +1,43 @@
+# Runs the tests on every PR into dev, so a broken change shows up red
+# before review. Needs no secrets, no .env, no dataset and no model file:
+# the tests build their own small made-up data.
+name: Tests
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: 0.13.1
+
+jobs:
+  ml:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: ml/uv.lock
+
+      # Reads the version from ml/.python-version.
+      - name: Install Python
+        run: uv python install
+
+      # --locked fails the job if uv.lock is out of date with pyproject.toml.
+      - name: Install ml dependencies
+        run: uv sync --locked
+
+      # Coverage prints too: pytest's addopts in ml/pyproject.toml include it.
+      - name: Run ml tests
+        run: uv run --locked pytest
