@@ -55,3 +55,25 @@ If `git status` lists the CSV, stop and tell the team. It means the ignore rules
 | `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`) | No, those file types are ignored |
 
 Training code saves the model and scaler to `ml/models/`, and the backend loads them from there. Like the dataset, they are shared outside git.
+
+## Source and licence
+
+| | |
+|---|---|
+| Dataset | PhiUSIIL Phishing URL (Website), by Arvind Prasad and Shalini Chandra |
+| Where | UCI Machine Learning Repository, dataset 967: https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset |
+| Licence | [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) |
+| Downloaded | 26 October 2026, file `PhiUSIIL_Phishing_URL_Dataset.csv` (235,795 rows) |
+| When the URLs were collected | Not stated. Neither the UCI page nor its metadata gives a collection date. |
+
+**Cite it as:**
+
+> Prasad, A., & Chandra, S. (2024). PhiUSIIL: A diverse security profile empowered phishing URL detection framework based on similarity index and incremental learning. *Computers & Security*, 136, 103545. https://doi.org/10.1016/j.cose.2023.103545
+
+**What CC BY 4.0 asks of us:** we may use, share and change the data, including for this project, as long as we credit it. In practice:
+
+- Name the dataset and its authors, and use the citation above wherever we describe or show results from it (reports, presentation, the app's about page).
+- Link to the licence.
+- Say that we changed it. Our cleaning removes duplicate and invalid rows and recodes the label, so anything built from the cleaned data must say it is based on a modified version.
+
+Because the collection date is unknown, we can't say how current the phishing examples are. Treat this as a limitation when reporting how well the model will do on new links.
