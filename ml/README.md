@@ -56,6 +56,17 @@ If `git status` lists the CSV, stop and tell the team. It means the ignore rules
 
 Training code saves the model and scaler to `ml/models/`, and the backend loads them from there. Like the dataset, they are shared outside git.
 
+## The label is flipped during cleaning
+
+The raw file and our cleaned data use **opposite** label codes:
+
+| `label` | Raw file | After cleaning (what every LinkGuard model uses) |
+|---|---|---|
+| `1` | legitimate | **phishing** |
+| `0` | phishing | **legitimate** |
+
+Cleaning sets new label = 1 − raw label (`ml/cleaning/labels.py`), so phishing, the class we warn users about, is 1. Anything that reads the raw CSV directly, such as `01_load_dataset.ipynb`, still sees the raw coding.
+
 ## Source and licence
 
 | | |
