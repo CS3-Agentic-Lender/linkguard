@@ -91,6 +91,8 @@ git config core.hooksPath .githooks
 git config commit.template .gitmessage
 ```
 
+Python is pinned to **3.12** with a `.python-version` file in each Python part (`ml/` now, `backend/` once it is set up), and each part is a [uv](https://docs.astral.sh/uv/) project. With uv installed, `uv sync` inside the folder installs that Python and the locked packages, so everyone runs the same versions.
+
 On Windows, enable Developer Mode and clone with `git clone -c core.symlinks=true ...` so the `.claude/skills` symlinks work.
 
 ## AI agents and skills

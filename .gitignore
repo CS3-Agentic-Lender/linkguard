@@ -11,6 +11,12 @@ venv/
 .ipynb_checkpoints/
 .pytest_cache/
 
+# Test coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
 # Node
 node_modules/
 dist/
