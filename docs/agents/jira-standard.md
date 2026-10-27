@@ -15,7 +15,7 @@ Jira is the source of truth for tickets. [`docs/backlog/product-backlog.md`](../
 | One state label, once triaged ([triage-labels.md](triage-labels.md)) | | ✓ | ✓ | ✓ | ✓ |
 | Priority: Must = High, Should = Medium, Could = Low | | ✓ | | ✓ | ✓ |
 | At least one Subtask | | ✓ | | | |
-| Story points (1, 2, 3, 5, 8, 13) | | set at planning | none | | |
+| Story points (1, 2, 3, 5, 8, 13) | | set at planning | none | set at planning | none |
 | Assignee | | set at planning | set at planning | set at planning | set at planning |
 | Links to related tickets (Jira issue links, never a key in the text) | when related | when related | | when related | when related |
 
@@ -109,14 +109,19 @@ A refinement only changes how a ticket is described, never what work it is. Draf
 
 ## 5. Story points
 
-- Scale: 1, 2, 3, 5, 8, 13. Points size stories against each other; they are not hours.
-- Anyone may suggest a number. The team agrees it at planning poker.
-- A story at 13 or more is split before it enters a sprint.
-- Subtasks, Tasks and Bugs carry no points.
+- Scale: 1, 2, 3, 5, 8, 13. Points size tickets against each other: two 3-point tickets should feel about the same size.
+- The estimated hours (the sum of the Subtask estimates) give a starting suggestion from the table below. The team confirms or changes it at planning poker, so the agreed number is the team's judgement, not a conversion.
+
+  | Estimated hours | 1-2 | 3 | 4-5 | 6-8 | 9-11 |
+  |---|---|---|---|---|---|
+  | Suggested points | 1 | 2 | 3 | 5 | 8 |
+
+- A ticket at 13 or more is split before it enters a sprint.
+- Stories and Tasks carry points, and both count towards velocity and the burndown. Subtasks and Bugs carry none.
 
 ## 6. Sprint cycle
 
-1. **Plan:** set the sprint goal, pull in stories that fit (from Sprint 2, sized by last sprint's velocity), point them, and give every Subtask an assignee.
+1. **Plan:** set the sprint goal, pull in stories and Tasks that fit (from Sprint 2, sized by last sprint's velocity), point them, and give every Subtask an assignee.
 2. **Start:** start the sprint in Jira with dates. This starts the burndown.
 3. **Run:** standups; status moves To Do, In Progress, In Review, Done, driven by the branch, PR and merge automation.
 4. **Review:** demo what is Done. Unfinished stories go back to the backlog.
@@ -125,6 +130,6 @@ A refinement only changes how a ticket is described, never what work it is. Draf
 The full checklist and the evidence each sprint needs are in [docs/sprints/README.md](../sprints/README.md).
 
 The burndown stays honest only while:
-- every story in the sprint has points before it starts;
-- a story added mid-sprint has team agreement and a comment saying why;
+- every story and Task in the sprint has points before it starts;
+- a ticket added mid-sprint has team agreement and a comment saying why;
 - Jira status matches reality.
