@@ -52,7 +52,7 @@ Each objective names how it is measured and the sprint it is due by. The final r
 | # | Objective | Measured by | Target | Sprint |
 |---|---|---|---|---|
 | O1 | Turn the raw PhiUSIIL download into a cleaned dataset that any teammate can rebuild exactly, with no duplicate or invalid rows and the label recoded so phishing = 1 | The ml tests pass in CI, and Nic re-runs the cleaning notebook on a fresh download | Same row count (235,370) on both runs, 0 duplicates, 0 invalid values, label tests green | 1 |
-| O2 | Train a model that catches as many phishing links as possible without flagging everything, using only features we can compute from the link at scan time | Phishing recall and precision on the PhiUSIIL test split, with the leaking columns removed | Recall ≥ 95%, precision ≥ 80% | 3 |
+| O2 | Train a model that catches as many phishing links as possible without flagging everything, using only features we can compute from the link at scan time | Phishing recall and precision on the PhiUSIIL test split, with the leaking columns removed, reported as an upper bound (see section 4) | Recall ≥ 95%, precision ≥ 80% | 3 |
 | O3 | Every warning tells the user why the link looks like a scam, using evidence from the link itself, how confident the model is, and what to do next, in plain language | API tests on suspicious and high-risk results, plus a check with 5 family members or friends who read sample results | 100% of warnings show at least one link-based reason, a confidence %, and advice. At least 4 of 5 readers can say back why the link is risky and what to do | 3 |
 | O4a | A scan never opens, fetches or follows the pasted link: the link is only ever handled as text | The backend's `no_network` test, which fails if a scan attempts any outgoing connection, runs in CI on every pull request | 0 outgoing connections, test green on every PR | 1 |
 | O4b | A user gets their result quickly enough not to give up waiting | A script sends 100 scans to the running backend with the real model loaded and records the time each takes | 95% of scans (p95) answer in under 2 seconds | 3 |
@@ -62,4 +62,4 @@ Each screen is also checked against the accessibility criteria as it is built, t
 
 ## 6. Agreement
 
-<!-- Agreed by the Sprint 1 Product Owner at the standup on <date>; see the standup minutes in the Sprint 1 doc. -->
+Dunmi agreed this page as the Sprint 1 Product Owner at the standup on 27 October 2026, with one change: O2's scores are reported as an upper bound. The rest of the team agreed in the same thread. The minutes are on the [14. Daily Scrum Meetings](https://alprojectcs3.atlassian.net/wiki/spaces/AGILE/pages/33292289/14.+Daily+Scrum+Meetings) page in Confluence.
