@@ -9,7 +9,7 @@ The product backlog, loaded into Jira space `ALG`. Stories are pulled into sprin
 - **Subtasks**: each is one person's piece of work, small enough for a few days.
 - **Priority**: MoSCoW (Must, Should, Could).
 - **Points**: the numbers below are **suggestions only**. The team confirms them together with planning poker (1, 2, 3, 5, 8, 13) at sprint planning. Anything at 13 or more gets split. How hours suggest a number is in section 5 of [docs/agents/jira-standard.md](../agents/jira-standard.md).
-- **Product Owner**: the spec and the lectures name the lecturer as Product Owner, and the team also assigns one member as Product Owner each sprint ([docs/sprints/README.md](../sprints/README.md)). The team has asked the lecturer which she means; until she answers, the lecturer approves backlog priorities and the sprint's PO runs the board and accepts finished work.
+- **Product Owner**: each sprint one team member acts as Product Owner (Dunmi for Sprint 1, see [docs/sprints/README.md](../sprints/README.md)), owns the backlog order and accepts finished work. The lecturer is the customer and gives feedback; she confirmed in writing that she is not the PO.
 - **Labels**: one subsystem label per story: `data`, `ml`, `backend`, `frontend`, `docs`.
 
 **Definition of Ready** (before a story enters a sprint): description, 3+ acceptance criteria, priority, points, subtasks, assignee.
@@ -17,7 +17,7 @@ The product backlog, loaded into Jira space `ALG`. Stories are pulled into sprin
 **Definition of Done** (before a story moves to Done). The same list is on the Confluence stories page; each item says how we meet it.
 
 1. **Tested against the acceptance criteria**: each criterion is checked, with the evidence in the PR.
-2. **Approved by the UX designer** (stories that show something on screen): the screen is checked against the shared design tokens. Who holds this role is still to be agreed by the team.
+2. **Approved by the UX designer** (stories that show something on screen): the PO checks the screen against the shared design tokens and the accessibility criteria. In Sprint 1 the PO holds this role, because the PO is also doing the design tokens.
 3. **Approved by the Product Owner**: the sprint's PO accepts it on the board.
 4. **QA performed**: a teammate reviews the PR and the tests pass in CI.
 5. **Documentation and release notes updated**: docs change with the code, and the work is written up in the assignee's sprint summary in Confluence, which serves as the release notes.
