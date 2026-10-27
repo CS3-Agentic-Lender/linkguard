@@ -34,3 +34,4 @@ ml/data/
 
 # Local-only docs
 *.pdf
+!docs/Project Proposal CS Group 4.pdf
