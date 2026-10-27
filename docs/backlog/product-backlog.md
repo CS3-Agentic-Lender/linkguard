@@ -12,7 +12,16 @@ The product backlog, loaded into Jira space `ALG`. Stories are pulled into sprin
 - **Product Owner**: each sprint one team member acts as Product Owner (Dunmi for Sprint 1, see [docs/sprints/README.md](../sprints/README.md)), owns the backlog order and accepts finished work. The lecturer is the customer and gives feedback; she confirmed in writing that she is not the PO.
 - **Labels**: one subsystem label per story: `data`, `ml`, `backend`, `frontend`, `docs`.
 
-**Definition of Ready** (before a story enters a sprint): description, 3+ acceptance criteria, priority, points, subtasks, assignee.
+**Definition of Ready** (before a story enters a sprint). The same list is on the Confluence stories page. The INVEST checks come first, then the fields Jira must have.
+
+1. **Independent**: can be built in any order.
+2. **Negotiable**: the team agrees the scope.
+3. **Valuable**: gives the user a clear benefit.
+4. **Estimable**: the team can size it at planning poker.
+5. **Small**: fits inside one sprint.
+6. **Testable**: can be checked against the acceptance criteria.
+7. **At least three acceptance criteria.**
+8. **Fields filled in**: a description, a priority, story points, subtasks and one assignee.
 
 **Definition of Done** (before a story moves to Done). The same list is on the Confluence stories page; each item says how we meet it.
 
