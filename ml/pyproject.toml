@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Dataset, feature engineering and model training for LinkGuard."
 requires-python = ">=3.12"
 dependencies = [
+    "matplotlib>=3.11.2",
     "pandas>=2.2",
+    "scikit-learn>=1.9.1",
 ]
 
 [dependency-groups]
@@ -22,6 +24,6 @@ testpaths = ["tests"]
 # Puts ml/ on the import path, so `from cleaning...` works whether pytest
 # runs from ml/ or from the repo root (`pytest ml/tests`).
 pythonpath = ["."]
-# Coverage prints on every run. `cleaning` is named as a package rather than
-# a folder, so it resolves the same way from either directory.
-addopts = "--cov=cleaning --cov-report=term-missing"
+# Coverage prints on every run. `cleaning` and `leakage` are named as packages rather than
+# folders, so they resolve the same way from either directory.
+addopts = "--cov=cleaning --cov=leakage --cov-report=term-missing"
