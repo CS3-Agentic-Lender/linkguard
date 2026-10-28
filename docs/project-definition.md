@@ -25,7 +25,7 @@ It is built from a React frontend, a Python FastAPI backend and a classification
 | Sprint | Stage | Slice |
 |---|---|---|
 | 1 | Data Input | A pasted link is cleaned, checked and turned into features, on a cleaned dataset, with CI on every pull request (sprint goal in Jira) |
-| 2 | Data Visualisation | <!-- TBC at Sprint 2 planning --> |
+| 2 | Data Visualisation | Charts of the dataset, plus the result card that shows a link's risk level and reasons (direction agreed at the 27 Oct standup, confirmed at Sprint 2 planning) |
 | 3 | Knowledge Extraction | <!-- TBC at Sprint 3 planning --> |
 
 **Out of scope for this project.** To fit three one-week sprints, the team descoped these with the Product Owner. The stories stay in the backlog for later:
@@ -56,7 +56,7 @@ Each objective names how it is measured and the sprint it is due by. The final r
 | O3 | Every warning tells the user why the link looks like a scam, using evidence from the link itself, how confident the model is, and what to do next, in plain language | API tests on suspicious and high-risk results, plus a check with 5 family members or friends who read sample results | 100% of warnings show at least one link-based reason, a confidence %, and advice. At least 4 of 5 readers can say back why the link is risky and what to do | 3 |
 | O4a | A scan never opens, fetches or follows the pasted link: the link is only ever handled as text | The backend's `no_network` test, which fails if a scan attempts any outgoing connection, runs in CI on every pull request | 0 outgoing connections, test green on every PR | 1 |
 | O4b | A user gets their result quickly enough not to give up waiting | A script sends 100 scans to the running backend with the real model loaded and records the time each takes | 95% of scans (p95) answer in under 2 seconds | 3 |
-| O5 | Make the finished app usable by people who are less confident online or use assistive technology | An axe scan of every screen, plus a manual pass: keyboard only, 200% zoom, VoiceOver | 0 axe violations at WCAG 2.2 AA, and every manual check passes | 3 |
+| O5 | Make the finished app usable by people who are less confident online or use assistive technology | An axe scan of every screen, plus a manual pass: keyboard only, 200% zoom, a screen reader (VoiceOver or NVDA) | 0 axe violations at WCAG 2.2 AA, and every manual check passes | 3 |
 
 Each screen is also checked against the accessibility criteria as it is built, through the Definition of Done's UX check ([product-backlog.md](backlog/product-backlog.md)). O5 is the final check on the finished app.
 
