@@ -78,7 +78,7 @@ It keeps all 56 columns, but not all of them are model inputs:
 | `URL` | Raw text only. The feature extractor reads it to work out URL features. It is never a feature itself. |
 | `FILENAME`, `Domain`, `TLD`, `Title` | **Not features.** Kept for reference and checks. |
 | `label` | The target: 1 = phishing, 0 = legitimate (flipped from the raw file). |
-| Every other column | Numeric features. Which ones the model actually uses is decided by the leakage check, not here. |
+| Every other column | Numeric features. The leakage check decides which ones the model uses: columns it leaves out are listed with a reason in `ml/leakage/excluded.py`, and the findings are in `ml/reports/leakage_report.md` (made by `04_leakage_check.ipynb`). |
 
 ## Source and licence
 
