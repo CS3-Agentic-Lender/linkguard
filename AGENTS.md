@@ -124,7 +124,6 @@ There is one summary page per person per sprint, named `Sprint <n> summary (<Fir
 - **What was built**, in your own words, with screenshots or diagrams where a picture is clearer.
 - **Evidence it works**: test results, output, screenshots or a short recording.
 - **What didn't get finished** and why, with the ticket it moved to.
-- **Anything a marker would ask you to explain**, such as why an approach was chosen.
 
 An agent may format the page, add diagrams or tidy the wording. The account of what you did and why is yours, because marks are individual and you must be able to explain all of it.
 
