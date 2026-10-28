@@ -14,7 +14,7 @@ The product backlog, loaded into Jira space `ALG`. Stories are pulled into sprin
 
 **Definition of Ready** (before a story enters a sprint). The same list is on the Confluence stories page. The INVEST checks come first, then the fields Jira must have.
 
-1. **Independent**: can be built in any order.
+1. **Independent**: as independent as possible. Any dependency is a Jira link.
 2. **Negotiable**: the team agrees the scope.
 3. **Valuable**: gives the user a clear benefit.
 4. **Estimable**: the team can size it at planning poker.
