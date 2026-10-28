@@ -8,7 +8,7 @@ Source: [agile-processes-project-specification.docx](agile-processes-project-spe
 - Workload must be balanced across the four members.
 - Three sprints, each with a **different Scrum Master**: Sprint 1 Data Input, Sprint 2 Data Visualisation, Sprint 3 Knowledge Extraction.
 - Each sprint has a planning meeting (goal + sprint log), standups with a burndown chart, and a retrospective with notes.
-- The spec names the lecturer as Product Owner. Inside the team, the PO role rotates too (see [docs/sprints/README.md](../sprints/README.md)); bring backlog priorities to the lecturer for approval in the lab.
+- The spec names the lecturer as Product Owner, but she confirmed by email on 26 October 2026 that she is the customer, not the PO. The PO is a team member and the role rotates each sprint (see [docs/sprints/README.md](../sprints/README.md)). The sprint's PO sets the backlog priorities ([backlog-priorities.md](../sprints/backlog-priorities.md)).
 - Two submissions: an **interim report** after Sprint 2 and a **final report** after Sprint 3, then a group presentation.
 - No marks for code quality, but working code is required and must not block teammates.
 
