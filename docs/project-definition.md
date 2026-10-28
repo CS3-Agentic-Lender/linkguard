@@ -42,8 +42,8 @@ It is built from a React frontend, a Python FastAPI backend and a classification
 Our research on the dataset ([docs/research/phiusiil-features.md](research/phiusiil-features.md)) sets these limits:
 
 - **The model only looks at the link itself.** About half of PhiUSIIL's features (28 of 54) come from the web page, such as the page title, password fields and hidden form fields. LinkGuard can only fetch a page through the backend's sandboxed fetcher, which doesn't exist yet, and phishing pages often go offline within hours. So the first version cannot give reasons based on the page title or hidden forms, even though the proposal lists them as examples.
-- **Some dataset columns leak the answer.** `URLSimilarityIndex` is exactly 100 for every legitimate row, so it is dropped. URL features are recomputed from the raw link with the same code the backend runs at scan time.
-- **Test-split scores flatter the model.** PhiUSIIL's legitimate links share a template, so a model can score about 99% on its own test split for the wrong reasons. The test-split result is reported with that caveat.
+- **Some dataset columns leak the answer.** The leakage check ([ml/reports/leakage_report.md](../ml/reports/leakage_report.md)) leaves 36 columns out of the first model. `URLSimilarityIndex` is exactly 100 for every legitimate row. `TLDLegitimateProb` and `URLCharProb` were built from the legitimate class, and their reference data is unpublished. `FILENAME` gives the label away 100% from its shape alone. The rest are identifiers and the 28 page-content columns. URL features are recomputed from the raw link with the same code the backend runs at scan time.
+- **Test-split scores flatter the model.** Every legitimate link in PhiUSIIL is a bare homepage (`https://www.<domain>`), against 1.03% of phishing links. The rule "bare homepage means legitimate" alone is 99.56% accurate, so a model can score highly on its own test split for the wrong reasons. The test-split result is reported with that caveat.
 
 ## 5. SMART objectives
 
