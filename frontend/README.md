@@ -15,7 +15,7 @@ The page sends each pasted link to the backend's `POST /scan`, so run both, in t
 
    It listens on http://127.0.0.1:8000.
 
-2. The frontend, from `frontend/` (needs Node 20 or later):
+2. The frontend, from `frontend/`. Needs Node 22.22.2 or later on the 22 line, 24.15.0 or later on the 24 line, or Node 26 and up (the `engines` range in `package.json`, set by the locked jsdom and Vitest). Node 20 won't work. Check with `node --version`.
 
    ```bash
    npm ci
