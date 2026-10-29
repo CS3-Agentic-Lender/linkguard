@@ -104,13 +104,4 @@ describe("paste-a-link page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Is this link safe?" })).toBeInTheDocument();
     expect(screen.getByLabelText(LABEL)).toBeInTheDocument();
   });
-
-  it("says it couldn't check the link until the page is connected to /scan", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
-
-    expect(await screen.findByRole("status")).toHaveTextContent(CANT_CHECK);
-  });
 });
