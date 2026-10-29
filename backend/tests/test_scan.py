@@ -79,3 +79,11 @@ def test_missing_url_gets_a_clear_422():
     error = response.json()["detail"][0]
     assert error["loc"] == ["body", "url"]
     assert error["type"] == "missing"
+
+
+@pytest.mark.parametrize("pasted_text", ["", "   ", " \t\r\n "])
+def test_empty_input_gets_the_paste_link_error(pasted_text, no_network):
+    response = client.post("/scan", json={"url": pasted_text})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "Paste a link first"}

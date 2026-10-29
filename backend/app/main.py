@@ -1,6 +1,7 @@
 from typing import Literal
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="LinkGuard")
@@ -22,8 +23,11 @@ class ScanResponse(BaseModel):
     placeholder: bool
 
 
-@app.post("/scan")
-def scan(request: ScanRequest) -> ScanResponse:
+@app.post("/scan", response_model=ScanResponse)
+def scan(request: ScanRequest) -> ScanResponse | JSONResponse:
+    if not request.url.strip():
+        return JSONResponse(status_code=400, content={"error": "Paste a link first"})
+
     # The link is only ever handled as text: it is never opened or fetched.
     # Until the trained model is served, reply with a placeholder and never
     # a made-up risk level or score.
