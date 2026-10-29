@@ -77,6 +77,11 @@ h1 {
   cursor: pointer;
 }
 
+/* The red border only backs up the message above the box; it is never the only sign. */
+.check-row input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
 .check-row button:hover {
   background: var(--color-primary-hover);
 }
@@ -90,6 +95,24 @@ h1 {
 .check-row button:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);
+}
+
+/* The backend's message about the pasted text: in words, with an icon, next to the box. */
+.field-error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-error-surface);
+  color: var(--color-error);
+  font-weight: var(--font-weight-semibold);
+}
+
+.field-error svg {
+  flex: none;
+  margin-top: 0.2em;
 }
 
 .help {
