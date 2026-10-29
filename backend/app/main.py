@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.links import clean_link
+
 app = FastAPI(title="LinkGuard")
 
 RiskLevel = Literal["Safe", "Suspicious", "High risk"]
@@ -25,14 +27,16 @@ class ScanResponse(BaseModel):
 
 @app.post("/scan", response_model=ScanResponse)
 def scan(request: ScanRequest) -> ScanResponse | JSONResponse:
-    if not request.url.strip():
-        return JSONResponse(status_code=400, content={"error": "Paste a link first"})
+    try:
+        cleaned = clean_link(request.url)
+    except ValueError as error:
+        return JSONResponse(status_code=400, content={"error": str(error)})
 
     # The link is only ever handled as text: it is never opened or fetched.
     # Until the trained model is served, reply with a placeholder and never
     # a made-up risk level or score.
     return ScanResponse(
-        url=request.url,
+        url=cleaned.url,
         risk_level=None,
         score=None,
         reasons=[],

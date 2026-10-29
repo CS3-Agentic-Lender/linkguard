@@ -37,7 +37,7 @@ This is the one shape the page and the trained model both use, so the field name
 
 | Field | What it holds |
 |---|---|
-| `url` | The link as received (the cleaned link once the cleaning rules are in place) |
+| `url` | The cleaned link, including `https://` if the user omitted the scheme |
 | `risk_level` | `"Safe"`, `"Suspicious"` or `"High risk"`, or `null` in a placeholder reply |
 | `score` | A number from 0 to 1, or `null` in a placeholder reply |
 | `reasons` | Up to three plain-language reasons, empty for a Safe result or a placeholder reply |
@@ -45,7 +45,7 @@ This is the one shape the page and the trained model both use, so the field name
 
 ### Placeholder reply
 
-Until the trained model is served, every reply is a placeholder. It never contains a made-up risk level or score.
+Until the trained model is served, every successful reply is a placeholder. It never contains a made-up risk level or score.
 
 ```json
 {
@@ -67,7 +67,20 @@ When the pasted text fails the cleaning and checking rules, the reply has status
 {"error": "Paste a link first"}
 ```
 
-The cleaning and checking rules come with the backend link-cleaning story, so this reply isn't sent yet.
+The possible messages are:
+
+- `Paste a link first`
+- `That link is too long to check. Links over 2,000 characters can't be checked.`
+- `That doesn't look like a web address. It usually starts with www. or https://`
+
+`app.links.clean_link()` removes surrounding whitespace and internal line breaks,
+then enclosing quotes or angle brackets, then trailing sentence punctuation. It
+adds `https://` when omitted, and returns a `CleanedLink` containing `url` and
+`added_https`. The flag is internal metadata; it does not add a field to the API
+reply. Length is checked after cleaning, with exactly 2,000 characters allowed.
+The host must be a dotted hostname or an IP address. Parsing never fetches the
+link or resolves its host. Invalid input returns before the placeholder response
+is built.
 
 ### Missing `url` field (status 422)
 
