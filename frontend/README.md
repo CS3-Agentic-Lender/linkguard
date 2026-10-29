@@ -4,7 +4,7 @@ The paste-a-link page: a React app built with Vite. Colours, type and spacing co
 
 ## Run it
 
-Needs Node 20 or later. From `frontend/`:
+Needs Node 22.22.2 or later on the 22 line, 24.15.0 or later on the 24 line, or Node 26 and up (the `engines` range in `package.json`, set by the locked jsdom and Vitest). Node 20 won't work. Check with `node --version`. From `frontend/`:
 
 ```bash
 npm ci
