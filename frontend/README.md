@@ -2,18 +2,29 @@
 
 The paste-a-link page: a React app built with Vite. Colours, type and spacing come from the shared design tokens in `src/styles/tokens.css`.
 
-## Run it
+## Run it with the backend
 
-Needs Node 20 or later. From `frontend/`:
+The page sends each pasted link to the backend's `POST /scan`, so run both, in two terminals.
 
-```bash
-npm ci
-npm run dev
-```
+1. The backend, from `backend/` (needs Python 3.12 and uv, see `backend/README.md`):
 
-Then open http://localhost:5173.
+   ```bash
+   uv sync
+   uv run uvicorn app.main:app --reload
+   ```
 
-The page isn't connected to the backend's `/scan` endpoint yet, so pressing Check shows "We couldn't check that link just now. Please try again."
+   It listens on http://127.0.0.1:8000.
+
+2. The frontend, from `frontend/` (needs Node 20 or later):
+
+   ```bash
+   npm ci
+   npm run dev
+   ```
+
+   Then open http://localhost:5173.
+
+The Vite dev server passes `/scan` on to the backend (see `vite.config.js`), so the page only ever calls its own address. If the backend runs on another port, set `BACKEND_URL` before `npm run dev`, for example `BACKEND_URL=http://127.0.0.1:8001 npm run dev`. Until the trained model is served, every check shows "Checking isn't switched on yet, so we can't give a result for this link." If the backend isn't running, the page shows "We couldn't check that link just now. Please try again."
 
 ## Test it
 

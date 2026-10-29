@@ -1,12 +1,7 @@
 import PasteLinkForm from "./PasteLinkForm.jsx";
+import { checkLink } from "./scan.js";
 
-// Sending the link to /scan is the wire-up subtask's job. Until it lands, a
-// check can't reach the backend, so the page says so instead of guessing.
-function notConnectedYet() {
-  return Promise.reject(new Error("The page is not connected to /scan yet."));
-}
-
-export default function App({ check = notConnectedYet }) {
+export default function App({ check = checkLink }) {
   return (
     <main className="page">
       <p className="logo">LinkGuard</p>
