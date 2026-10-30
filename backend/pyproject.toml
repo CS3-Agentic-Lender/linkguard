@@ -23,8 +23,10 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Puts backend/ on the import path, so `from app...` works whether pytest
-# runs from backend/ or from the repo root (`pytest backend/tests`).
-pythonpath = ["."]
+# runs from backend/ or from the repo root (`pytest backend/tests`). Also puts
+# ml/ there, so backend tests import the shared feature extractor from `features`,
+# with no copy in backend/.
+pythonpath = [".", "../ml"]
 # Coverage prints on every run. `app` is named as a package rather than
 # a folder, so it resolves the same way from either directory.
 addopts = "--cov=app --cov-report=term-missing"
