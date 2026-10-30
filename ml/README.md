@@ -80,6 +80,38 @@ It keeps all 56 columns, but not all of them are model inputs:
 | `label` | The target: 1 = phishing, 0 = legitimate (flipped from the raw file). |
 | Every other column | Numeric features. The leakage check decides which ones the model uses: columns it leaves out are listed with a reason in `ml/leakage/excluded.py`, and the findings are in `ml/reports/leakage_report.md` (made by `04_leakage_check.ipynb`). |
 
+## URL features
+
+The shared function `extract_features` in `ml/features/hostname.py` turns a link into ten hostname features for both training and live scans. The features follow the template-bias decision record in `docs/adr/`.
+
+The function cleans the link in this order:
+
+1. Remove spaces at the start and end. An empty link is refused.
+2. If the link has no scheme (such as `https://`), add `//` in front, so `example.com/path` has `example.com` as its host.
+3. Keep only the host: drop the scheme, any `user:password@` part, the port, the path, the query and the fragment. The port is not checked. Lowercase the host.
+4. Refuse the link if it has no host, or if the host contains a space.
+5. Remove one trailing dot.
+6. Remove one leading `www.`. A host of only `www.` is treated as `www`.
+7. If the host is an IP address (IPv4 or IPv6), keep it as written.
+8. Otherwise convert non-English names to ASCII (`bücher.de` becomes `xn--bcher-kva.de`). Refuse the link if a part of the name is empty or longer than 63 characters.
+
+The ten features are:
+
+| Feature | What it counts, and how | Type |
+|---|---|---|
+| `HostnameLength` | Characters in the cleaned host, dots and hyphens included | Whole number |
+| `IsDomainIP` | `1` if the host is an IP address, otherwise `0` | Whole number (0 or 1) |
+| `TLDLength` | Characters in the last part of the host. `0` for an IP address | Whole number |
+| `NoOfSubDomain` | Parts before the last two, so `shop.example.com` gives 1. `0` for an IP address or a two-part name | Whole number |
+| `NoOfLettersInHostname` | Letters `a` to `z` | Whole number |
+| `LetterRatioInHostname` | Letters divided by `HostnameLength` | Decimal |
+| `NoOfDigitsInHostname` | Digits `0` to `9` | Whole number |
+| `DigitRatioInHostname` | Digits divided by `HostnameLength` | Decimal |
+| `NoOfSpecialCharsInHostname` | Everything that is not a letter or digit: dots, hyphens, and the colons in an IPv6 address | Whole number |
+| `SpecialCharRatioInHostname` | Special characters divided by `HostnameLength` | Decimal |
+
+**Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
+
 ## Source and licence
 
 | | |
