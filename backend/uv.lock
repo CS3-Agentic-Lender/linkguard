@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -249,6 +249,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "linkguard-features" },
     { name = "uvicorn" },
 ]
 
@@ -262,6 +263,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "linkguard-features", editable = "../ml/features" },
     { name = "uvicorn", specifier = ">=0.32" },
 ]
 
@@ -271,6 +273,11 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=6.0" },
 ]
+
+[[package]]
+name = "linkguard-features"
+version = "0.1.0"
+source = { editable = "../ml/features" }
 
 [[package]]
 name = "opentelemetry-api"
