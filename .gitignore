@@ -10,6 +10,8 @@ __pycache__/
 venv/
 .ipynb_checkpoints/
 .pytest_cache/
+# Written by editable installs of local packages, such as ml/features
+*.egg-info/
 
 # Test coverage output
 .coverage

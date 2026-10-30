@@ -11,6 +11,8 @@ uv sync                                   # once, and after dependencies change
 uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
 ```
 
+`uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
+
 The interactive API docs are at http://127.0.0.1:8000/docs while it runs.
 
 ## Test it

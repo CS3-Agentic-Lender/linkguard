@@ -82,18 +82,18 @@ It keeps all 56 columns, but not all of them are model inputs:
 
 ## URL features
 
-The shared function `extract_features` in `ml/features/hostname.py` turns a link into ten hostname features for both training and live scans. The features follow the template-bias decision record in `docs/adr/`.
+The shared function `extract_features` in `ml/features/hostname.py` turns a link into ten hostname features for both training and live scans. The backend installs `ml/features` as a local package (`linkguard-features`), so it imports the same code with no copy. The features follow the template-bias decision record in `docs/adr/`.
 
 The function cleans the link in this order:
 
 1. Remove spaces at the start and end. An empty link is refused.
-2. If the link has no scheme (such as `https://`), add `//` in front, so `example.com/path` has `example.com` as its host.
+2. If the link has neither a scheme (such as `https://`) nor a leading `//`, add `//` in front, so `example.com/path` has `example.com` as its host. A link that already starts with `//` is used as is.
 3. Keep only the host: drop the scheme, any `user:password@` part, the port, the path, the query and the fragment. The port is not checked. Lowercase the host.
 4. Refuse the link if it has no host, or if the host contains a space.
 5. Remove one trailing dot.
 6. Remove one leading `www.`. A host of only `www.` is treated as `www`.
 7. If the host is an IP address (IPv4 or IPv6), keep it as written.
-8. Otherwise convert non-English names to ASCII (`bücher.de` becomes `xn--bcher-kva.de`). Refuse the link if a part of the name is empty or longer than 63 characters.
+8. Otherwise convert non-English names to ASCII (`bücher.de` becomes `xn--bcher-kva.de`). Refuse the link if a part of the name is empty (such as `example.com..`) or longer than 63 characters.
 
 The ten features are:
 

@@ -5,6 +5,7 @@ description = "FastAPI service that checks pasted links for LinkGuard."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "linkguard-features",
     "uvicorn>=0.32",
 ]
 
@@ -20,13 +21,14 @@ dev = [
 # Not an installable package: uv only manages the environment.
 package = false
 
+[tool.uv.sources]
+linkguard-features = { path = "../ml/features", editable = true }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Puts backend/ on the import path, so `from app...` works whether pytest
-# runs from backend/ or from the repo root (`pytest backend/tests`). Also puts
-# ml/ there, so backend tests import the shared feature extractor from `features`,
-# with no copy in backend/.
-pythonpath = [".", "../ml"]
+# runs from backend/ or from the repo root (`pytest backend/tests`).
+pythonpath = ["."]
 # Coverage prints on every run. `app` is named as a package rather than
 # a folder, so it resolves the same way from either directory.
 addopts = "--cov=app --cov-report=term-missing"

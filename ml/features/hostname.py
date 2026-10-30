@@ -50,8 +50,9 @@ def _normalized_host(link: str) -> tuple[str, bool]:
     if not text:
         raise ValueError(EMPTY_LINK_MESSAGE)
     # Without a scheme, urlsplit would read the whole link as a path. The // makes
-    # the first part of the link the host.
-    if not SCHEME_PATTERN.match(text):
+    # the first part of the link the host. A link already starting with // is
+    # protocol-relative, so it gets no second //.
+    if not SCHEME_PATTERN.match(text) and not text.startswith("//"):
         text = "//" + text
     try:
         host = urlsplit(text).hostname
@@ -73,6 +74,10 @@ def _normalized_host(link: str) -> tuple[str, bool]:
         ascii_host = host.encode("idna").decode("ascii")
     except UnicodeError as error:
         raise ValueError(BAD_HOST_MESSAGE) from error
+    # The IDNA codec quietly accepts one trailing empty label, so example.com..
+    # would pass as example.com. with an empty last label. No label may be empty.
+    if "" in ascii_host.split("."):
+        raise ValueError(BAD_HOST_MESSAGE)
     return ascii_host, False
 
 
