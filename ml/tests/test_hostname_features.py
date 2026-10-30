@@ -101,6 +101,8 @@ VALID_LINKS = [
     pytest.param("https://example.com:8443/", id="port"),
     pytest.param("example.com:8080", id="no-scheme-with-port"),
     pytest.param("example.com/path", id="no-scheme"),
+    pytest.param("//example.com/path", id="protocol-relative"),
+    pytest.param("//WWW.Example.com:8080/x", id="protocol-relative-noisy"),
     pytest.param("https://user:pw@example.com/", id="user-part"),
     pytest.param("https://example.com@login.test/", id="at-sign-before-real-host"),
     pytest.param("https://example.com/%41%2e%2e/", id="percent-escapes"),
@@ -194,6 +196,9 @@ def test_non_english_hosts_are_counted_in_their_ascii_form(link):
         "https://..",
         "https://www..",
         "https://a..b.com",
+        "https://example.com..",
+        "example.com..",
+        "http://1.2.3.4..",
         "http://[::1",
         "https://exa mple.com/",
         "https://" + "a" * 64 + ".com",
@@ -302,7 +307,18 @@ def test_one_leading_www_is_removed_with_or_without_a_scheme():
 
 
 def test_one_trailing_dot_is_removed():
+    plain = extract_features("example.com")
+
     assert extract_features("https://example.com./") == extract_features("https://example.com/")
+    # One dot is fine. Two are refused (see the broken links above), not read as one.
+    assert extract_features("https://example.com.") == plain
+    assert extract_features("example.com.") == plain
+
+
+@pytest.mark.parametrize("link", ["//example.com/path", "//WWW.Example.com:8080/x", "//example.com"])
+def test_protocol_relative_links_give_the_same_features_as_the_plain_domain(link):
+    # A link that already starts with // must not get a second // put in front of it.
+    assert extract_features(link) == extract_features("example.com")
 
 
 @pytest.mark.parametrize("path", ["", "/", "/login", "/login?id=1", ":8080/login"])

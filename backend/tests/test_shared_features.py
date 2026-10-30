@@ -1,3 +1,9 @@
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from features.hostname import FEATURE_NAMES, extract_features
 
 # Made-up link, only ever handled as text.
@@ -27,3 +33,27 @@ def test_backend_gets_the_same_features_as_the_ml_suite_for_the_same_link():
 def test_backend_output_keys_are_the_feature_names_in_order():
     assert tuple(extract_features(SHARED_LINK)) == FEATURE_NAMES
     assert tuple(SHARED_EXPECTED) == FEATURE_NAMES
+
+
+def test_backend_runtime_imports_the_extractor_outside_pytest():
+    """pytest's pythonpath setting changes only the test process, so this checks that the
+    backend's own environment can import the shared package, as the running app would."""
+    backend_folder = Path(__file__).resolve().parents[1]
+    env = {name: value for name, value in os.environ.items() if name != "PYTHONPATH"}
+    code = (
+        "import json\n"
+        "from features.hostname import extract_features\n"
+        f"print(json.dumps(extract_features({SHARED_LINK!r})))\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=backend_folder,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == SHARED_EXPECTED
