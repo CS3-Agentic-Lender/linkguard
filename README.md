@@ -2,7 +2,9 @@
 
 Phishing link warning system. Paste a suspicious link, get a risk level, the reasons it looks dangerous, and plain-language advice on what to do next.
 
-CS3 Agile Processes project — CS Group 4: Nicholas Groenewald, Nikoloz Chilachava, Ibrahima Toure Ba, Solomon Sosanya.
+CS3 Agile Processes project — CS Group 4: Nicholas Groenewald, Nikoloz Chilachava, Ibrahima Toure Ba, Solomon Sosanya (Dunmi).
+
+Marked on the [project specification](docs/spec/README.md); three sprints (Data Input, Data Visualisation, Knowledge Extraction) with a rotating Scrum Master and Product Owner. See [docs/sprints/README.md](docs/sprints/README.md) for the checklist to finish **before any real work** and the evidence each sprint needs.
 
 ## Layout
 
@@ -14,7 +16,90 @@ CS3 Agile Processes project — CS Group 4: Nicholas Groenewald, Nikoloz Chilach
 
 ## Workflow
 
-- Work is tracked in Jira (space `LG`).
-- Branch off `dev` named after the ticket: `LG-12-url-feature-extraction`.
-- Put the ticket key in commit messages and PR titles so they link to Jira.
-- PR into `dev`. `dev` → `main` via PR at the end of each sprint.
+Full rules are in [AGENTS.md](AGENTS.md), which every AI agent reads (`CLAUDE.md` imports it). This is the human version.
+
+### Jira
+
+All work is tracked in the [ALG Jira space](https://alprojectcs3.atlassian.net).
+
+| Level | Holds |
+|---|---|
+| Epic | A group of related user stories, grouped by user value |
+| Story | One user story ("As a … I want … so that …") with at least 3 acceptance criteria |
+| Task | Non-feature work (setup, CI, docs, retros) |
+| Subtask | One person's piece of a story |
+| Bug | A fault found in testing |
+
+Every item has one subsystem label (`data`, `ml`, `backend`, `frontend`, `docs`) and, once triaged, one state label (`needs-triage`, `blocked`, `ready-agent-assisted`, `ready-for-human`, `wontfix`). There are no fixed code owners: work is shared out at each sprint planning.
+
+Tickets can be **refined** (sharper acceptance criteria, more detail, split into smaller stories) when the Product Owner agrees, with a comment saying what changed. They are never deleted or rewritten into different work.
+
+### Sprint rules
+
+Marks are individual, so the rules are strict:
+
+- **Only work on tickets in the active sprint that are assigned to you.** Nothing else gets built, however quick it looks.
+- **No building ahead.** If something from a later sprint needs doing now, raise it at standup and the Scrum Master pulls the ticket into the sprint first. Building ahead empties the next sprint and leaves nothing to report.
+- **Found something else that needs doing?** Make a ticket labelled `needs-triage`. Don't fold it into what you're already working on.
+- **Don't fix someone else's ticket to unblock yourself.** Comment on their ticket.
+- **Only the Scrum Master changes the sprint**, after the team agrees at standup.
+- **A ticket is Done when** its PR is merged into `dev`, its acceptance criteria are met, and it's written up in your sprint summary in Confluence.
+
+Your AI agent checks these rules before it writes code. It stops if the ticket is missing, isn't in the active sprint, isn't assigned to you, or is already Done.
+
+### Sprint documentation
+
+Every sprint leaves evidence in one place, in one structure. Whoever writes the sprint report builds it from your pages. In the **Agile LinkGuard** Confluence space:
+
+```
+Agile LinkGuard
+├── <Your first name>
+│   └── Sprint <n> - <sprint name from Jira> (<Your first name>)
+│       ├── Sprint <n> summary (<Your first name>)
+│       └── supporting pages: diagrams, UI flows, Figma links, test evidence
+└── ...
+```
+
+- Your person folder already exists. A sprint folder is only created once that sprint has started in Jira, never in advance. Your name goes on the end because Confluence won't allow two folders with the same title.
+- Your **sprint summary** lists:
+  - the tickets you finished, with links to their PRs
+  - what you built
+  - evidence it works
+  - anything that slipped, and where it moved
+- Write it as you go. An agent can tidy it or draw diagrams, but the account of your work is yours.
+
+### Branches, commits and PRs
+
+1. Take a ticket assigned to you in the active sprint.
+2. Branch from `dev`: `feature/ALG-<n>-short-description`
+3. Every commit starts with the key: `ALG-20 add subdomain count feature`
+4. Open a PR into `dev` titled `ALG-20 Add URL feature extractor`. It needs one approval from a teammate and the `Secret scan` check green.
+5. At the end of each sprint, `dev` merges into `main` through a `Sprint <n> release` PR.
+
+Use exactly **one** ticket key across the branch, commits, PR title and PR body. Jira links and moves whichever tickets it finds there.
+
+**You open the PR, not your agent.** Let it write code, commit and push the branch. When it thinks the work is done, it has to stop, tell you what it built and what it ran, and ask. You read the diff, then open the PR yourself. The same goes for merging, approving and replying to review comments: a PR asks a teammate for their time and puts your name on the work, so you have to know what's in it.
+
+**No AI sign-offs, anywhere.** No "Generated by …", "Co-Authored-By: Claude", 🤖 footers or similar in commits, PRs, code, docs, Jira or Confluence. Marks are individual, and an AI sign-off misattributes your work.
+
+## Setup
+
+Once per clone, turn on the secret-scanning hook (needs [betterleaks](https://github.com/betterleaks/betterleaks): `brew install betterleaks` on Mac) and the commit message template, which pre-fills the `ALG-<n> summary` format:
+
+```bash
+git config core.hooksPath .githooks
+git config commit.template .gitmessage
+```
+
+Python is pinned to **3.12** with a `.python-version` file in each Python part (`ml/` now, `backend/` once it is set up), and each part is a [uv](https://docs.astral.sh/uv/) project. With uv installed, `uv sync` inside the folder installs that Python and the locked packages, so everyone runs the same versions.
+
+On Windows, enable Developer Mode and clone with `git clone -c core.symlinks=true ...` so the `.claude/skills` symlinks work.
+
+## AI agents and skills
+
+| You use | Skills live in |
+|---|---|
+| Claude Code | `.claude/skills/` (symlinks) |
+| Codex or another agent | `.agents/skills/` (real files) |
+
+Add skills with `npx skills add <repo> -s <skill> -a claude-code -a codex` so both folders stay in sync. For any UI work, load `ui-ux-pro-max` first. Jira skills (`/to-tickets`, `/triage`, `/wayfinder`) need the Atlassian MCP server, configured in `.mcp.json`.
