@@ -5,6 +5,9 @@ features are defined our own way, so some rows differ on purpose. Every
 difference needs a reason, so each mismatch is sorted into a named pattern.
 
 The leading www. is kept (strip_www=False) because the dataset's columns keep it.
+The shape of each row is read from the dataset's own Domain column, the part between
+// and the first / as the dataset's authors read it. Our own reading of a link comes
+only from extract_features, so the URL parsing is never copied here.
 URLs are only read as text. None is opened or fetched.
 
 Run from ml/ with: uv run python -m comparison.compare
@@ -12,10 +15,9 @@ Run from ml/ with: uv run python -m comparison.compare
 
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlsplit
 
 import pandas as pd
 
@@ -25,6 +27,7 @@ ML_DIR = Path(__file__).resolve().parents[1]
 RAW_CSV = ML_DIR / "data" / "PhiUSIIL_Phishing_URL_Dataset.csv"
 REPORT_PATH = ML_DIR / "reports" / "feature_comparison.md"
 URL_COLUMN = "URL"
+DOMAIN_COLUMN = "Domain"
 
 # Our feature -> the dataset column it is compared with.
 COMPARED_COLUMNS = {
@@ -39,8 +42,7 @@ SUSPECTED_BUG = "Suspected extractor bug"
 DATASET_QUIRK = "Dataset quirk"
 UNEXPLAINED = "Unexplained"
 
-SCHEME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
-PORT_PATTERN = re.compile(r":\d*$")
+PORT_PATTERN = re.compile(r":\d+$")
 IPV4_START_PATTERN = re.compile(r"^\d{1,3}(\.\d{1,3}){3}\.")
 TWO_PART_ENDING_PATTERN = re.compile(r"\.(co|com|org|net|ac|gov|edu)\.[a-z]{2}$")
 # The scheme and the part up to the first /, ? or #. Every pattern is about this part.
@@ -48,36 +50,25 @@ URL_START_PATTERN = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*:)?(//)?[^/?#]*")
 EXAMPLE_URL_LIMIT = 80
 
 
-def _netloc(url: str) -> str:
-    """The part between // and the first /, read the same way as the extractor reads it."""
-    text = url.strip()
-    if not SCHEME_PATTERN.match(text) and not text.startswith("//"):
-        text = "//" + text
-    return urlsplit(text).netloc
+# Our features for one row, as extract_features returns them.
+Ours = Mapping[str, int | float]
 
 
-def _host_with_port(url: str) -> str:
-    return _netloc(url).rpartition("@")[2]
+def _user_part(domain: str) -> str:
+    """The user:password@ part of the dataset's domain, with its @, or "" if there is none."""
+    user, at, _ = domain.rpartition("@")
+    return user + at
 
 
-def _host(url: str) -> str:
-    return PORT_PATTERN.sub("", _host_with_port(url))
+def _port(domain: str) -> str:
+    """The :port at the end of the dataset's domain, with its colon, or "" if there is none."""
+    found = PORT_PATTERN.search(domain.removeprefix(_user_part(domain)))
+    return found.group(0) if found else ""
 
 
-def _is_ip_host(url: str) -> bool:
-    return extract_features(url, strip_www=False)["IsDomainIP"] == 1
-
-
-def _starts_with_ipv4(url: str) -> bool:
-    return IPV4_START_PATTERN.match(_host(url)) is not None
-
-
-def _has_user_part(url: str) -> bool:
-    return "@" in _netloc(url)
-
-
-def _has_port(url: str) -> bool:
-    return PORT_PATTERN.search(_host_with_port(url)) is not None
+def _host(domain: str) -> str:
+    """The dataset's domain without its user part and port."""
+    return domain.removeprefix(_user_part(domain)).removesuffix(_port(domain))
 
 
 @dataclass(frozen=True)
@@ -86,10 +77,10 @@ class Pattern:
     kind: str
     reason: str
     features: tuple[str, ...]  # the features this pattern can explain
-    matches: Callable[[str], bool]
+    matches: Callable[[str, Ours], bool]  # True if the row has this shape: (domain, our features)
 
 
-# Checked in this order. A mismatch goes to the first pattern that matches the URL
+# Checked in this order. A mismatch goes to the first pattern that matches the row
 # and explains that feature.
 PATTERNS: tuple[Pattern, ...] = (
     Pattern(
@@ -98,7 +89,7 @@ PATTERNS: tuple[Pattern, ...] = (
         "The dataset reads an IP address like a name, so its last number is the TLD and the "
         "first two numbers count as subdomains. We give 0 for both.",
         ("TLDLength", "NoOfSubDomain"),
-        _is_ip_host,
+        lambda domain, ours: ours["IsDomainIP"] == 1,
     ),
     Pattern(
         "Host starts with an IP address",
@@ -106,31 +97,32 @@ PATTERNS: tuple[Pattern, ...] = (
         "The dataset marks a name that starts with an IP address as an IP. We mark only a host "
         "that is an IP address.",
         ("IsDomainIP",),
-        _starts_with_ipv4,
+        lambda domain, ours: IPV4_START_PATTERN.match(_host(domain)) is not None,
     ),
     Pattern(
         "User part in the link",
         DATASET_QUIRK,
         "The dataset's domain keeps the user:password@ part. We drop it and measure only the host.",
-        ("HostnameLength", "NoOfSubDomain", "TLDLength"),
-        _has_user_part,
+        ("HostnameLength", "NoOfSubDomain"),
+        lambda domain, ours: _user_part(domain) != "",
     ),
     Pattern(
         "Port in the link",
         DATASET_QUIRK,
         "The dataset's domain keeps the port, so com:443 counts as the TLD. We drop the port.",
         ("HostnameLength", "TLDLength"),
-        _has_port,
+        lambda domain, ours: _port(domain) != "",
     ),
 )
 
 # Shapes we expected might cause mismatches. Each is counted to show whether it did.
+# Each is read from the host in the dataset's domain.
 SHAPES: dict[str, Callable[[str], bool]] = {
-    "Leading www.": lambda url: _host(url).lower().startswith("www."),
-    "Two-part ending such as .co.uk": lambda url: TWO_PART_ENDING_PATTERN.search(_host(url).lower()) is not None,
-    "Non-English name (xn--)": lambda url: "xn--" in _host(url).lower() or not _host(url).isascii(),
-    "Capital letters in the host": lambda url: _host(url) != _host(url).lower(),
-    "Trailing dot after the host": lambda url: _host(url).endswith("."),
+    "Leading www.": lambda host: host.lower().startswith("www."),
+    "Two-part ending such as .co.uk": lambda host: TWO_PART_ENDING_PATTERN.search(host.lower()) is not None,
+    "Non-English name (xn--)": lambda host: "xn--" in host.lower() or not host.isascii(),
+    "Capital letters in the host": lambda host: host != host.lower(),
+    "Trailing dot after the host": lambda host: host.endswith("."),
 }
 
 
@@ -173,18 +165,28 @@ def find_mismatches(ours: pd.DataFrame, dataset: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records, columns=["row", "feature"]).sort_values(["row", "feature"], ignore_index=True)
 
 
-def pattern_for(url: str, feature: str) -> str:
-    """Name of the first pattern that explains this feature's mismatch, or UNEXPLAINED."""
+def pattern_for(domain: str, ours: Ours, feature: str) -> str:
+    """Name of the first pattern that explains this feature's mismatch, or UNEXPLAINED.
+
+    domain is the dataset's Domain column for the row. ours is our features for it.
+    """
     for pattern in PATTERNS:
-        if feature in pattern.features and pattern.matches(url):
+        if feature in pattern.features and pattern.matches(domain, ours):
             return pattern.name
     return UNEXPLAINED
 
 
-def patterns_table(mismatches: pd.DataFrame, urls: pd.Series) -> pd.DataFrame:
-    """One row per pattern that has mismatches, plus the unexplained bucket, always."""
+def patterns_table(mismatches: pd.DataFrame, ours: pd.DataFrame, dataset: pd.DataFrame) -> pd.DataFrame:
+    """One row per pattern that has mismatches, plus the unexplained bucket, always.
+
+    dataset holds the URL and Domain columns for the same rows as ours.
+    """
+    domains = dataset[DOMAIN_COLUMN]
     named = mismatches.assign(
-        pattern=[pattern_for(urls[row], feature) for row, feature in zip(mismatches["row"], mismatches["feature"])]
+        pattern=[
+            pattern_for(domains[row], ours.loc[row], feature)
+            for row, feature in zip(mismatches["row"], mismatches["feature"])
+        ]
     )
     details = {pattern.name: pattern for pattern in PATTERNS}
     table = []
@@ -201,18 +203,19 @@ def patterns_table(mismatches: pd.DataFrame, urls: pd.Series) -> pd.DataFrame:
                 "Rows": found["row"].nunique(),
                 "Reason": details[name].reason if name in details else "No pattern explains these rows yet.",
                 "Example row": example,
-                "Example URL": urls[example] if example is not None else "",
+                "Example URL": _example_url(dataset[URL_COLUMN][example]) if example is not None else "",
             }
         )
     # Int64 keeps the row ids whole numbers when the unexplained bucket has none.
     return pd.DataFrame(table).astype({"Example row": "Int64"})
 
 
-def shapes_table(urls: pd.Series, mismatching_rows: set[int]) -> pd.DataFrame:
+def shapes_table(domains: pd.Series, mismatching_rows: set[int]) -> pd.DataFrame:
     """For each expected shape, how many rows have it and how many of those differ."""
+    hosts = domains.map(_host)
     table = []
     for shape, matches in SHAPES.items():
-        rows = {row for row, url in urls.items() if matches(url)}
+        rows = {row for row, host in hosts.items() if matches(host)}
         table.append(
             {"Shape": shape, "Rows with this shape": len(rows), "Rows with a mismatch": len(rows & mismatching_rows)}
         )
@@ -280,7 +283,7 @@ def render_report(summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.Data
             f"{r['Rows']:,}",
             r["Reason"],
             "-" if r["Example row"] is None or pd.isna(r["Example row"]) else str(int(r["Example row"])),
-            _code(_example_url(r["Example URL"])) if r["Example URL"] else "-",
+            _code(r["Example URL"]) if r["Example URL"] else "-",
         ]
         for r in patterns.to_dict("records")
     ]
@@ -349,8 +352,8 @@ def main() -> None:
     ours = recompute_features(urls)
     summary = summary_table(ours, raw)
     mismatches = find_mismatches(ours, raw)
-    patterns = patterns_table(mismatches, urls)
-    shapes = shapes_table(urls, set(mismatches["row"]))
+    patterns = patterns_table(mismatches, ours, raw)
+    shapes = shapes_table(raw[DOMAIN_COLUMN], set(mismatches["row"]))
     REPORT_PATH.write_text(render_report(summary, patterns, shapes, len(raw)), encoding="utf-8")
     print(summary.to_string(index=False))
     print()
