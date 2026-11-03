@@ -33,6 +33,9 @@ from splitting.scaling import SCALER_FILE_NAME, load_scaler, scale
 SEED = 0  # with the full solver the fit has no randomness, but the seed is fixed anyway
 TARGET_SHARE = 0.95
 TARGET_PERCENT = 95
+# Adding up shares can land a hair under the target through float rounding alone
+# (0.69 + 0.18 + 0.08 gives 0.9499999999999998). Anything this close counts as reached.
+ROUNDING_TOLERANCE = 1e-9
 MARKED_PER_COMPONENT = 2
 REPORT_NAME = "pca.md"
 CHART_NAME = "pca_explained_variance.png"
@@ -86,7 +89,7 @@ def variance_table(pca: PCA) -> pd.DataFrame:
 
 def components_to_reach(ratios: np.ndarray, share: float = TARGET_SHARE) -> int:
     """The fewest components whose explained variance adds up to at least share."""
-    return int(np.flatnonzero(np.cumsum(ratios) >= share)[0]) + 1
+    return int(np.flatnonzero(np.cumsum(ratios) >= share - ROUNDING_TOLERANCE)[0]) + 1
 
 
 def takeaway(pca: PCA) -> str:

@@ -131,6 +131,19 @@ def test_components_to_reach_counts_the_fewest_that_reach_95_percent(ratios, exp
     assert components_to_reach(np.array(ratios)) == expected
 
 
+def test_components_to_reach_counts_a_total_of_exactly_95_percent_despite_rounding():
+    # These add up to 0.9499999999999998 at three components, not 0.95, because of float rounding.
+    ratios = np.array([0.69, 0.18, 0.08, 0.05])
+
+    assert components_to_reach(ratios) == 3
+
+
+def test_components_to_reach_does_not_count_a_total_really_below_95_percent():
+    ratios = np.array([0.69, 0.18, 0.079, 0.051])  # 94.9% at three components
+
+    assert components_to_reach(ratios) == 4
+
+
 def test_loadings_table_has_the_ten_features_as_rows_and_the_main_components_as_columns():
     pca = fitted()
 
