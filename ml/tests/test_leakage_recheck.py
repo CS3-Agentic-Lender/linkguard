@@ -139,3 +139,12 @@ def test_main_reports_links_that_fail_writes_no_report_and_returns_1(tmp_path, c
     assert not report_path(tmp_path).exists()
     assert "1 rows failed" in capsys.readouterr().out
 
+
+def test_committed_report_lists_exactly_the_ten_features():
+    ml_dir = Path(__file__).resolve().parents[1]
+    path = report_path(ml_dir)
+
+    assert path == ml_dir / "reports" / REPORT_NAME
+    rows = _table_rows(path.read_text())
+    assert sorted(column for column, _, _ in rows) == sorted(FEATURE_NAMES)
+    assert len(rows) == len(FEATURE_NAMES)

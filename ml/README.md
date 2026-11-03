@@ -142,6 +142,10 @@ If the cleaned file is already there, step 2 is enough.
 
 Every row is checked before anything is saved. If a link can't be read, the script prints how many rows failed for each reason, with an example row number. It then stops with exit code 1 and saves nothing. No row is dropped without being reported.
 
+### Leakage recheck
+
+`ml/leakage/recheck.py` reruns the single-feature leakage check on the ten features. The result is in `ml/reports/leakage_recheck_hostname_features.md`. To make it again, run `uv run python -m leakage.recheck` from `ml/`. It needs the cleaned file too.
+
 ## The train/test split and the scaler
 
 Every model is trained and tested on one shared split. Make it once, from `ml/`:
