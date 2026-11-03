@@ -112,6 +112,28 @@ The ten features are:
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
+## The train/test split and the scaler
+
+Every model is trained and tested on one shared split. Make it once, from `ml/`:
+
+```bash
+uv run python -m splitting.build
+```
+
+It needs `ml/data/phiusiil_cleaned.csv` and takes about 25 seconds. It works out the ten hostname features for every row with the shared extractor, then:
+
+- **Splits by host.** 80% training, 20% test, with every link on one host in the same set and the phishing share kept the same in both (scikit-learn's `StratifiedGroupKFold`, seed 42). The features only read the hostname, so a host in both sets would let the model be tested on rows it has already seen.
+- **Scales on training rows only.** A `StandardScaler` (mean 0, spread 1) is fitted on the training rows and only applied to the test rows. It keeps a long count such as `HostnameLength` from swamping a 0-to-1 ratio in models such as logistic regression.
+- **Stops before saving** if any host is in both sets or a set's phishing share is more than 0.5 percentage points from the whole data's.
+
+| Output | Holds | In git? |
+|---|---|---|
+| `ml/data/split.csv` | Each cleaned row's index and its set (`train` or `test`). Load it with `load_split()` from `ml/splitting/split.py`. | No |
+| `ml/models/scaler.joblib` | The fitted scaler. Load it with `load_scaler()` from `ml/splitting/scaling.py`. | No |
+| `ml/reports/scaling_distributions.png` | Each feature on the training rows, before and after scaling | Yes |
+
+Training and evaluation load these files. They never make a split or fit a scaler of their own. Rerunning gives exactly the same split.
+
 ## Source and licence
 
 | | |
