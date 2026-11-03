@@ -142,6 +142,33 @@ If the cleaned file is already there, step 2 is enough.
 
 Every row is checked before anything is saved. If a link can't be read, the script prints how many rows failed for each reason, with an example row number. It then stops with exit code 1 and saves nothing. No row is dropped without being reported.
 
+## The train/test split and the scaler
+
+Every model is trained and tested on one shared split. Make it once, from `ml/`:
+
+```bash
+uv run python -m splitting.build
+```
+
+It needs `ml/data/phiusiil_cleaned.csv` and takes about 25 seconds. It works out the ten hostname features for every row with the shared extractor, then:
+
+- **Splits by host.** 80% training, 20% test, with every link on one host in the same set and the phishing share kept the same in both (scikit-learn's `StratifiedGroupKFold`, seed 42). The features only read the hostname, so a host in both sets would let the model be tested on rows it has already seen.
+- **Scales on training rows only.** A `StandardScaler` (mean 0, spread 1) is fitted on the training rows and only applied to the test rows. It keeps a long count such as `HostnameLength` from swamping a 0-to-1 ratio in models such as logistic regression.
+- **Stops before saving** if a set is empty, any host or link is in both sets, or a set's phishing share is more than 0.5 percentage points from the whole data's. The host check reads each link's host with Python's own URL parser (`plain_host`), not the clean-up the split groups by, so a mistake in the grouping is caught instead of passing its own check.
+
+| Output | Holds | In git? |
+|---|---|---|
+| `ml/data/split.csv` | Each cleaned row's index and its set (`train` or `test`). Load it with `load_split()` from `ml/splitting/split.py`. | No |
+| `ml/data/split_check.json` | The number of cleaned rows and a fingerprint of every row's host, saved with the split | No |
+| `ml/models/scaler.joblib` | The fitted scaler. Load it with `load_scaler()` from `ml/splitting/scaling.py`. | No |
+| `ml/reports/scaling_distributions.png` | Each feature on the training rows, before and after scaling | Yes |
+
+Training and evaluation load these files and never make a split of their own. Rerunning gives exactly the same split.
+
+`load_split(path, hosts)` takes the cleaned hosts of the data it will be used with, one per row (the training feature set's `host` column, for example). It stops with a message if the cleaned data has been rebuilt or reordered since the split was made, if a row is missing or listed twice, or if the check file is missing. Without this, an old split used with reordered cleaned data would quietly put about 2,200 hosts in both sets. The fix is always to rerun `uv run python -m splitting.build`.
+
+The saved scaler is fitted on the whole training set. Any later step that fits a scaler of its own, for example inside cross-validation or after feature selection, fits it on training rows only, never on test rows.
+
 ## Source and licence
 
 | | |
