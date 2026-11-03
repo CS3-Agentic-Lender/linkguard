@@ -200,6 +200,20 @@ Training and evaluation load these files and never make a split of their own. Re
 
 The saved scaler is fitted on the whole training set. Any later step that fits a scaler of its own, for example inside cross-validation or after feature selection, fits it on training rows only, never on test rows.
 
+## Feature ranking
+
+The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. The split is read with `load_split`, so its check file must match the feature set. If a file is missing, the split was made from different cleaned data, or a training row is not in the feature set, it stops with a message naming the step to run.
+
+### Mutual information
+
+Mutual information is 0 when a feature tells nothing about the label and grows the more it does. It also catches relationships that are not a straight line. The seven whole-number features are scored as discrete values. The three ratios are continuous. The seed is fixed, so a second run gives the same scores. From `ml/`, run:
+
+```bash
+uv run python -m ranking.mutual_info
+```
+
+It prints the ranking and saves it to `ml/reports/mutual_information.md`.
+
 ## Chart numbers for the charts page
 
 The phishing charts page reads a small summary file of counts and percentages, not the dataset. Make it from `ml/`:
