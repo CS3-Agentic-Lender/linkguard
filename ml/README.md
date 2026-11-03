@@ -91,7 +91,7 @@ The function cleans the link in this order:
 3. Keep only the host: drop the scheme, any `user:password@` part, the port, the path, the query and the fragment. The port is not checked. Lowercase the host.
 4. Refuse the link if it has no host, or if the host contains a space.
 5. Remove one trailing dot.
-6. Remove one leading `www.`. A host of only `www.` is treated as `www`.
+6. Remove one leading `www.`. A host of only `www.` is treated as `www`. Passing `strip_www=False` skips this step. Only the dataset comparison below does that.
 7. If the host is an IP address (IPv4 or IPv6), keep it as written.
 8. Otherwise convert non-English names to ASCII (`bücher.de` becomes `xn--bcher-kva.de`). Refuse the link if a part of the name is empty (such as `example.com..`) or longer than 63 characters.
 
@@ -109,6 +109,8 @@ The ten features are:
 | `DigitRatioInHostname` | Digits divided by `HostnameLength` | Decimal |
 | `NoOfSpecialCharsInHostname` | Everything that is not a letter or digit: dots, hyphens, and the colons in an IPv6 address | Whole number |
 | `SpecialCharRatioInHostname` | Special characters divided by `HostnameLength` | Decimal |
+
+**Checked against the dataset.** [`reports/feature_comparison.md`](reports/feature_comparison.md) compares `IsDomainIP`, `TLDLength`, `NoOfSubDomain` and `HostnameLength` with the dataset's own columns. It gives a reason for each kind of difference. Each example is a row number in the raw file. The report shows no links from the dataset, because many of them are live phishing sites. Regenerate it from `ml/` with `uv run python -m comparison.compare`.
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
@@ -203,6 +205,20 @@ The saved scaler is fitted on the whole training set. Any later step that fits a
 ## Feature ranking
 
 The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. The split is read with `load_split`, so its check file must match the feature set. If a file is missing, the split was made from different cleaned data, or a training row is not in the feature set, it stops with a message naming the step to run.
+
+### PCA
+
+PCA finds the directions in which the training rows spread out the most. Each direction is a component, a weighted mix of the ten features. The rows are scaled with the saved scaler from `ml/models/scaler.joblib`, which is only used to transform. It is never fitted again. PCA keeps all ten components and uses a fixed seed, so a second run gives the same result. From `ml/`, run:
+
+```bash
+uv run python -m ranking.pca
+```
+
+It saves [`ml/reports/pca.md`](reports/pca.md) and the chart [`ml/reports/pca_explained_variance.png`](reports/pca_explained_variance.png). The report has the variance of each component, the chart and each feature's weight on the main components, with the two largest on each marked. The main components are the fewest that reach 95% of the variance.
+
+**Result:** 5 of the 10 components reach 95% of the variance (95.5%).
+
+PCA ignores the label. Its weights guide which real features go on the final list. The components are never model inputs. Any later cross-validation puts the scaler and PCA in one scikit-learn Pipeline, fitted on each fold's training part.
 
 ### Mutual information
 

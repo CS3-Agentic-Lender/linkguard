@@ -306,6 +306,26 @@ def test_one_leading_www_is_removed_with_or_without_a_scheme():
     assert extract_features("https://WWW.EXAMPLE.COM") == plain
 
 
+@pytest.mark.parametrize("link", ["https://www.example.com/login", "www.shop.example.co.uk", "example.com", "1.2.3.4"])
+def test_default_output_equals_strip_www_on(link):
+    assert extract_features(link) == extract_features(link, strip_www=True)
+
+
+def test_strip_www_off_keeps_the_www_label():
+    kept = extract_features("https://www.example.com", strip_www=False)
+    stripped = extract_features("https://www.example.com")
+
+    # The host stays www.example.com: 13 letters, 2 dots, 15 characters, 1 subdomain.
+    assert_features(kept, expected_features(15, 0, 3, 1, 13, 0, 2))
+    assert kept["HostnameLength"] == stripped["HostnameLength"] + len("www.")
+    assert kept["NoOfSubDomain"] == stripped["NoOfSubDomain"] + 1
+
+
+def test_strip_www_can_only_be_passed_by_name():
+    with pytest.raises(TypeError):
+        extract_features("www.example.com", False)
+
+
 def test_one_trailing_dot_is_removed():
     plain = extract_features("example.com")
 
