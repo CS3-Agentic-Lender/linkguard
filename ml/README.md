@@ -112,6 +112,25 @@ The ten features are:
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
+## Chart numbers for the charts page
+
+The phishing charts page reads a small summary file of counts and percentages, not the dataset. Make it from `ml/`:
+
+```bash
+uv run python -m charts.summary
+```
+
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 2 KB). Three charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, and the file carries the dataset note and the source line the licence asks for.
+
+| Field | Holds |
+|---|---|
+| `source` | The credit and the "modified version" line the licence asks for |
+| `dataset_note` | Every legitimate link here is a homepage, so the charts show warning signs, not proof of safety |
+| `totals` | Phishing and legitimate link counts |
+| `charts[]` | `id`, `title`, `takeaway`, `unit` (`percent`) and `groups`: for Phishing and Legitimate, the `value` (percent, 1 decimal), the `count` with the sign and the `total` |
+
+It stops without saving if the totals differ from `ml/reports/cleaning_report.md`, which would mean the label is the wrong way round. No link from the dataset goes into the file, and no takeaway may say that HTTPS, a padlock or a short link means safe (a test checks every takeaway).
+
 ## Source and licence
 
 | | |

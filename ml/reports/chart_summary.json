@@ -1,0 +1,70 @@
+{
+  "source": "Based on a modified version of the PhiUSIIL Phishing URL dataset (Prasad and Chandra, 2024, UCI, CC BY 4.0): duplicate links removed and the label recoded.",
+  "dataset_note": "In this dataset every legitimate link is a website's homepage, such as https://www.example.com, with nothing after the name. Real links to safe sites are often longer, so these charts show warning signs, not proof that a link is safe.",
+  "totals": {
+    "phishing": 100520,
+    "legitimate": 134850
+  },
+  "charts": [
+    {
+      "id": "https",
+      "title": "Links that use HTTPS (the padlock)",
+      "takeaway": "About 49% of phishing links use HTTPS too, so a padlock does not mean a link is safe.",
+      "unit": "percent",
+      "groups": [
+        {
+          "label": "Phishing",
+          "value": 49.1,
+          "count": 49378,
+          "total": 100520
+        },
+        {
+          "label": "Legitimate",
+          "value": 100.0,
+          "count": 134850,
+          "total": 134850
+        }
+      ]
+    },
+    {
+      "id": "long_links",
+      "title": "Links longer than 50 characters",
+      "takeaway": "About 22% of phishing links are longer than 50 characters. A long, messy link is a warning sign, but a short link is not proof that it is safe.",
+      "unit": "percent",
+      "groups": [
+        {
+          "label": "Phishing",
+          "value": 22.2,
+          "count": 22349,
+          "total": 100520
+        },
+        {
+          "label": "Legitimate",
+          "value": 0.0,
+          "count": 13,
+          "total": 134850
+        }
+      ]
+    },
+    {
+      "id": "hyphens",
+      "title": "Links that contain a hyphen (-)",
+      "takeaway": "About 36% of phishing links contain a hyphen, against 8% of legitimate ones. Fake sites often join words with hyphens to look like a real company's name.",
+      "unit": "percent",
+      "groups": [
+        {
+          "label": "Phishing",
+          "value": 36.2,
+          "count": 36358,
+          "total": 100520
+        },
+        {
+          "label": "Legitimate",
+          "value": 7.5,
+          "count": 10064,
+          "total": 134850
+        }
+      ]
+    }
+  ]
+}
