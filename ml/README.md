@@ -146,6 +146,33 @@ Every row is checked before anything is saved. If a link can't be read, the scri
 
 `ml/leakage/recheck.py` reruns the single-feature leakage check on the ten features. The result is in `ml/reports/leakage_recheck_hostname_features.md`. To make it again, run `uv run python -m leakage.recheck` from `ml/`. It needs the cleaned file too.
 
+### Hosts with both labels
+
+Some hosts have legitimate rows as well as phishing rows. These rows share the same ten features but have different labels. In the cleaned data there are:
+
+| | Hosts | Rows |
+|---|---|---|
+| All rows | 58 | 159 of 235,370 |
+| Training set | 46 | 133 |
+| Test set | 12 | 26 |
+
+Each host is in one set only, because the split groups rows by host.
+
+**Rule: keep every row. None is dropped.** The reasons:
+
+- **No leakage.** These hosts were found with the labels of every row, test rows included. No row is removed because of its label. So nothing about the test labels can reach training or shape the test set. Dropping these rows from the whole data would also take the hardest cases out of the test set. Scores would then look better than they are.
+- **They are real.** A hosting platform or a hacked site can serve safe links as well as phishing links.
+- **Too few to matter.** 159 rows out of 235,370 are too few to change a model.
+- **Dropping them from training only gains nothing.** It would need a rule that filters the saved split. The split must never be rebuilt for it, because that would move about 31% of the rows to another set. The gain would be too small to measure.
+
+The rule is `apply_conflicting_hosts_rule()` in `ml/leakage/conflicting_hosts.py`. It returns every row unchanged and never reads the labels. A test checks that it keeps every test-set row of these hosts.
+
+To count them again, run this from `ml/`. It needs the training feature set and the split first (`uv run python -m featureset.build`, then `uv run python -m splitting.build`).
+
+```bash
+uv run python -m leakage.conflicting_hosts
+```
+
 ## The train/test split and the scaler
 
 Every model is trained and tested on one shared split. Make it once, from `ml/`:
