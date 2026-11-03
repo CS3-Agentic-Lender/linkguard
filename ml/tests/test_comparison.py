@@ -409,3 +409,28 @@ def test_report_fences_backticks_in_a_url_so_the_code_span_holds(example_url, sh
     text = render_report(summary_table(OURS, DATASET), _patterns(example_url), shapes_table(pd.Series(["a"]), {0}), NOTHING_SKIPPED, rows=1)
 
     assert f"| {shown} |" in text
+
+
+def test_report_hides_the_user_part_of_an_example_link():
+    # A user:password@ part can look like a real login, so it is never written out.
+    url = "http://www.example.com:911@host.example.net/login"
+    domain = "www.example.com:911@host.example.net"
+    text = _report(url, domain, DomainLength=len(domain))
+
+    assert "`http://<user part hidden>@host.example.net/...`" in text
+    assert "www.example.com:911" not in text
+
+
+def test_example_link_stops_after_the_dataset_domain():
+    # The @ and :99 are in the path, after the dataset's domain, so nothing is hidden.
+    ours, dataset = _one_row("https://example.com/a@b:99", "example.com", DomainLength=20)
+    table = patterns_table(find_mismatches(ours, dataset), ours, dataset).set_index("Pattern")
+
+    assert table.loc[UNEXPLAINED, "Example URL"] == "https://example.com/..."
+
+
+def test_example_link_falls_back_to_the_domain_when_the_url_does_not_hold_it():
+    ours, dataset = _one_row("https://Example.com/a", "u:pw@example.com", DomainLength=20)
+    table = patterns_table(find_mismatches(ours, dataset), ours, dataset).set_index("Pattern")
+
+    assert table.loc[UNEXPLAINED, "Example URL"] == "<user part hidden>@example.com..."

@@ -47,10 +47,10 @@ UNEXPLAINED = "Unexplained"
 PORT_PATTERN = re.compile(r":\d+$")
 IPV4_START_PATTERN = re.compile(r"^\d{1,3}(\.\d{1,3}){3}\.")
 TWO_PART_ENDING_PATTERN = re.compile(r"\.(co|com|org|net|ac|gov|edu)\.[a-z]{2}$")
-# The scheme and the part up to the first /, ? or #. Every pattern is about this part.
-URL_START_PATTERN = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*:)?(//)?[^/?#]*")
 BACKTICKS_PATTERN = re.compile(r"`+")
 EXAMPLE_URL_LIMIT = 80
+# Shown in place of a user:password@ part, so no login-shaped text is ever written.
+HIDDEN_USER_PART = "<user part hidden>@"
 
 
 # Our features for one row, as extract_features returns them.
@@ -296,7 +296,11 @@ def patterns_table(mismatches: pd.DataFrame, ours: pd.DataFrame, dataset: pd.Dat
                 "Rows": found["row"].nunique(),
                 "Reason": details[name].reason if name in details else "No pattern explains these rows yet.",
                 "Example row": example,
-                "Example URL": _example_url(dataset[URL_COLUMN][example]) if example is not None else "",
+                "Example URL": (
+                    _example_url(dataset[URL_COLUMN][example], dataset[DOMAIN_COLUMN][example])
+                    if example is not None
+                    else ""
+                ),
             }
         )
     # Int64 keeps the row ids whole numbers when the unexplained bucket has none.
@@ -323,11 +327,24 @@ def shapes_table(domains: pd.Series, mismatching_rows: set[int]) -> pd.DataFrame
     return pd.DataFrame(table)
 
 
-def _example_url(url: str) -> str:
-    """The start of url, up to the host and port. The rest becomes ... ."""
-    start = URL_START_PATTERN.match(url).group(0)
-    if len(start) < len(url):
-        start += "/..." if url[len(start)] == "/" else "..."
+def _hide_user_part(domain: str) -> str:
+    user = _user_part(domain)
+    return HIDDEN_USER_PART + domain.removeprefix(user) if user else domain
+
+
+def _example_url(url: str, domain: str) -> str:
+    """The start of url, up to the end of the dataset's domain, with any user part hidden.
+
+    The rest becomes ... . If the url does not hold the domain as written, only the
+    domain is shown.
+    """
+    found = url.find(domain) if domain else -1
+    if found < 0:
+        return _hide_user_part(domain) + "..."
+    end = found + len(domain)
+    start = url[:found] + _hide_user_part(domain)
+    if end < len(url):
+        start += "/..." if url[end] == "/" else "..."
     return start
 
 
@@ -455,6 +472,7 @@ def render_report(
             "A row counts once per pattern. A row can fall under two patterns for different features.",
             "The example row is the 0-based data row in the raw file.",
             "Example URLs stop after the host, because a path or query can hold a victim's email address.",
+            f"A user part before the host is shown as `{HIDDEN_USER_PART}`, because it can look like a login.",
             "",
             _markdown_table(["Pattern", "Kind", "Features", "Rows", "Reason", "Example row", "Example URL"], pattern_rows),
             "",
