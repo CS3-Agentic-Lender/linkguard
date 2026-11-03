@@ -112,6 +112,36 @@ The ten features are:
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
+## The training feature set
+
+`ml/featureset/build.py` works out the ten features above for every row of the cleaned file. It saves them to `ml/data/training_features.csv`. It is the input for training. It is ignored by git like the other data files, so each person builds their own copy.
+
+It has one row for each row of the cleaned file, with these columns in this order:
+
+| Column | Holds |
+|---|---|
+| `row` | The row's number in `phiusiil_cleaned.csv`, counting from 0. It links each row back to the cleaned file. |
+| The ten features | Worked out by `extract_features`, in the order of the table above |
+| `label` | Copied from the cleaned file: 1 = phishing, 0 = legitimate |
+| `host` | The cleaned host from `cleaned_host` in `ml/features/hostname.py`. It is the host the features measure: `www.` removed, lowercase, non-English names in ASCII. An IP address stays as written. |
+
+The script imports the shared extractor. It holds no copy of the feature code. It only reads each link as text and never opens it.
+
+### Build it
+
+From the raw dataset, in two steps:
+
+1. Make the cleaned file. Open `ml/notebooks/03_clean_dataset.ipynb` and run every cell. It writes `ml/data/phiusiil_cleaned.csv`.
+2. Build the feature set. From `ml/`, run:
+
+```bash
+uv run python -m featureset.build
+```
+
+If the cleaned file is already there, step 2 is enough.
+
+Every row is checked before anything is saved. If a link can't be read, the script prints how many rows failed for each reason, with an example row number. It then stops with exit code 1 and saves nothing. No row is dropped without being reported.
+
 ## Source and licence
 
 | | |
