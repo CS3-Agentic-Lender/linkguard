@@ -6,12 +6,17 @@ import pytest
 
 from charts.summary import (
     CHART_IDS,
+    CHART_SPECS,
     DATASET_NOTE,
+    DECIMALS,
+    SOURCE,
+    SUMMARY_FILE_NAME,
     build_summary,
     main,
     makes_safety_claim,
     report_label_counts,
     save_summary,
+    takeaway_for,
 )
 from cleaning.storage import CLEANED_CSV_NAME, save_cleaned
 
@@ -42,8 +47,9 @@ def group(item: dict, label: str) -> dict:
 def test_has_at_least_three_charts_each_comparing_phishing_with_legitimate():
     summary = build_summary(ROWS)
 
-    assert len(summary["charts"]) >= 3
+    assert len(summary["charts"]) >= 4
     assert [item["id"] for item in summary["charts"]] == list(CHART_IDS)
+    assert CHART_IDS[0] == "class_balance"
     for item in summary["charts"]:
         assert [entry["label"] for entry in item["groups"]] == ["Phishing", "Legitimate"]
         assert item["title"] and item["unit"] == "percent"
@@ -65,6 +71,50 @@ def test_long_link_and_hyphen_figures():
     assert group(chart(summary, "hyphens"), "Phishing")["count"] == 2
     assert group(chart(summary, "hyphens"), "Legitimate")["count"] == 1
     assert group(chart(summary, "hyphens"), "Legitimate")["value"] == pytest.approx(33.3)
+
+
+def test_class_balance_has_the_count_and_share_of_each_label():
+    summary = build_summary(ROWS)
+
+    balance = chart(summary, "class_balance")
+    assert group(balance, "Phishing") == {"label": "Phishing", "value": 40.0, "count": 2, "total": 5}
+    assert group(balance, "Legitimate") == {"label": "Legitimate", "value": 60.0, "count": 3, "total": 5}
+
+
+@pytest.mark.parametrize(
+    ("phishing", "legitimate", "verdict"),
+    [
+        (50, 50, "so the dataset is balanced."),
+        (43, 57, "so the dataset is mildly imbalanced."),
+        (10, 90, "so the dataset is heavily imbalanced."),
+        (90, 10, "so the dataset is heavily imbalanced."),
+    ],
+)
+def test_class_balance_takeaway_says_whether_the_dataset_is_balanced(phishing, legitimate, verdict):
+    rows = pd.DataFrame({"URL": ["https://x.example"] * 100, "URLLength": [17] * 100, "IsHTTPS": [1] * 100})
+    rows = rows.assign(label=[1] * phishing + [0] * legitimate)
+
+    takeaway = chart(build_summary(rows), "class_balance")["takeaway"]
+
+    assert takeaway.startswith(f"About {phishing}% of links are phishing and {legitimate}% are legitimate")
+    assert takeaway.endswith(verdict)
+
+
+def test_takeaways_use_the_unrounded_share():
+    # 5 of 67 legitimate links have a hyphen: 7.46%, shown as 7.5 but read as 7%, not 8%.
+    rows = pd.DataFrame(
+        {
+            "URL": ["https://a-b.example"] * 5 + ["https://www.c.example"] * 62 + ["http://d.example"],
+            "URLLength": [19] * 5 + [21] * 62 + [16],
+            "IsHTTPS": [1] * 67 + [0],
+            "label": [0] * 67 + [1],
+        }
+    )
+
+    hyphens = chart(build_summary(rows), "hyphens")
+
+    assert group(hyphens, "Legitimate")["value"] == 7.5
+    assert "against 7% of legitimate" in hyphens["takeaway"]
 
 
 def test_totals_are_the_label_counts():
@@ -108,6 +158,9 @@ def test_the_dataset_note_says_legitimate_links_are_all_homepages():
         "A padlock means the site is safe.",
         "Links with HTTPS are safe.",
         "A short link is safe to open.",
+        "A padlock means the site is safe, not a scam.",
+        "A site with HTTPS, as you would expect, is safe.",
+        "HTTPS links are safe and never fake.",
     ],
 )
 def test_safety_claim_check_catches_a_bad_takeaway(text):
@@ -120,10 +173,37 @@ def test_safety_claim_check_catches_a_bad_takeaway(text):
         "Half of phishing links use HTTPS too, so a padlock does not mean a link is safe.",
         "A short link is not proof that it is safe.",
         "Phishing links are more likely to contain a hyphen.",
+        "A padlock is never a sign that a link is safe.",
+        "HTTPS links aren't always safe.",
+        "Real links to safe sites are often longer, so these charts show warning signs, not proof that a link is safe.",
     ],
 )
 def test_safety_claim_check_allows_a_warning(text):
     assert not makes_safety_claim(text)
+
+
+def test_the_committed_summary_agrees_with_its_counts_and_the_cleaning_report():
+    summary = json.loads((ML_DIR / "reports" / SUMMARY_FILE_NAME).read_text())
+    totals = report_label_counts((ML_DIR / "reports" / "cleaning_report.md").read_text())
+    titles = {spec.id: spec.title for spec in CHART_SPECS}
+
+    assert summary["source"] == SOURCE
+    assert summary["dataset_note"] == DATASET_NOTE
+    assert summary["totals"] == totals
+    assert [item["id"] for item in summary["charts"]] == list(CHART_IDS)
+    for item in summary["charts"]:
+        assert item["title"] == titles[item["id"]]
+        assert item["unit"] == "percent"
+        assert [entry["label"] for entry in item["groups"]] == ["Phishing", "Legitimate"]
+        for entry in item["groups"]:
+            assert entry["value"] == round(100 * entry["count"] / entry["total"], DECIMALS), item["id"]
+        assert item["takeaway"] == takeaway_for(item["id"], item["groups"])
+        assert not makes_safety_claim(item["takeaway"])
+    phishing, legitimate = chart(summary, "class_balance")["groups"]
+    assert (phishing["count"], legitimate["count"]) == (totals["phishing"], totals["legitimate"])
+    assert phishing["total"] == legitimate["total"] == totals["phishing"] + totals["legitimate"]
+    for item in summary["charts"][1:]:
+        assert [entry["total"] for entry in item["groups"]] == [totals["phishing"], totals["legitimate"]]
 
 
 def test_reads_the_label_counts_from_the_cleaning_report():

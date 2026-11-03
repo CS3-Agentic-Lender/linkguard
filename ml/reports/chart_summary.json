@@ -7,6 +7,26 @@
   },
   "charts": [
     {
+      "id": "class_balance",
+      "title": "How many links are phishing and how many are legitimate",
+      "takeaway": "About 43% of links are phishing and 57% are legitimate, so the dataset is mildly imbalanced.",
+      "unit": "percent",
+      "groups": [
+        {
+          "label": "Phishing",
+          "value": 42.7,
+          "count": 100520,
+          "total": 235370
+        },
+        {
+          "label": "Legitimate",
+          "value": 57.3,
+          "count": 134850,
+          "total": 235370
+        }
+      ]
+    },
+    {
       "id": "https",
       "title": "Links that use HTTPS (the padlock)",
       "takeaway": "About 49% of phishing links use HTTPS too, so a padlock does not mean a link is safe.",
@@ -49,7 +69,7 @@
     {
       "id": "hyphens",
       "title": "Links that contain a hyphen (-)",
-      "takeaway": "About 36% of phishing links contain a hyphen, against 8% of legitimate ones. Fake sites often join words with hyphens to look like a real company's name.",
+      "takeaway": "About 36% of phishing links contain a hyphen, against 7% of legitimate ones. Fake sites often join words with hyphens to look like a real company's name.",
       "unit": "percent",
       "groups": [
         {

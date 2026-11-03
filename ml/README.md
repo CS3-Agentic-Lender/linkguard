@@ -120,7 +120,7 @@ The phishing charts page reads a small summary file of counts and percentages, n
 uv run python -m charts.summary
 ```
 
-It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 2 KB). Three charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, and the file carries the dataset note and the source line the licence asks for.
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says whether the dataset is balanced, using the share of the smaller class: 45% or more is balanced, 20% to 45% is mildly imbalanced, and under 20% is heavily imbalanced. Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
 
 | Field | Holds |
 |---|---|
@@ -129,7 +129,9 @@ It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed,
 | `totals` | Phishing and legitimate link counts |
 | `charts[]` | `id`, `title`, `takeaway`, `unit` (`percent`) and `groups`: for Phishing and Legitimate, the `value` (percent, 1 decimal), the `count` with the sign and the `total` |
 
-It stops without saving if the totals differ from `ml/reports/cleaning_report.md`, which would mean the label is the wrong way round. No link from the dataset goes into the file, and no takeaway may say that HTTPS, a padlock or a short link means safe (a test checks every takeaway).
+**A value of 0.0 is not always zero.** `value` is rounded to one decimal, so a small share shows as `0.0`. For example, 13 of the 134,850 legitimate links are longer than 50 characters, which is 0.01%. The charts page should check `count`, and show something like "under 0.1%" when `value` is `0.0` but `count` is not 0.
+
+It stops without saving if the totals differ from `ml/reports/cleaning_report.md`, which would mean the label is the wrong way round. No link from the dataset goes into the file, and no takeaway may say that HTTPS, a padlock or a short link means safe (a test checks every takeaway). Another test checks the committed file against its own counts and the cleaning report, so a hand edit is caught: rerun the script instead.
 
 ## Source and licence
 
