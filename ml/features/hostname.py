@@ -81,6 +81,12 @@ def _normalized_host(link: str) -> tuple[str, bool]:
     return ascii_host, False
 
 
+def cleaned_host(link: str) -> str:
+    """Return the cleaned host that extract_features measures for link."""
+    host, _ = _normalized_host(link)
+    return host
+
+
 def extract_features(link: str) -> dict[str, int | float]:
     """Return the ten hostname features of link, keyed by FEATURE_NAMES in order."""
     host, is_ip = _normalized_host(link)

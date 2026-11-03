@@ -112,15 +112,93 @@ The ten features are:
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
+## The training feature set
+
+`ml/featureset/build.py` works out the ten features above for every row of the cleaned file. It saves them to `ml/data/training_features.csv`. It is the input for training. It is ignored by git like the other data files, so each person builds their own copy.
+
+It has one row for each row of the cleaned file, with these columns in this order:
+
+| Column | Holds |
+|---|---|
+| `row` | The row's number in `phiusiil_cleaned.csv`, counting from 0. It links each row back to the cleaned file. |
+| The ten features | Worked out by `extract_features`, in the order of the table above |
+| `label` | Copied from the cleaned file: 1 = phishing, 0 = legitimate |
+| `host` | The cleaned host from `cleaned_host` in `ml/features/hostname.py`. It is the host the features measure: `www.` removed, lowercase, non-English names in ASCII. An IP address stays as written. |
+
+The script imports the shared extractor. It holds no copy of the feature code. It only reads each link as text and never opens it.
+
+### Build it
+
+From the raw dataset, in two steps:
+
+1. Make the cleaned file. Open `ml/notebooks/03_clean_dataset.ipynb` and run every cell. It writes `ml/data/phiusiil_cleaned.csv`.
+2. Build the feature set. From `ml/`, run:
+
+```bash
+uv run python -m featureset.build
+```
+
+If the cleaned file is already there, step 2 is enough.
+
+Every row is checked before anything is saved. If a link can't be read, the script prints how many rows failed for each reason, with an example row number. It then stops with exit code 1 and saves nothing. No row is dropped without being reported.
+
+## The train/test split and the scaler
+
+Every model is trained and tested on one shared split. Make it once, from `ml/`:
+
+```bash
+uv run python -m splitting.build
+```
+
+It needs `ml/data/phiusiil_cleaned.csv` and takes about 25 seconds. It works out the ten hostname features for every row with the shared extractor, then:
+
+- **Splits by host.** 80% training, 20% test, with every link on one host in the same set and the phishing share kept the same in both (scikit-learn's `StratifiedGroupKFold`, seed 42). The features only read the hostname, so a host in both sets would let the model be tested on rows it has already seen.
+- **Scales on training rows only.** A `StandardScaler` (mean 0, spread 1) is fitted on the training rows and only applied to the test rows. It keeps a long count such as `HostnameLength` from swamping a 0-to-1 ratio in models such as logistic regression.
+- **Stops before saving** if a set is empty, any host or link is in both sets, or a set's phishing share is more than 0.5 percentage points from the whole data's. The host check reads each link's host with Python's own URL parser (`plain_host`), not the clean-up the split groups by, so a mistake in the grouping is caught instead of passing its own check.
+
+| Output | Holds | In git? |
+|---|---|---|
+| `ml/data/split.csv` | Each cleaned row's index and its set (`train` or `test`). Load it with `load_split()` from `ml/splitting/split.py`. | No |
+| `ml/data/split_check.json` | The number of cleaned rows and a fingerprint of every row's host, saved with the split | No |
+| `ml/models/scaler.joblib` | The fitted scaler. Load it with `load_scaler()` from `ml/splitting/scaling.py`. | No |
+| `ml/reports/scaling_distributions.png` | Each feature on the training rows, before and after scaling | Yes |
+
+Training and evaluation load these files and never make a split of their own. Rerunning gives exactly the same split.
+
+`load_split(path, hosts)` takes the cleaned hosts of the data it will be used with, one per row (the training feature set's `host` column, for example). It stops with a message if the cleaned data has been rebuilt or reordered since the split was made, if a row is missing or listed twice, or if the check file is missing. Without this, an old split used with reordered cleaned data would quietly put about 2,200 hosts in both sets. The fix is always to rerun `uv run python -m splitting.build`.
+
+The saved scaler is fitted on the whole training set. Any later step that fits a scaler of its own, for example inside cross-validation or after feature selection, fits it on training rows only, never on test rows.
+
+## Chart numbers for the charts page
+
+The phishing charts page reads a small summary file of counts and percentages, not the dataset. Make it from `ml/`:
+
+```bash
+uv run python -m charts.summary
+```
+
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says whether the dataset is balanced, using the share of the smaller class: 45% or more is balanced, 20% to 45% is mildly imbalanced, and under 20% is heavily imbalanced. Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
+
+| Field | Holds |
+|---|---|
+| `source` | The credit and the "modified version" line the licence asks for |
+| `dataset_note` | Every legitimate link here is a homepage, so the charts show warning signs, not proof of safety |
+| `totals` | Phishing and legitimate link counts |
+| `charts[]` | `id`, `title`, `takeaway`, `unit` (`percent`) and `groups`: for Phishing and Legitimate, the `value` (percent, 1 decimal), the `count` with the sign and the `total` |
+
+**A value of 0.0 is not always zero.** `value` is rounded to one decimal, so a small share shows as `0.0`. For example, 13 of the 134,850 legitimate links are longer than 50 characters, which is 0.01%. The charts page should check `count`, and show something like "under 0.1%" when `value` is `0.0` but `count` is not 0.
+
+It stops without saving if the totals differ from `ml/reports/cleaning_report.md`, which would mean the label is the wrong way round. No link from the dataset goes into the file, and no takeaway may say that HTTPS, a padlock or a short link means safe (a test checks every takeaway). Another test checks the committed file against its own counts and the cleaning report, so a hand edit is caught: rerun the script instead.
+
 ## Training pipeline
 
 `ml/training/pipeline.py` loads the training rows every classifier trains on. It reads three files that earlier steps save, and makes none of its own:
 
 | File | Saved by | Holds |
 |---|---|---|
-| `ml/data/training_features.csv` | the training feature set step | One line per cleaned row, in row order: `row` (the cleaned row number), the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `host` |
-| `ml/data/split.csv` | the split-and-scale step | Columns `row` and `set`: each feature-set row number (counting from 0) and whether it is `train` or `test` |
-| `ml/models/scaler.joblib` | the split-and-scale step | The scaler, fitted on the training rows only |
+| `ml/data/training_features.csv` | the training feature set (above) | One line per cleaned row, in row order: `row` (the cleaned row number), the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `host` |
+| `ml/data/split.csv` | the train/test split (above) | Columns `row` and `set`: each feature-set row number (counting from 0) and whether it is `train` or `test` |
+| `ml/models/scaler.joblib` | the train/test split (above) | The scaler, fitted on the training rows only |
 
 Run it from `ml/` with one command:
 
