@@ -281,6 +281,45 @@ It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed,
 
 It stops without saving if the totals differ from `ml/reports/cleaning_report.md`, which would mean the label is the wrong way round. No link from the dataset goes into the file, and no takeaway may say that HTTPS, a padlock or a short link means safe (a test checks every takeaway). Another test checks the committed file against its own counts and the cleaning report, so a hand edit is caught: rerun the script instead.
 
+## Training pipeline
+
+`ml/training/pipeline.py` loads the training rows every classifier trains on. It reads three files that earlier steps save, and makes none of its own:
+
+| File | Saved by | Holds |
+|---|---|---|
+| `ml/data/training_features.csv` | the training feature set (above) | One line per cleaned row, in row order: `row` (the cleaned row number), the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `host` |
+| `ml/data/split.csv` | the train/test split (above) | Columns `row` and `set`: each feature-set row number (counting from 0) and whether it is `train` or `test` |
+| `ml/models/scaler.joblib` | the train/test split (above) | The scaler, fitted on the training rows only |
+
+Run it from `ml/` with one command:
+
+```bash
+uv run python -m training.pipeline
+```
+
+`--features`, `--split` and `--scaler` point it at other files. It prints the number of training rows and the class counts, with phishing as label 1, and stops with a message naming the problem if a file is missing or does not match.
+
+What it guarantees:
+
+- **No new split.** The training rows are exactly the `train` rows of the saved split.
+- **No scaler is fitted.** The saved scaler only transforms. The pipeline checks it was fitted on the ten features in the same order.
+- **Test rows are never read.** Only the training row numbers are taken from the split, and every other line of the feature file is skipped by the reader.
+- **Rows can't slip.** Every line read must carry the `row` number the split asked for. If the feature set were ever out of step with the split, the run stops instead of training on the wrong rows.
+- **Only the agreed features are model inputs.** The feature matrix must be the ten hostname features in order. Any column from the excluded list (`ml/leakage/excluded.py`) stops the run by name. `row` and `host` are never features. `host` is kept for grouping the cross-validation folds.
+
+The classifier story uses it from Python:
+
+```python
+from training.pipeline import hand_to_classifiers, load_training_set
+
+training_set = load_training_set()   # .scaled, .labels, .hostnames, .features (unscaled), .rows
+fitted = hand_to_classifiers({"baseline": DummyClassifier()}, training_set)
+```
+
+`hand_to_classifiers` fits a fresh copy of each classifier on the same scaled training rows. Cross-validation, where the scaler is refitted inside each fold's own pipeline, belongs to the classifier story and uses `.features` and `.hostnames`.
+
+The tests (`ml/tests/test_training_pipeline.py`) run on a small made-up sample, because CI has no dataset. Its numbers say nothing about real model performance.
+
 ## Source and licence
 
 | | |
