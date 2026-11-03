@@ -80,7 +80,7 @@ def test_markdown_has_the_header_row_then_one_row_per_feature_with_yes_marks():
 def test_markdown_says_how_many_are_over_95_and_compares_with_the_original_top_score():
     markdown = render_report(recheck_table(FEATURES), ROWS)
 
-    assert "**1 of 10** features score over 95%: `IsDomainIP`." in markdown
+    assert "**1 of 10** features score over 95%: `IsDomainIP`. They give the answer away on their own." in markdown
     assert "`URLSimilarityIndex` at 99.67%" in markdown
     assert f"({ROWS:,} rows)" in markdown
 
@@ -90,7 +90,8 @@ def test_markdown_says_so_when_no_feature_is_over_95():
 
     markdown = render_report(recheck_table(noise_only), ROWS)
 
-    assert "**0 of 10** features score over 95%. None of them predicts the label on its own." in markdown
+    assert "**0 of 10** features score over 95%. So none of them gives the answer away on its own." in markdown
+    assert "predicts the label on its own" not in markdown
     assert [mark for _, _, mark in _table_rows(markdown)] == [""] * len(FEATURE_NAMES)
 
 def test_recheck_uses_the_shared_check_and_feature_set_code_not_a_copy():

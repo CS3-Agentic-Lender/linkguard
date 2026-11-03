@@ -34,9 +34,9 @@ def _flagged_sentence(table: pd.DataFrame) -> str:
     flagged = table.loc[table["Over 95%"], "Column"].tolist()
     count = f"**{len(flagged)} of {len(table)}** features score over {LEAKY_ACCURACY_PERCENT}%"
     if not flagged:
-        return f"{count}. None of them predicts the label on its own."
+        return f"{count}. So none of them gives the answer away on its own."
     names = ", ".join(f"`{name}`" for name in flagged)
-    return f"{count}: {names}. They predict the label on their own."
+    return f"{count}: {names}. They give the answer away on their own."
 
 
 def render_report(table: pd.DataFrame, rows: int) -> str:
