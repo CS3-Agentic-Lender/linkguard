@@ -7,6 +7,14 @@ The feature set (ml/data/training_features.csv) has a row number, the ten hostna
 features, the label and the cleaned host. The saved split (ml/data/split.csv) gives
 each row number its set, train or test. The two are joined on the row number, not on
 line position, so a feature set with a row missing stops the run instead of shifting.
+
+The split is read with the split's own load_split, which checks split_check.json
+against the feature set's hosts. A split made from cleaned data that was rebuilt or
+reordered stops the run instead of quietly letting rows of test hosts into the ranking.
+
+Temporary: once the training pipeline's loader is on dev, ranking should read the
+training rows through it instead of this module. When the final feature list is
+picked, that loader's ten-feature check will need the chosen columns.
 """
 
 from pathlib import Path
@@ -15,9 +23,10 @@ import pandas as pd
 
 from cleaning.labels import LABEL_COLUMN
 from features.hostname import FEATURE_NAMES
+from splitting.split import SPLIT_CSV_NAME, SplitMismatchError, load_split
 
 FEATURES_CSV_NAME = "training_features.csv"
-SPLIT_CSV_NAME = "split.csv"
+HOST_COLUMN = "host"
 ROW_COLUMN = "row"
 SET_COLUMN = "set"
 TRAIN = "train"
@@ -80,4 +89,13 @@ def load_inputs(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
         path = data_dir / name
         if not path.is_file():
             raise TrainingSplitError(f"{path} was not found. {hint}")
-    return _read(data_dir / FEATURES_CSV_NAME), _read(data_dir / SPLIT_CSV_NAME)
+    features = _read(data_dir / FEATURES_CSV_NAME)
+    _require_columns(features, [ROW_COLUMN, HOST_COLUMN], "feature set")
+    split_path = data_dir / SPLIT_CSV_NAME
+    try:
+        sets = load_split(split_path, features.set_index(ROW_COLUMN)[HOST_COLUMN])
+    except (pd.errors.EmptyDataError, pd.errors.ParserError) as error:
+        raise TrainingSplitError(f"{split_path} could not be read: {error}") from error
+    except SplitMismatchError as error:
+        raise TrainingSplitError(str(error)) from error
+    return features, sets.rename(SET_COLUMN).rename_axis(ROW_COLUMN).reset_index()

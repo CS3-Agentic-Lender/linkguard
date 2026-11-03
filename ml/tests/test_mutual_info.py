@@ -6,6 +6,7 @@ from features.hostname import FEATURE_NAMES
 from ranking import mutual_info
 from ranking.mutual_info import REPORT_NAME, main, mutual_information, report
 from ranking.training_split import FEATURES_CSV_NAME, SPLIT_CSV_NAME
+from splitting.split import save_split
 
 ROWS = 400
 
@@ -100,8 +101,9 @@ def test_report_has_the_table_row_count_seed_and_unit():
 
 def test_main_saves_the_report_and_returns_0(tmp_path, capsys):
     (tmp_path / "data").mkdir()
-    made_up_feature_set().to_csv(tmp_path / "data" / FEATURES_CSV_NAME, index=False)
-    made_up_split().to_csv(tmp_path / "data" / SPLIT_CSV_NAME, index=False)
+    features = made_up_feature_set()
+    features.to_csv(tmp_path / "data" / FEATURES_CSV_NAME, index=False)
+    save_split(made_up_split().set_index("row")["set"], features.set_index("row")["host"], tmp_path / "data" / SPLIT_CSV_NAME)
 
     code = main(tmp_path)
 

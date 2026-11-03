@@ -171,7 +171,7 @@ The saved scaler is fitted on the whole training set. Any later step that fits a
 
 ## Feature ranking
 
-The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. If either is missing, or a training row is not in the feature set, it stops with a message naming the step to run.
+The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. The split is read with `load_split`, so its check file must match the feature set. If a file is missing, the split was made from different cleaned data, or a training row is not in the feature set, it stops with a message naming the step to run.
 
 ### Mutual information
 
