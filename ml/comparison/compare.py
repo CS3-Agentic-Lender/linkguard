@@ -2,7 +2,9 @@
 
 This is a bug check on the extractor, not an attempt to copy the dataset. Our
 features are defined our own way, so some rows differ on purpose. Every
-difference needs a reason, so each mismatch is sorted into a named pattern.
+difference needs a reason, so each mismatch is sorted into a named pattern. A
+pattern explains a mismatch only if the row has its shape and the dataset's value
+is the one the pattern predicts from the dataset's own definitions.
 
 The leading www. is kept (strip_www=False) because the dataset's columns keep it.
 The shape of each row is read from the dataset's own Domain column, the part between
@@ -71,47 +73,84 @@ def _host(domain: str) -> str:
     return domain.removeprefix(_user_part(domain)).removesuffix(_port(domain))
 
 
+# The dataset's own definitions, worked out from its columns: DomainLength is the
+# length of Domain, TLD is the text after the last dot of Domain, and NoOfSubDomain
+# is the number of dots in Domain minus 1. So an IP address such as 192.0.2.10 gets
+# 2 subdomains and the TLD 10, and a port stays on the end of the TLD.
+
+
+def _last_number_length(domain: str) -> int:
+    """Length of the text after the host's last dot: an IP address's last number."""
+    return len(_host(domain).rpartition(".")[2])
+
+
+def _kept_length(domain: str) -> int:
+    """Length of the user part and port, which the dataset keeps and we drop."""
+    return len(_user_part(domain)) + len(_port(domain))
+
+
+def _tld_length_with_port(domain: str, ours: Ours) -> int:
+    """The dataset's TLD length when the domain ends with a port: our TLD plus the port.
+
+    For an IP host our TLD is 0, so the dataset's TLD is the last number plus the port.
+    """
+    tld = _last_number_length(domain) if ours["IsDomainIP"] == 1 else ours["TLDLength"]
+    return tld + len(_port(domain))
+
+
 @dataclass(frozen=True)
 class Pattern:
     name: str
     kind: str
     reason: str
-    features: tuple[str, ...]  # the features this pattern can explain
     matches: Callable[[str, Ours], bool]  # True if the row has this shape: (domain, our features)
+    # Each feature this pattern can explain, with the dataset value it predicts for
+    # that feature from (domain, our features).
+    predicts: Mapping[str, Callable[[str, Ours], int]]
 
 
-# Checked in this order. A mismatch goes to the first pattern that matches the row
-# and explains that feature.
+# Checked in this order. A mismatch goes to the first pattern that matches the row's
+# shape and predicts the dataset's value for that feature.
 PATTERNS: tuple[Pattern, ...] = (
     Pattern(
         "Host is an IP address",
         DEFINITION_DIFFERENCE,
         "The dataset reads an IP address like a name, so its last number is the TLD and the "
         "first two numbers count as subdomains. We give 0 for both.",
-        ("TLDLength", "NoOfSubDomain"),
         lambda domain, ours: ours["IsDomainIP"] == 1,
+        {
+            "TLDLength": lambda domain, ours: _last_number_length(domain),
+            "NoOfSubDomain": lambda domain, ours: 2,
+        },
     ),
     Pattern(
         "Host starts with an IP address",
         DEFINITION_DIFFERENCE,
         "The dataset marks a name that starts with an IP address as an IP. We mark only a host "
         "that is an IP address.",
-        ("IsDomainIP",),
         lambda domain, ours: IPV4_START_PATTERN.match(_host(domain)) is not None,
+        {"IsDomainIP": lambda domain, ours: 1},
     ),
     Pattern(
         "User part in the link",
         DATASET_QUIRK,
         "The dataset's domain keeps the user:password@ part. We drop it and measure only the host.",
-        ("HostnameLength", "NoOfSubDomain"),
         lambda domain, ours: _user_part(domain) != "",
+        {
+            "HostnameLength": lambda domain, ours: ours["HostnameLength"] + _kept_length(domain),
+            # Every dot in the user part adds one to the dataset's count.
+            "NoOfSubDomain": lambda domain, ours: ours["NoOfSubDomain"] + _user_part(domain).count("."),
+        },
     ),
     Pattern(
         "Port in the link",
         DATASET_QUIRK,
         "The dataset's domain keeps the port, so com:443 counts as the TLD. We drop the port.",
-        ("HostnameLength", "TLDLength"),
         lambda domain, ours: _port(domain) != "",
+        {
+            "HostnameLength": lambda domain, ours: ours["HostnameLength"] + _kept_length(domain),
+            "TLDLength": _tld_length_with_port,
+        },
     ),
 )
 
@@ -165,13 +204,16 @@ def find_mismatches(ours: pd.DataFrame, dataset: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records, columns=["row", "feature"]).sort_values(["row", "feature"], ignore_index=True)
 
 
-def pattern_for(domain: str, ours: Ours, feature: str) -> str:
+def pattern_for(domain: str, ours: Ours, feature: str, dataset_value: int) -> str:
     """Name of the first pattern that explains this feature's mismatch, or UNEXPLAINED.
 
-    domain is the dataset's Domain column for the row. ours is our features for it.
+    domain is the dataset's Domain column for the row, ours is our features for it and
+    dataset_value is the dataset's value for the feature. A pattern explains the
+    mismatch only if the row has its shape and it predicts exactly dataset_value.
     """
     for pattern in PATTERNS:
-        if feature in pattern.features and pattern.matches(domain, ours):
+        predict = pattern.predicts.get(feature)
+        if predict and pattern.matches(domain, ours) and predict(domain, ours) == dataset_value:
             return pattern.name
     return UNEXPLAINED
 
@@ -179,12 +221,12 @@ def pattern_for(domain: str, ours: Ours, feature: str) -> str:
 def patterns_table(mismatches: pd.DataFrame, ours: pd.DataFrame, dataset: pd.DataFrame) -> pd.DataFrame:
     """One row per pattern that has mismatches, plus the unexplained bucket, always.
 
-    dataset holds the URL and Domain columns for the same rows as ours.
+    dataset holds the URL, Domain and compared columns for the same rows as ours.
     """
     domains = dataset[DOMAIN_COLUMN]
     named = mismatches.assign(
         pattern=[
-            pattern_for(domains[row], ours.loc[row], feature)
+            pattern_for(domains[row], ours.loc[row], feature, dataset.loc[row, COMPARED_COLUMNS[feature]])
             for row, feature in zip(mismatches["row"], mismatches["feature"])
         ]
     )

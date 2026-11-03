@@ -89,40 +89,63 @@ def _ours(domain):
     return extract_features("http://" + domain + "/", strip_www=False)
 
 
+# Each case gives the dataset's value, worked out from the dataset's own definitions:
+# DomainLength is the length of the whole domain, TLDLength the length of the text
+# after its last dot, and NoOfSubDomain its number of dots minus 1.
 @pytest.mark.parametrize(
-    ("domain", "feature", "pattern"),
+    ("domain", "feature", "dataset_value", "pattern"),
     [
-        ("192.0.2.10", "TLDLength", "Host is an IP address"),
-        ("192.0.2.10", "NoOfSubDomain", "Host is an IP address"),
-        ("192.0.2.10.host.example.net", "IsDomainIP", "Host starts with an IP address"),
-        ("shop.example.com:8443", "HostnameLength", "Port in the link"),
-        ("shop.example.com:8443", "TLDLength", "Port in the link"),
-        ("192.0.2.10:8080", "HostnameLength", "Port in the link"),
-        ("bank.example.com@example.net", "HostnameLength", "User part in the link"),
-        ("bank.example.com:pw@example.net", "NoOfSubDomain", "User part in the link"),
+        ("192.0.2.10", "TLDLength", 2, "Host is an IP address"),
+        ("192.0.2.10", "NoOfSubDomain", 2, "Host is an IP address"),
+        ("192.0.2.10.host.example.net", "IsDomainIP", 1, "Host starts with an IP address"),
+        ("shop.example.com:8443", "HostnameLength", 21, "Port in the link"),
+        ("shop.example.com:8443", "TLDLength", 8, "Port in the link"),
+        ("192.0.2.10:8080", "HostnameLength", 15, "Port in the link"),
+        # The dataset's TLD is 10:8080. The IP pattern predicts 2, so the port pattern explains it.
+        ("192.0.2.10:8080", "TLDLength", 7, "Port in the link"),
+        ("bank.example.com@example.net", "HostnameLength", 28, "User part in the link"),
+        ("bank.example.com:pw@example.net", "NoOfSubDomain", 2, "User part in the link"),
+        # Both a user part and a port: the dataset keeps both.
+        ("u.v@shop.example.com:8443", "HostnameLength", 25, "User part in the link"),
     ],
 )
-def test_each_mismatch_gets_the_pattern_that_explains_it(domain, feature, pattern):
-    assert pattern_for(domain, _ours(domain), feature) == pattern
+def test_each_mismatch_gets_the_pattern_that_explains_it(domain, feature, dataset_value, pattern):
+    assert pattern_for(domain, _ours(domain), feature, dataset_value) == pattern
 
 
 @pytest.mark.parametrize(
-    ("domain", "feature"),
+    ("domain", "feature", "dataset_value"),
     [
-        ("shop.example.com", "HostnameLength"),  # no pattern fits this row
-        ("192.0.2.10", "HostnameLength"),  # an IP host does not explain a length gap
-        ("bank.example.com:pw@example.net", "TLDLength"),  # the user part sits before the TLD
+        ("shop.example.com", "HostnameLength", 20),  # no pattern fits this row
+        ("192.0.2.10", "HostnameLength", 12),  # an IP host does not explain a length gap
+        ("bank.example.com:pw@example.net", "TLDLength", 5),  # the user part sits before the TLD
     ],
 )
-def test_a_mismatch_no_pattern_explains_is_unexplained(domain, feature):
-    assert pattern_for(domain, _ours(domain), feature) == UNEXPLAINED
+def test_a_mismatch_no_pattern_explains_is_unexplained(domain, feature, dataset_value):
+    assert pattern_for(domain, _ours(domain), feature, dataset_value) == UNEXPLAINED
+
+
+@pytest.mark.parametrize(
+    ("domain", "feature", "dataset_value"),
+    [
+        ("192.0.2.10", "TLDLength", 3),  # the last number, 10, is 2 characters
+        ("192.0.2.10", "NoOfSubDomain", 3),
+        ("shop.example.com:8443", "HostnameLength", 22),  # 21 with the port
+        ("shop.example.com:8443", "TLDLength", 9),  # com:8443 is 8
+        ("bank.example.com@example.net", "HostnameLength", 30),  # 28 with the user part
+        ("bank.example.com:pw@example.net", "NoOfSubDomain", 5),  # 2 with the user part
+    ],
+)
+def test_the_right_shape_with_the_wrong_difference_is_unexplained(domain, feature, dataset_value):
+    # The row has the pattern's shape, but the pattern does not account for this number.
+    assert pattern_for(domain, _ours(domain), feature, dataset_value) == UNEXPLAINED
 
 
 def test_the_shape_is_read_from_the_dataset_domain_not_the_url():
     # The extractor reads this link as an IP host, but the shape comes from the domain.
     ours = extract_features("http://192.0.2.10/", strip_www=False)
 
-    assert pattern_for("example.com:8080", ours, "HostnameLength") == "Port in the link"
+    assert pattern_for("example.com:8080", ours, "HostnameLength", 15) == "Port in the link"
 
 
 DATASET_ROWS = pd.DataFrame(
@@ -186,6 +209,16 @@ def test_patterns_table_leaves_out_patterns_with_no_rows():
     table = patterns_table(MISMATCHES, _rows_ours(), DATASET_ROWS)
 
     assert "User part in the link" not in table["Pattern"].tolist()
+
+
+def test_patterns_table_counts_a_wrong_difference_as_unexplained():
+    # The port explains TLDLength (com:8443 is 8) but not a DomainLength of 30.
+    ours, dataset = _one_row("https://shop.example.com:8443/", "shop.example.com:8443", DomainLength=30, TLDLength=8)
+    table = patterns_table(find_mismatches(ours, dataset), ours, dataset).set_index("Pattern")
+
+    assert table.loc["Port in the link", "Features"] == "TLDLength"
+    assert table.loc[UNEXPLAINED, "Features"] == "HostnameLength"
+    assert table.loc[UNEXPLAINED, "Rows"] == 1
 
 
 def test_shapes_table_counts_rows_with_each_shape_and_how_many_differ():
