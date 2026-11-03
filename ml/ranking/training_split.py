@@ -67,12 +67,17 @@ def training_split(features: pd.DataFrame, split: pd.DataFrame) -> pd.DataFrame:
     return training.sort_values(ROW_COLUMN).reset_index(drop=True)
 
 
-def load_training_split(data_dir: Path) -> pd.DataFrame:
-    """Read the feature set and the split from data_dir and return the training split."""
+def _read(path: Path) -> pd.DataFrame:
+    try:
+        return pd.read_csv(path)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError) as error:
+        raise TrainingSplitError(f"{path} could not be read: {error}") from error
+
+
+def load_inputs(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Read the feature set and the split from data_dir, stopping with a plain message if either cannot be read."""
     for name, hint in MISSING_HINTS.items():
         path = data_dir / name
         if not path.is_file():
             raise TrainingSplitError(f"{path} was not found. {hint}")
-    features = pd.read_csv(data_dir / FEATURES_CSV_NAME)
-    split = pd.read_csv(data_dir / SPLIT_CSV_NAME)
-    return training_split(features, split)
+    return _read(data_dir / FEATURES_CSV_NAME), _read(data_dir / SPLIT_CSV_NAME)

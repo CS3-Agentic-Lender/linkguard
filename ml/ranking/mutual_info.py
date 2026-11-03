@@ -19,7 +19,7 @@ from sklearn.feature_selection import mutual_info_classif
 
 from cleaning.labels import LABEL_COLUMN
 from features.hostname import FEATURE_NAMES
-from ranking.training_split import TrainingSplitError, load_training_split
+from ranking.training_split import SET_COLUMN, TRAIN, TrainingSplitError, load_inputs, training_split
 
 SEED = 0  # fixed so a second run gives the same scores
 NEIGHBOURS = 3  # scikit-learn's default, used for the continuous features
@@ -27,11 +27,14 @@ CONTINUOUS_FEATURES = ("LetterRatioInHostname", "DigitRatioInHostname", "Special
 REPORT_NAME = "mutual_information.md"
 
 
-def mutual_information(training: pd.DataFrame) -> pd.DataFrame:
+def mutual_information(features: pd.DataFrame, split: pd.DataFrame) -> pd.DataFrame:
     """Rank, Feature and Score for the ten features, highest score first.
 
-    Ties keep the extractor's feature order, so the order never changes between runs.
+    Takes the whole feature set and the split, and drops the test rows itself, so no
+    caller can hand it test rows by mistake. Ties keep the extractor's feature order,
+    so the order never changes between runs.
     """
+    training = training_split(features, split)
     discrete = [name not in CONTINUOUS_FEATURES for name in FEATURE_NAMES]
     scores = mutual_info_classif(
         training[list(FEATURE_NAMES)],
@@ -67,11 +70,13 @@ def report(table: pd.DataFrame, training_rows: int) -> str:
 def main(ml_dir: Path) -> int:
     """Score the training split and save the report. Returns 1 and saves nothing if the inputs are wrong."""
     try:
-        training = load_training_split(ml_dir / "data")
+        features, split = load_inputs(ml_dir / "data")
+        table = mutual_information(features, split)
     except TrainingSplitError as error:
         print(f"Mutual information stopped: {error}")
         return 1
-    page = report(mutual_information(training), len(training))
+    # Every training row is in the feature set (training_split checks it), so this is the row count scored.
+    page = report(table, int((split[SET_COLUMN] == TRAIN).sum()))
     path = ml_dir / "reports" / REPORT_NAME
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(page)

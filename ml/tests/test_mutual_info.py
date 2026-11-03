@@ -5,7 +5,7 @@ import pytest
 from features.hostname import FEATURE_NAMES
 from ranking import mutual_info
 from ranking.mutual_info import REPORT_NAME, main, mutual_information, report
-from ranking.training_split import FEATURES_CSV_NAME, SPLIT_CSV_NAME, training_split
+from ranking.training_split import FEATURES_CSV_NAME, SPLIT_CSV_NAME
 
 ROWS = 400
 
@@ -31,12 +31,12 @@ def made_up_split(rows: int = ROWS) -> pd.DataFrame:
     return pd.DataFrame({"row": range(rows), "set": ["test" if row % 4 == 3 else "train" for row in range(rows)]})
 
 
-def training_rows() -> pd.DataFrame:
-    return training_split(made_up_feature_set(), made_up_split())
+def ranked() -> pd.DataFrame:
+    return mutual_information(made_up_feature_set(), made_up_split())
 
 
 def test_table_lists_all_ten_features_highest_score_first():
-    table = mutual_information(training_rows())
+    table = ranked()
 
     assert sorted(table["Feature"]) == sorted(FEATURE_NAMES)
     assert table["Rank"].tolist() == list(range(1, 11))
@@ -45,8 +45,8 @@ def test_table_lists_all_ten_features_highest_score_first():
 
 
 def test_a_second_run_gives_the_same_scores():
-    first = mutual_information(training_rows())
-    second = mutual_information(training_rows())
+    first = ranked()
+    second = ranked()
 
     pd.testing.assert_frame_equal(first, second)
 
@@ -54,7 +54,7 @@ def test_a_second_run_gives_the_same_scores():
 def test_test_rows_do_not_change_the_scores():
     features = made_up_feature_set()
     split = made_up_split()
-    baseline = mutual_information(training_split(features, split))
+    baseline = mutual_information(features, split)
 
     # Test rows get extreme values and flipped labels. If any reached the scoring, the
     # scores would move.
@@ -65,7 +65,7 @@ def test_test_rows_do_not_change_the_scores():
         poisoned.loc[is_test, name] = 999
     poisoned.loc[is_test, "label"] = 1 - poisoned.loc[is_test, "label"]
 
-    pd.testing.assert_frame_equal(mutual_information(training_split(poisoned, split)), baseline)
+    pd.testing.assert_frame_equal(mutual_information(poisoned, split), baseline)
 
 
 def test_the_three_ratios_are_the_continuous_features():
@@ -76,11 +76,11 @@ def test_ties_keep_the_extractor_order():
     # A constant discrete feature scores exactly 0. Constant continuous features are left
     # out: the estimator's added noise can give them a small score on so few rows.
     discrete = [name for name in FEATURE_NAMES if name not in mutual_info.CONTINUOUS_FEATURES]
-    training = training_rows()
+    features = made_up_feature_set()
     for name in discrete:
-        training[name] = 1
+        features[name] = 1
 
-    table = mutual_information(training)
+    table = mutual_information(features, made_up_split())
 
     tied = table[table["Feature"].isin(discrete)]
     assert (tied["Score"] == 0).all()
@@ -88,7 +88,7 @@ def test_ties_keep_the_extractor_order():
 
 
 def test_report_has_the_table_row_count_seed_and_unit():
-    table = mutual_information(training_rows())
+    table = ranked()
 
     page = report(table, 1234)
 

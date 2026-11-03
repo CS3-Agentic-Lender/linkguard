@@ -6,7 +6,7 @@ from ranking.training_split import (
     FEATURES_CSV_NAME,
     SPLIT_CSV_NAME,
     TrainingSplitError,
-    load_training_split,
+    load_inputs,
     training_split,
 )
 
@@ -78,7 +78,9 @@ def test_loads_both_files_from_the_data_folder(tmp_path):
     feature_set([0, 1, 2, 3, 4]).to_csv(tmp_path / FEATURES_CSV_NAME, index=False)
     SPLIT.to_csv(tmp_path / SPLIT_CSV_NAME, index=False)
 
-    assert load_training_split(tmp_path)["row"].tolist() == [0, 2, 4]
+    features, split = load_inputs(tmp_path)
+
+    assert training_split(features, split)["row"].tolist() == [0, 2, 4]
 
 
 @pytest.mark.parametrize(("present", "absent", "hint"), [
@@ -89,4 +91,14 @@ def test_a_missing_file_names_the_step_that_makes_it(tmp_path, present, absent, 
     (tmp_path / present).touch()
 
     with pytest.raises(TrainingSplitError, match=f"{absent} was not found.*{hint}"):
-        load_training_split(tmp_path)
+        load_inputs(tmp_path)
+
+
+@pytest.mark.parametrize("broken", [FEATURES_CSV_NAME, SPLIT_CSV_NAME])
+def test_an_empty_file_stops_with_a_plain_message(tmp_path, broken):
+    feature_set([0, 1, 2, 3, 4]).to_csv(tmp_path / FEATURES_CSV_NAME, index=False)
+    SPLIT.to_csv(tmp_path / SPLIT_CSV_NAME, index=False)
+    (tmp_path / broken).write_text("")
+
+    with pytest.raises(TrainingSplitError, match=f"{broken} could not be read"):
+        load_inputs(tmp_path)
