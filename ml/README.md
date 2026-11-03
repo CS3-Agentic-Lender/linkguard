@@ -344,7 +344,12 @@ How the model is chosen:
 
 A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
 
-The run stops and saves nothing if the results file is missing a model or a score, was trained on a different feature list, or its held-out counts do not add up to every training row once.
+The run stops and saves nothing if the results file:
+
+- is missing a model or a score, or does not have exactly 5 folds
+- was trained on a different feature list
+- has held-out counts that do not add up to every training row once, or are not whole numbers of 0 or more
+- has a fold whose recall, precision, F1 or accuracy does not match its own confusion counts
 
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
 

@@ -39,7 +39,10 @@ MODEL_NAMES = (BASELINE, PLAIN_LR, BALANCED_LR, "Random forest", "Gradient boost
 METRICS = ("recall", "precision", "f1", "roc_auc", "accuracy")
 COUNTS = ("tp", "fp", "fn", "tn")
 CLASSES = ("phishing", "legitimate")
+FOLDS = 5
 LABEL = "In-dataset cross-validation results, not real-world accuracy."
+# The results file rounds scores to 6 decimals, so a score may differ from its counts by this much.
+SCORE_TOLERANCE = 1e-5
 # Two mean scores this close count as a tie under the choosing rule.
 CLOSE = 0.01
 # Tiny slack so a gap of exactly CLOSE still counts, whatever the float rounding.
@@ -64,6 +67,37 @@ def _check_scores(name: str, fold: int, part: str, scores: dict) -> None:
             raise ModelComparisonError(f"{name}, fold {fold}: the {part} {metric} is {scores[metric]}, not between 0 and 1.")
 
 
+def _check_counts(name: str, fold: int, counts: dict) -> None:
+    for count in COUNTS:
+        value = counts.get(count)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ModelComparisonError(f"{name}, fold {fold}: the {count} count is {value!r}, not a whole number of 0 or more.")
+
+
+def scores_from_counts(counts: dict) -> dict[str, float]:
+    """Recall, precision, F1 and accuracy worked out from one fold's confusion counts.
+
+    A model that predicts no phishing at all gets a precision of 0, like scikit-learn's zero_division=0.
+    """
+    tp, fp, fn, tn = (counts[count] for count in COUNTS)
+    return {
+        "recall": tp / (tp + fn) if tp + fn else 0.0,
+        "precision": tp / (tp + fp) if tp + fp else 0.0,
+        "f1": 2 * tp / (2 * tp + fp + fn) if tp else 0.0,
+        "accuracy": (tp + tn) / (tp + fp + fn + tn),
+    }
+
+
+def _check_scores_match_counts(name: str, fold: int, scores: dict, counts: dict) -> None:
+    """The cross-validation scores and the confusion counts come from the same predictions, so they must agree."""
+    for metric, expected in scores_from_counts(counts).items():
+        if abs(scores[metric] - expected) > SCORE_TOLERANCE:
+            raise ModelComparisonError(
+                f"{name}, fold {fold}: the cross-validation {metric} is {scores[metric]}, "
+                f"but the confusion counts give {expected:.6f}. The scores and counts do not match."
+            )
+
+
 def check_results(results: dict) -> None:
     """Stop with a message naming the problem if the results file is not what this report expects."""
     if results.get("features") != list(FINAL_FEATURES):
@@ -72,6 +106,8 @@ def check_results(results: dict) -> None:
     if missing:
         raise ModelComparisonError(f"The results have no {', '.join(missing)}.")
     folds = results["folds"]
+    if folds != FOLDS:
+        raise ModelComparisonError(f"The results have {folds} folds, but the comparison needs {FOLDS} folds.")
     for name in MODEL_NAMES:
         model_folds = results["models"][name]["folds"]
         if [fold["fold"] for fold in model_folds] != list(range(1, folds + 1)):
@@ -80,6 +116,8 @@ def check_results(results: dict) -> None:
         for fold in model_folds:
             _check_scores(name, fold["fold"], "cross-validation", fold["cv"])
             _check_scores(name, fold["fold"], "training", fold["train"])
+            _check_counts(name, fold["fold"], fold["confusion"])
+            _check_scores_match_counts(name, fold["fold"], fold["cv"], fold["confusion"])
             for count in COUNTS:
                 model_totals[count] += fold["confusion"][count]
         # Each training row sits in exactly one held-out fold, so the counts must add up to all of them.

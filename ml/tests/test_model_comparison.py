@@ -23,56 +23,47 @@ from training.model_comparison import (
     mean_scores,
     report,
     score_table,
+    scores_from_counts,
     main,
 )
 
 FOLDS = 5
-# Each made-up fold holds 100 training rows: 43 phishing and 57 legitimate.
-FOLD_PHISHING, FOLD_LEGITIMATE = 43, 57
-# Made-up mean scores per model: recall, precision, F1, ROC-AUC, accuracy, then the training recall and F1.
+# Each made-up fold holds 500 training rows: 200 phishing and 300 legitimate.
+FOLD_PHISHING, FOLD_LEGITIMATE = 200, 300
+# Per model: mean cross-validation recall, wrongly flagged legitimate links per fold, ROC-AUC,
+# then the training recall and F1. The other scores are worked out from the counts.
 MADE_UP = {
-    BASELINE: (0.0, 0.0, 0.0, 0.5, 0.57, 0.0, 0.0),
-    PLAIN_LR: (0.70, 0.80, 0.75, 0.85, 0.80, 0.71, 0.76),
-    BALANCED_LR: (0.78, 0.72, 0.75, 0.85, 0.78, 0.79, 0.76),
-    "Random forest": (0.82, 0.85, 0.83, 0.92, 0.86, 0.99, 0.99),
-    "Gradient boosting": (0.80, 0.86, 0.83, 0.91, 0.86, 0.84, 0.86),
+    BASELINE: (0.0, 0, 0.5, 0.0, 0.0),
+    PLAIN_LR: (0.70, 30, 0.85, 0.71, 0.76),
+    BALANCED_LR: (0.78, 60, 0.85, 0.79, 0.76),
+    "Random forest": (0.82, 30, 0.92, 0.99, 0.99),
+    "Gradient boosting": (0.80, 20, 0.91, 0.84, 0.86),
 }
-# Fold scores are the mean plus these offsets, so the standard deviation is known.
+# Fold recalls are the mean plus these offsets, so the standard deviation is known.
 OFFSETS = (-0.02, -0.01, 0.0, 0.01, 0.02)
 
 
-def scores(recall, precision, f1, roc_auc, accuracy):
-    return {"recall": recall, "precision": precision, "f1": f1, "roc_auc": roc_auc, "accuracy": accuracy}
-
-
-def made_up_model(recall, precision, f1, roc_auc, accuracy, train_recall, train_f1, tp=30, fp=5):
+def made_up_model(recall, false_alarms, roc_auc, train_recall, train_f1):
     folds = []
     for fold, offset in enumerate(OFFSETS, start=1):
-        shift = 0.0 if recall == 0 else offset
-        folds.append(
-            {
-                "fold": fold,
-                "cv": scores(recall + shift, precision + shift, f1 + shift, roc_auc, accuracy),
-                "train": scores(train_recall, precision, train_f1, roc_auc, accuracy),
-                "confusion": {"tp": tp, "fp": fp, "fn": FOLD_PHISHING - tp, "tn": FOLD_LEGITIMATE - fp},
-            }
-        )
+        tp = round(FOLD_PHISHING * (recall + offset)) if recall else 0
+        counts = {"tp": tp, "fp": false_alarms, "fn": FOLD_PHISHING - tp, "tn": FOLD_LEGITIMATE - false_alarms}
+        cv = {metric: round(value, 6) for metric, value in scores_from_counts(counts).items()}
+        cv["roc_auc"] = roc_auc
+        train = dict(cv, recall=train_recall, f1=train_f1)
+        folds.append({"fold": fold, "cv": cv, "train": train, "confusion": counts})
     return {"folds": folds}
 
 
 def made_up_results(means=None):
     means = means or MADE_UP
-    models = {}
-    for name, values in means.items():
-        counts = {"tp": 0, "fp": 0} if name == BASELINE else {}
-        models[name] = made_up_model(*values, **counts)
     return {
         "features": list(FINAL_FEATURES),
         "folds": FOLDS,
         "seed": 0,
         "training_rows": FOLDS * (FOLD_PHISHING + FOLD_LEGITIMATE),
         "class_balance": {"phishing": FOLDS * FOLD_PHISHING, "legitimate": FOLDS * FOLD_LEGITIMATE},
-        "models": models,
+        "models": {name: made_up_model(*values) for name, values in means.items()},
     }
 
 
@@ -123,7 +114,7 @@ def test_the_highest_mean_recall_wins():
 
 def test_f1_decides_when_recall_is_close():
     # Gradient boosting is within 0.01 on recall, and its F1 is clearly higher.
-    results = with_means(**{"Gradient boosting": (0.815, 0.90, 0.87, 0.93, 0.88, 0.84, 0.88)})
+    results = with_means(**{"Gradient boosting": (0.815, 5, 0.93, 0.84, 0.88)})
     name, reason = choose_model(mean_scores(results, "cv"))
     assert name == "Gradient boosting"
     assert "F1" in reason
@@ -131,14 +122,14 @@ def test_f1_decides_when_recall_is_close():
 
 def test_the_simpler_model_wins_when_recall_and_f1_are_both_close():
     # Logistic regression ties the forest on recall and F1, and it is the simpler model.
-    results = with_means(**{PLAIN_LR: (0.82, 0.85, 0.83, 0.90, 0.86, 0.83, 0.84)})
+    results = with_means(**{PLAIN_LR: (0.82, 30, 0.90, 0.83, 0.84)})
     name, reason = choose_model(mean_scores(results, "cv"))
     assert name == PLAIN_LR
     assert "simpler" in reason
 
 
 def test_the_baseline_is_never_chosen():
-    results = with_means(**{BASELINE: (1.0, 0.43, 0.60, 0.5, 0.43, 1.0, 0.60)})
+    results = with_means(**{BASELINE: (0.98, 300, 0.5, 1.0, 0.60)})
     name, _ = choose_model(mean_scores(results, "cv"))
     assert name != BASELINE
 
@@ -173,7 +164,7 @@ def test_the_fit_note_flags_a_model_much_better_on_training_rows():
 
 
 def test_the_fit_note_flags_a_model_low_on_training_rows_too():
-    results = with_means(**{PLAIN_LR: (0.50, 0.60, 0.55, 0.70, 0.65, 0.51, 0.56)})
+    results = with_means(**{PLAIN_LR: (0.50, 30, 0.70, 0.51, 0.56)})
     note = fit_note(mean_scores(results, "train"), mean_scores(results, "cv"))
     assert "Logistic regression looks underfit" in note
     assert f"{BASELINE} looks underfit" not in note
@@ -185,8 +176,8 @@ def test_the_fit_note_flags_a_model_low_on_training_rows_too():
 def test_the_class_balance_note_gives_the_training_counts_and_shares():
     results = made_up_results()
     note = class_balance_note(results, "Random forest", mean_scores(results, "cv"))
-    assert "215 phishing (43.0%)" in note
-    assert "285 legitimate (57.0%)" in note
+    assert "1,000 phishing (40.0%)" in note
+    assert "1,500 legitimate (60.0%)" in note
 
 
 def test_the_note_says_the_chosen_model_has_no_class_weights_and_what_they_did():
@@ -197,7 +188,7 @@ def test_the_note_says_the_chosen_model_has_no_class_weights_and_what_they_did()
 
 
 def test_the_note_says_when_the_chosen_model_uses_class_weights():
-    results = with_means(**{BALANCED_LR: (0.95, 0.70, 0.80, 0.90, 0.80, 0.95, 0.80)})
+    results = with_means(**{BALANCED_LR: (0.95, 60, 0.90, 0.95, 0.80)})
     chosen, _ = choose_model(mean_scores(results, "cv"))
     assert chosen == BALANCED_LR
     note = class_balance_note(results, chosen, mean_scores(results, "cv"))
@@ -211,11 +202,11 @@ def test_the_confusion_matrix_adds_up_the_held_out_folds():
     matrix = confusion_matrix(made_up_results()["models"]["Random forest"])
     assert list(matrix.index) == ["phishing", "legitimate"]
     assert list(matrix.columns) == ["phishing", "legitimate"]
-    assert matrix.loc["phishing", "phishing"] == 5 * 30
-    assert matrix.loc["phishing", "legitimate"] == 5 * 13
-    assert matrix.loc["legitimate", "phishing"] == 5 * 5
-    assert matrix.loc["legitimate", "legitimate"] == 5 * 52
-    assert int(matrix.to_numpy().sum()) == 500
+    assert matrix.loc["phishing", "phishing"] == 820
+    assert matrix.loc["phishing", "legitimate"] == 180
+    assert matrix.loc["legitimate", "phishing"] == 150
+    assert matrix.loc["legitimate", "legitimate"] == 1350
+    assert int(matrix.to_numpy().sum()) == 2500
 
 
 def test_the_chart_names_both_classes_in_words_and_shows_the_counts():
@@ -225,7 +216,7 @@ def test_the_chart_names_both_classes_in_words_and_shows_the_counts():
     assert [label.get_text() for label in axis.get_xticklabels()] == ["phishing", "legitimate"]
     assert [label.get_text() for label in axis.get_yticklabels()] == ["phishing", "legitimate"]
     cell_texts = {text.get_text() for text in axis.texts}
-    assert {"150", "65", "25", "260"} <= cell_texts
+    assert {"820", "180", "150", "1,350"} <= cell_texts
 
 
 def test_matrix_file_names_are_plain():
@@ -240,6 +231,10 @@ def test_a_good_results_file_passes():
     check_results(made_up_results())
 
 
+def double_counts(counts):
+    counts.update({count: 2 * value for count, value in counts.items()})
+
+
 @pytest.mark.parametrize(
     "spoil, message",
     [
@@ -248,9 +243,14 @@ def test_a_good_results_file_passes():
         (lambda r: r.update(features=r["features"][:-1]), "final feature list"),
         (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].pop("roc_auc"), "roc_auc"),
         (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].update(recall=1.5), "between 0 and 1"),
-        (lambda r: r["models"][PLAIN_LR]["folds"][0]["confusion"].update(tn=0), "every training row"),
+        # Doubling every count keeps the scores but predicts some rows twice.
+        (lambda r: double_counts(r["models"][PLAIN_LR]["folds"][0]["confusion"]), "every training row"),
         (lambda r: r.update(training_rows=999), "every training row"),
-        (lambda r: r["class_balance"].update(phishing=214), "phishing label"),
+        (lambda r: r["class_balance"].update(phishing=999), "phishing label"),
+        (lambda r: r.update(folds=4), "needs 5 folds"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].update(recall=0.99), "do not match"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0]["confusion"].update(tp=134.5, fn=65.5), "whole number"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0]["confusion"].update(tp=-1, fn=201), "whole number"),
         (lambda r: r["class_balance"].update(legitimate=1), "class balance"),
     ],
 )
