@@ -144,6 +144,37 @@ If the cleaned file is already there, step 2 is enough.
 
 Every row is checked before anything is saved. If a link can't be read, the script prints how many rows failed for each reason, with an example row number. It then stops with exit code 1 and saves nothing. No row is dropped without being reported.
 
+### Leakage recheck
+
+`ml/leakage/recheck.py` reruns the single-feature leakage check on the ten features. The result is in `ml/reports/leakage_recheck_hostname_features.md`. To make it again, run `uv run python -m leakage.recheck` from `ml/`. It needs the cleaned file too.
+
+### Hosts with both labels
+
+Some hosts have legitimate rows as well as phishing rows. These rows share the same ten features but have different labels. In the cleaned data there are:
+
+| | Hosts | Rows |
+|---|---|---|
+| All rows | 58 | 159 of 235,370 |
+| Training set | 46 | 133 |
+| Test set | 12 | 26 |
+
+Each host is in one set only, because the split groups rows by host.
+
+**Rule: keep every row. None is dropped.** The reasons:
+
+- **No leakage.** These hosts were found with the labels of every row, test rows included. No row is removed because of its label. So nothing about the test labels can reach training or shape the test set. Dropping these rows from the whole data would also take the hardest cases out of the test set. Scores would then look better than they are.
+- **They are real.** A hosting platform or a hacked site can serve safe links as well as phishing links.
+- **Too few to matter.** 159 rows out of 235,370 are too few to change a model.
+- **Dropping them from training only gains nothing.** It would need a rule that filters the saved split. The split must never be rebuilt for it, because that would move about 31% of the rows to another set. The gain would be too small to measure.
+
+The rule is `apply_conflicting_hosts_rule()` in `ml/leakage/conflicting_hosts.py`. It returns every row unchanged and never reads the labels. A test checks that it keeps every test-set row of these hosts.
+
+To count them again, run this from `ml/`. It needs the training feature set and the split first (`uv run python -m featureset.build`, then `uv run python -m splitting.build`).
+
+```bash
+uv run python -m leakage.conflicting_hosts
+```
+
 ## The train/test split and the scaler
 
 Every model is trained and tested on one shared split. Make it once, from `ml/`:
@@ -170,6 +201,20 @@ Training and evaluation load these files and never make a split of their own. Re
 `load_split(path, hosts)` takes the cleaned hosts of the data it will be used with, one per row (the training feature set's `host` column, for example). It stops with a message if the cleaned data has been rebuilt or reordered since the split was made, if a row is missing or listed twice, or if the check file is missing. Without this, an old split used with reordered cleaned data would quietly put about 2,200 hosts in both sets. The fix is always to rerun `uv run python -m splitting.build`.
 
 The saved scaler is fitted on the whole training set. Any later step that fits a scaler of its own, for example inside cross-validation or after feature selection, fits it on training rows only, never on test rows.
+
+## Feature ranking
+
+The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. The split is read with `load_split`, so its check file must match the feature set. If a file is missing, the split was made from different cleaned data, or a training row is not in the feature set, it stops with a message naming the step to run.
+
+### Mutual information
+
+Mutual information is 0 when a feature tells nothing about the label and grows the more it does. It also catches relationships that are not a straight line. The seven whole-number features are scored as discrete values. The three ratios are continuous. The seed is fixed, so a second run gives the same scores. From `ml/`, run:
+
+```bash
+uv run python -m ranking.mutual_info
+```
+
+It prints the ranking and saves it to `ml/reports/mutual_information.md`.
 
 ## Chart numbers for the charts page
 
