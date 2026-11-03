@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 from features.hostname import FEATURE_NAMES
 from ranking.pca import (
@@ -77,14 +78,27 @@ def test_the_saved_scaler_is_only_used_to_transform(monkeypatch):
     means = scaler.mean_.copy()
 
     def refuse(*args, **kwargs):
-        raise AssertionError("The saved scaler must not be fitted again.")
+        raise AssertionError("No scaler may be fitted here, the saved one or a new one.")
 
+    # Patched on the class, not the instance, so a new StandardScaler fitted inside
+    # fit_pca would fail too. The fixture's scaler is already fitted by this point.
     for method in ("fit", "fit_transform", "partial_fit"):
-        monkeypatch.setattr(scaler, method, refuse)
+        monkeypatch.setattr(StandardScaler, method, refuse)
+    transformed = []
+    original_transform = scaler.transform
+
+    def record(rows, *args, **kwargs):
+        transformed.append(rows.copy())
+        return original_transform(rows, *args, **kwargs)
+
+    monkeypatch.setattr(scaler, "transform", record)
 
     fit_pca(features, split, scaler)
 
     np.testing.assert_array_equal(scaler.mean_, means)
+    training = training_split(features, split)[list(FEATURE_NAMES)]
+    (rows,) = transformed
+    pd.testing.assert_frame_equal(rows, training)
 
 
 def test_a_scaler_fitted_on_other_rows_stops_the_run():
