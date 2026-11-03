@@ -214,6 +214,16 @@ uv run python -m ranking.mutual_info
 
 It prints the ranking and saves it to `ml/reports/mutual_information.md`.
 
+### Random forest importance
+
+A random forest is many decision trees, each trained on a random sample of the training rows. A feature's importance is how much its splits cut the mix of labels, averaged over every tree. The ten importances add up to 1. The forest uses the unscaled features, because scale makes no difference to a tree. It has 100 trees and a fixed seed, so a second run gives the same order. This built-in importance tends to favour features with many different values, so it is a cross-check, not a verdict. From `ml/`, run:
+
+```bash
+uv run python -m ranking.forest_importance
+```
+
+It prints the ranking and saves it to `ml/reports/forest_importance.md`.
+
 ## Chart numbers for the charts page
 
 The phishing charts page reads a small summary file of counts and percentages, not the dataset. Make it from `ml/`:
