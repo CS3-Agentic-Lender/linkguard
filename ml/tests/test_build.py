@@ -60,6 +60,23 @@ def test_build_puts_no_host_in_both_sets():
     assert run.shared_hosts == set()
 
 
+def test_build_puts_no_url_in_both_sets():
+    run = build_split(make_rows())
+
+    assert run.shared_urls == set()
+
+
+def test_leak_check_finds_shared_hosts_when_the_grouping_is_wrong(monkeypatch):
+    # Group by the full link instead of the host: links on one host can then land in
+    # both sets. The check reads hosts from the links itself, so it must catch this.
+    monkeypatch.setattr("splitting.build.cleaned_host", lambda link: link)
+
+    run = build_split(make_rows(2000))
+
+    assert run.shared_hosts
+    assert any("both" in problem for problem in check_run(run))
+
+
 def test_build_reports_the_phishing_share_gap():
     run = build_split(make_rows(2000))
 
@@ -89,7 +106,7 @@ def test_saved_outputs_read_back_unchanged(tmp_path):
 
     paths = save_outputs(run, data_dir=tmp_path / "data", models_dir=tmp_path / "models", reports_dir=tmp_path / "reports")
 
-    pd.testing.assert_series_equal(load_split(paths.split), run.split)
+    pd.testing.assert_series_equal(load_split(paths.split, run.hosts), run.split)
     reloaded = load_scaler(paths.scaler)
     np.testing.assert_array_equal(reloaded.mean_, run.scaler.mean_)
     assert paths.chart.name == SCALING_CHART_NAME
@@ -106,13 +123,26 @@ def test_saved_split_and_scaler_are_ignored_by_git(path):
 
 def test_check_run_names_each_failed_check():
     run = build_split(make_rows())
-    bad = type(run)(**{**run.__dict__, "shared_hosts": {"a.example"}, "share_gap_points": 0.9})
+    bad = type(run)(
+        **{**run.__dict__, "shared_hosts": {"a.example"}, "shared_urls": {"https://a.example"}, "share_gap_points": 0.9}
+    )
 
     problems = check_run(bad)
 
-    assert len(problems) == 2
-    assert "both" in problems[0]
-    assert "0.900" in problems[1]
+    assert len(problems) == 3
+    assert "hosts are in both" in problems[0]
+    assert "links are in both" in problems[1]
+    assert "0.900" in problems[2]
+
+
+def test_check_run_stops_on_an_empty_set():
+    run = build_split(make_rows())
+    everything_in_training = pd.Series(TRAIN_SET, index=run.split.index)
+    bad = type(run)(**{**run.__dict__, "split": everything_in_training, "share_gap_points": float("nan")})
+
+    problems = check_run(bad)
+
+    assert any("test set is empty" in problem for problem in problems)
 
 
 def test_main_saves_everything_from_the_cleaned_file(tmp_path, capsys):
@@ -121,6 +151,7 @@ def test_main_saves_everything_from_the_cleaned_file(tmp_path, capsys):
     assert main(tmp_path) == 0
 
     assert (tmp_path / "data" / "split.csv").exists()
+    assert (tmp_path / "data" / "split_check.json").exists()
     assert (tmp_path / "models" / "scaler.joblib").exists()
     assert (tmp_path / "reports" / SCALING_CHART_NAME).exists()
     assert "Hosts in both sets: 0" in capsys.readouterr().out

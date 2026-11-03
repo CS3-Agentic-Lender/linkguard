@@ -9,11 +9,15 @@ every row with the shared extractor, splits the rows by cleaned hostname, fits
 the scaler on the training part only and saves:
 
 * ml/data/split.csv: each row's index and its set (gitignored)
+* ml/data/split_check.json: the row count and a fingerprint of the hosts, so the
+  split cannot be used with cleaned data that was rebuilt or reordered (gitignored)
 * ml/models/scaler.joblib: the fitted scaler (gitignored)
 * ml/reports/scaling_distributions.png: the before-and-after charts
 
-It stops with an error if a host is in both sets or a set's phishing share is
-more than half a percentage point away from the whole data's.
+It stops with an error if a set is empty, a host or a link is in both sets, or a
+set's phishing share is more than half a percentage point away from the whole
+data's. The host check reads each link's host with Python's own URL parser, not
+the clean-up the split groups by, so a mistake in the grouping cannot hide itself.
 """
 
 import sys
@@ -34,8 +38,10 @@ from splitting.scaling_chart import scaling_chart
 from splitting.split import (
     SPLIT_CSV_NAME,
     TRAIN_SET,
+    empty_sets,
     hosts_in_both,
     phishing_share_gap,
+    plain_host,
     save_split,
     split_by_host,
 )
@@ -49,10 +55,12 @@ CHART_DPI = 100
 @dataclass(frozen=True)
 class SplitRun:
     split: pd.Series
+    hosts: pd.Series
     scaler: StandardScaler
     train_features: pd.DataFrame
     scaled_train: pd.DataFrame
     shared_hosts: set[str]
+    shared_urls: set[str]
     share_gap_points: float
 
 
@@ -88,12 +96,16 @@ def build_split(rows: pd.DataFrame) -> SplitRun:
     split = split_by_host(rows["label"], hosts)
     train_features = features[split == TRAIN_SET]
     scaler = fit_scaler(train_features)
+    # Hosts read independently of the grouping, so the leak check can catch a wrong grouping.
+    link_hosts = pd.Series(_per_row(rows["URL"], plain_host), index=rows.index)
     return SplitRun(
         split=split,
+        hosts=hosts,
         scaler=scaler,
         train_features=train_features,
         scaled_train=scale(scaler, train_features),
-        shared_hosts=hosts_in_both(hosts, split),
+        shared_hosts=hosts_in_both(link_hosts, split),
+        shared_urls=hosts_in_both(rows["URL"], split),
         share_gap_points=phishing_share_gap(rows["label"], split),
     )
 
@@ -104,7 +116,7 @@ def save_outputs(run: SplitRun, data_dir: Path, models_dir: Path, reports_dir: P
     chart_path.parent.mkdir(parents=True, exist_ok=True)
     scaling_chart(run.train_features, run.scaled_train).savefig(chart_path, dpi=CHART_DPI)
     return SavedPaths(
-        split=save_split(run.split, data_dir / SPLIT_CSV_NAME),
+        split=save_split(run.split, run.hosts, data_dir / SPLIT_CSV_NAME),
         scaler=save_scaler(run.scaler, models_dir / SCALER_FILE_NAME),
         chart=chart_path,
     )
@@ -112,10 +124,14 @@ def save_outputs(run: SplitRun, data_dir: Path, models_dir: Path, reports_dir: P
 
 def check_run(run: SplitRun) -> list[str]:
     """Return a plain-language problem for each check the split fails."""
-    problems = []
+    empty = empty_sets(run.split)
+    problems = [f"The {name} set is empty." for name in empty]
     if run.shared_hosts:
         problems.append(f"{len(run.shared_hosts)} hosts are in both the training and the test set.")
-    if run.share_gap_points > MAX_SHARE_GAP_POINTS:
+    if run.shared_urls:
+        problems.append(f"{len(run.shared_urls)} links are in both the training and the test set.")
+    # With an empty set the share gap has no meaning (it is NaN), so it is only checked otherwise.
+    if not empty and run.share_gap_points > MAX_SHARE_GAP_POINTS:
         problems.append(
             f"A set's phishing share is {run.share_gap_points:.3f} points from the whole data's "
             f"(limit {MAX_SHARE_GAP_POINTS})."

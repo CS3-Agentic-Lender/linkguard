@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -6,9 +8,12 @@ from splitting.split import (
     SPLIT_SEED,
     TEST_SET,
     TRAIN_SET,
+    SplitMismatchError,
+    empty_sets,
     hosts_in_both,
     load_split,
     phishing_share_gap,
+    plain_host,
     save_split,
     split_by_host,
 )
@@ -110,11 +115,107 @@ def test_rejects_a_missing_host():
         split_by_host(labels, hosts)
 
 
-def test_saved_split_reads_back_unchanged(tmp_path):
-    labels, hosts = make_rows(50)
+def saved_split(tmp_path, host_count: int = 50):
+    labels, hosts = make_rows(host_count)
     split = split_by_host(labels, hosts)
+    return split, hosts, save_split(split, hosts, tmp_path / "data" / "split.csv")
 
-    path = save_split(split, tmp_path / "data" / "split.csv")
-    loaded = load_split(path)
+
+def test_saved_split_reads_back_unchanged(tmp_path):
+    split, hosts, path = saved_split(tmp_path)
+
+    loaded = load_split(path, hosts)
 
     pd.testing.assert_series_equal(loaded, split)
+
+
+def test_split_file_keeps_only_the_row_and_set_columns(tmp_path):
+    # The training pipeline reads split.csv directly and expects exactly these columns.
+    _, _, path = saved_split(tmp_path)
+
+    assert pd.read_csv(path).columns.tolist() == ["row", "set"]
+
+
+def test_load_split_rejects_reordered_cleaned_data(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+    reordered = pd.Series(hosts.to_numpy()[::-1], index=hosts.index)
+
+    with pytest.raises(SplitMismatchError, match="different cleaned data"):
+        load_split(path, reordered)
+
+
+def test_load_split_rejects_cleaned_data_with_a_different_row_count(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+
+    with pytest.raises(SplitMismatchError, match="rows"):
+        load_split(path, hosts.iloc[:-1])
+
+
+def test_load_split_rejects_a_check_file_with_a_different_row_count(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+    check_path = path.with_name("split_check.json")
+    check = json.loads(check_path.read_text())
+    check_path.write_text(json.dumps({**check, "rows": check["rows"] + 1}))
+
+    with pytest.raises(SplitMismatchError, match="cleaned rows, but there are"):
+        load_split(path, hosts)
+
+
+def test_load_split_rejects_a_row_listed_twice(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+    table = pd.read_csv(path)
+    first = table.iloc[[0]].assign(set=TEST_SET if table["set"].iloc[0] == TRAIN_SET else TRAIN_SET)
+    pd.concat([table, first]).to_csv(path, index=False)
+
+    with pytest.raises(SplitMismatchError, match="exactly one set"):
+        load_split(path, hosts)
+
+
+def test_load_split_rejects_a_missing_row(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+    pd.read_csv(path).iloc[1:].to_csv(path, index=False)
+
+    with pytest.raises(SplitMismatchError, match="exactly one set"):
+        load_split(path, hosts)
+
+
+def test_load_split_rejects_an_unknown_set_name(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+    pd.read_csv(path).assign(set="validation").to_csv(path, index=False)
+
+    with pytest.raises(SplitMismatchError, match="validation"):
+        load_split(path, hosts)
+
+
+def test_load_split_rejects_a_split_without_its_check_file(tmp_path):
+    _, hosts, path = saved_split(tmp_path)
+    for check_file in path.parent.glob("*.json"):
+        check_file.unlink()
+
+    with pytest.raises(SplitMismatchError, match="splitting.build"):
+        load_split(path, hosts)
+
+
+@pytest.mark.parametrize(
+    ("link", "host"),
+    [
+        ("https://www.Shop.example.com/login?x=1", "www.shop.example.com"),
+        ("http://a.example:8080/page", "a.example"),
+        ("//cdn.example/file", "cdn.example"),
+        ("a.example/path", "a.example"),
+    ],
+)
+def test_plain_host_reads_the_host_with_the_standard_library(link, host):
+    assert plain_host(link) == host
+
+
+def test_plain_host_rejects_a_link_without_a_host():
+    with pytest.raises(ValueError, match="host"):
+        plain_host("https://")
+
+
+def test_empty_sets_names_a_set_with_no_rows():
+    split = pd.Series([TRAIN_SET, TRAIN_SET])
+
+    assert empty_sets(split) == [TEST_SET]
+    assert empty_sets(pd.Series([TRAIN_SET, TEST_SET])) == []
