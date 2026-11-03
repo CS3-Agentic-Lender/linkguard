@@ -44,7 +44,7 @@ def _is_ip_address(host: str) -> bool:
     return True
 
 
-def _normalized_host(link: str) -> tuple[str, bool]:
+def _normalized_host(link: str, strip_www: bool) -> tuple[str, bool]:
     """Return the host to measure and whether it is an IP address."""
     text = link.strip()
     if not text:
@@ -63,7 +63,9 @@ def _normalized_host(link: str) -> tuple[str, bool]:
     if WHITESPACE_PATTERN.search(host):
         raise ValueError(SPACE_IN_HOST_MESSAGE)
     # A trailing dot is the DNS root, not part of the name, so it goes first.
-    host = host.removesuffix(".").removeprefix(WWW_PREFIX)
+    host = host.removesuffix(".")
+    if strip_www:
+        host = host.removeprefix(WWW_PREFIX)
     if not host:
         raise ValueError(NO_HOST_MESSAGE)
     if _is_ip_address(host):
@@ -83,13 +85,17 @@ def _normalized_host(link: str) -> tuple[str, bool]:
 
 def cleaned_host(link: str) -> str:
     """Return the cleaned host that extract_features measures for link."""
-    host, _ = _normalized_host(link)
+    host, _ = _normalized_host(link, strip_www=True)
     return host
 
 
-def extract_features(link: str) -> dict[str, int | float]:
-    """Return the ten hostname features of link, keyed by FEATURE_NAMES in order."""
-    host, is_ip = _normalized_host(link)
+def extract_features(link: str, *, strip_www: bool = True) -> dict[str, int | float]:
+    """Return the ten hostname features of link, keyed by FEATURE_NAMES in order.
+
+    strip_www=False keeps a leading www. in the host. Only the dataset comparison
+    uses it, to measure hosts the way the dataset's own columns do.
+    """
+    host, is_ip = _normalized_host(link, strip_www)
     if is_ip:
         top_level_length = 0
         subdomains = 0
