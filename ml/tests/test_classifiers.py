@@ -121,6 +121,28 @@ def test_held_out_rows_never_reach_a_fit(monkeypatch):
         assert rows.isdisjoint(features.index[held_out])
 
 
+def test_every_scaler_fit_sees_exactly_its_folds_training_rows(monkeypatch):
+    # Every scaler fit anywhere is recorded, so a scaler fitted on all rows, or on a held-out
+    # fold, would show up even if the Pipeline fits looked right.
+    features, labels, hosts = made_up_rows()
+    scaler_rows = []
+    real_fit = StandardScaler.fit
+
+    def recording_fit(self, x, y=None, **kwargs):
+        scaler_rows.append(set(x.index))
+        return real_fit(self, x, y, **kwargs)
+
+    monkeypatch.setattr(StandardScaler, "fit", recording_fit)
+
+    cross_validate_models(features, labels, hosts)
+
+    positions = fold_positions(labels, hosts)
+    assert len(scaler_rows) == len(MODELS) * FOLDS
+    for number, rows in enumerate(scaler_rows):
+        learn, _ = positions[number % FOLDS]
+        assert rows == set(features.index[learn])
+
+
 def test_each_model_is_scaler_then_model_in_one_pipeline():
     for model in MODELS.values():
         pipe = classifiers.model_pipeline(model)
