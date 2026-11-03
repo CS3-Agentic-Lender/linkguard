@@ -4,13 +4,11 @@ The four rankings are mutual information, the forest's built-in importance, the 
 importance on held-out training hosts, and each feature's weight in PCA. Every method is
 turned into ranks 1 to 10, because their raw scores are on different scales.
 
-A feature's PCA weight is its loading on each main component, ignoring the sign, times the
+The chart only uses the three methods that look at the label. A feature's PCA weight is its loading on each main component, ignoring the sign, times the
 share of the variance that component explains, added up over the main components. PCA never
 looks at the label, so this column says which features carry the spread of the data, not
 which ones predict phishing.
 """
-
-import textwrap
 
 import matplotlib
 
@@ -24,10 +22,18 @@ from matplotlib.figure import Figure
 from features.hostname import FEATURE_NAMES
 
 METHODS = ("Mutual information", "Forest (built-in)", "Forest (held-out hosts)", "PCA weight")
+# PCA never looks at the label, so the chart and the choice only use the other three.
+LABEL_METHODS = METHODS[:3]
 CHART_SIZE_INCHES = (8, 5.6)
 CHART_DPI = 100
-LABEL_WIDTH = 12  # characters per line for method names under the grid
-TITLE_WIDTH = 60  # characters per line for the takeaway
+CHART_TITLE = (
+    "Each method puts the 10 features in order, 1st to 10th\n"
+    "Longer bar = more useful\n"
+    "Blue = keep, orange = keep but watch, grey = dropped (a copy)"
+)
+KEEP_COLOUR = "#1f4e8c"
+WATCH_COLOUR = "#e0a030"
+DROPPED_COLOUR = "#bbbbbb"
 
 
 def pca_weights(loadings: np.ndarray, ratios: np.ndarray, names: list[str]) -> pd.DataFrame:
@@ -58,19 +64,31 @@ def rank_table(rankings: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return table.loc[order]
 
 
-def comparison_chart(ranks: pd.DataFrame, takeaway: str) -> Figure:
-    """A grid of ranks, features down the side and methods across. Darker means ranked higher."""
+def ordinal(place: int) -> str:
+    """1st, 2nd, 3rd, 4th ... 10th."""
+    return f"{place}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(place, 'th') }"
+
+
+def usefulness(ranks: pd.DataFrame) -> pd.Series:
+    """How useful each feature is across the methods that look at the label: 10 if it came 1st in all, 1 if last in all."""
+    return len(FEATURE_NAMES) + 1 - ranks[list(LABEL_METHODS)].mean(axis=1)
+
+
+def comparison_chart(ranks: pd.DataFrame, dropped: set[str], watch: set[str]) -> Figure:
+    """One bar per feature, longest first. Each bar says the places it came in the label methods.
+
+    Grey bars are dropped features, orange bars are kept but watched, blue bars are kept.
+    """
+    scores = usefulness(ranks).sort_values(ascending=True, kind="stable")
+    colours = [DROPPED_COLOUR if name in dropped else WATCH_COLOUR if name in watch else KEEP_COLOUR for name in scores.index]
     figure, axes = plt.subplots(figsize=CHART_SIZE_INCHES, dpi=CHART_DPI)
-    values = ranks.to_numpy()
-    axes.imshow(values, cmap="Blues_r", vmin=1, vmax=len(FEATURE_NAMES) + 3, aspect="auto")
-    for row in range(values.shape[0]):
-        for column in range(values.shape[1]):
-            rank = int(values[row, column])
-            axes.text(column, row, str(rank), ha="center", va="center", color="white" if rank <= 4 else "black")
-    axes.set_xticks(range(len(ranks.columns)), labels=[textwrap.fill(name, LABEL_WIDTH) for name in ranks.columns])
-    axes.set_yticks(range(len(ranks.index)), labels=list(ranks.index))
-    axes.set_xlabel("Method")
+    bars = axes.barh(list(scores.index), list(scores), color=colours)
+    for bar, name in zip(bars, scores.index):
+        places = ", ".join(ordinal(int(ranks.loc[name, method])) for method in LABEL_METHODS)
+        axes.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height() / 2, f"came {places}", va="center", fontsize=9)
+    axes.set_xlim(0, len(FEATURE_NAMES) + 2)
+    axes.set_xlabel("How useful (10 = came 1st in every method, 1 = came last in every method)")
     axes.set_ylabel("Feature")
-    axes.set_title(textwrap.fill(takeaway, TITLE_WIDTH))
+    axes.set_title(CHART_TITLE)
     figure.tight_layout()
     return figure

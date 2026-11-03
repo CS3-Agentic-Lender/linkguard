@@ -1,9 +1,10 @@
+import matplotlib.colors
 import numpy as np
 import pandas as pd
 import pytest
 
 from features.hostname import FEATURE_NAMES
-from ranking.compare_methods import METHODS, comparison_chart, pca_weights, rank_table
+from ranking.compare_methods import DROPPED_COLOUR, METHODS, WATCH_COLOUR, comparison_chart, ordinal, pca_weights, rank_table, usefulness
 
 
 def made_up_table(score_column: str, order: list[str]) -> pd.DataFrame:
@@ -61,12 +62,29 @@ def test_pca_weights_weigh_each_loading_by_its_components_variance():
     assert weights["Rank"].tolist() == [1, 2, 3]
 
 
-def test_chart_has_labelled_axes_and_a_takeaway_title():
-    figure = comparison_chart(rank_table(rankings()), "Two features lead every method.")
+def test_ordinal_places():
+    assert [ordinal(place) for place in (1, 2, 3, 4, 10)] == ["1st", "2nd", "3rd", "4th", "10th"]
+
+
+def test_usefulness_ignores_pca_and_runs_from_10_to_1():
+    ranks = rank_table(rankings())
+    # The first feature came 1st, 10th and 1st in the label methods, whatever PCA says.
+    assert usefulness(ranks)[FEATURE_NAMES[0]] == pytest.approx(11 - 4)
+
+
+def test_chart_has_one_bar_per_feature_with_places_and_colours():
+    ranks = rank_table(rankings())
+    dropped, watch = {FEATURE_NAMES[1]}, {FEATURE_NAMES[2]}
+
+    figure = comparison_chart(ranks, dropped, watch)
     axes = figure.axes[0]
 
-    assert axes.get_xlabel() == "Method"
+    assert axes.get_xlabel().startswith("How useful")
     assert axes.get_ylabel() == "Feature"
-    assert axes.get_title() == "Two features lead every method."
-    # Each cell shows its rank as text, so the chart reads without a colour key.
-    assert len(axes.texts) == len(FEATURE_NAMES) * len(METHODS)
+    assert "Longer bar = more useful" in axes.get_title()
+    assert len(axes.patches) == len(FEATURE_NAMES)
+    labels = [tick.get_text() for tick in axes.get_yticklabels()]
+    colours = {label: bar.get_facecolor() for label, bar in zip(labels, axes.patches)}
+    assert matplotlib.colors.to_hex(colours[FEATURE_NAMES[1]]) == DROPPED_COLOUR
+    assert matplotlib.colors.to_hex(colours[FEATURE_NAMES[2]]) == WATCH_COLOUR
+    assert "came 1st, 10th, 1st" in [text.get_text() for text in axes.texts]
