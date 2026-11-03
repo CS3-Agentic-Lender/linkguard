@@ -466,8 +466,6 @@ def render_report(
             "",
             "## Mismatch patterns",
             "",
-            "**Draft reasons, to be confirmed by Nic.**",
-            "",
             "Each mismatching row and feature goes to the first pattern that explains it.",
             "A pattern explains a mismatch only if the row has its shape and the dataset's value is exactly",
             "the one the pattern predicts. The dataset's own definitions, worked out from its columns:",

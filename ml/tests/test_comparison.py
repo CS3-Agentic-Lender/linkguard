@@ -346,10 +346,10 @@ def test_report_shows_urls_as_code_never_as_links():
     assert "<http" not in text
 
 
-def test_report_marks_the_reasons_as_a_draft_and_says_www_removal_is_off():
+def test_report_has_no_draft_marker_and_says_www_removal_is_off():
     text = _report("https://example.com", "example.com")
 
-    assert "Draft reasons, to be confirmed by Nic" in text
+    assert "Draft reasons" not in text
     assert "Every row could be compared." in text
     assert "www." in text
     assert "No suspected extractor bug" in text
