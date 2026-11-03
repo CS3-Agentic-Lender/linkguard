@@ -10,6 +10,8 @@ looks at the label, so this column says which features carry the spread of the d
 which ones predict phishing.
 """
 
+import textwrap
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -24,6 +26,8 @@ from features.hostname import FEATURE_NAMES
 METHODS = ("Mutual information", "Forest (built-in)", "Forest (held-out hosts)", "PCA weight")
 CHART_SIZE_INCHES = (8, 5.6)
 CHART_DPI = 100
+LABEL_WIDTH = 12  # characters per line for method names under the grid
+TITLE_WIDTH = 60  # characters per line for the takeaway
 
 
 def pca_weights(loadings: np.ndarray, ratios: np.ndarray, names: list[str]) -> pd.DataFrame:
@@ -63,10 +67,10 @@ def comparison_chart(ranks: pd.DataFrame, takeaway: str) -> Figure:
         for column in range(values.shape[1]):
             rank = int(values[row, column])
             axes.text(column, row, str(rank), ha="center", va="center", color="white" if rank <= 4 else "black")
-    axes.set_xticks(range(len(ranks.columns)), labels=list(ranks.columns))
+    axes.set_xticks(range(len(ranks.columns)), labels=[textwrap.fill(name, LABEL_WIDTH) for name in ranks.columns])
     axes.set_yticks(range(len(ranks.index)), labels=list(ranks.index))
     axes.set_xlabel("Method")
     axes.set_ylabel("Feature")
-    axes.set_title(takeaway)
+    axes.set_title(textwrap.fill(takeaway, TITLE_WIDTH))
     figure.tight_layout()
     return figure
