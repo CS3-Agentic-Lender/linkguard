@@ -320,6 +320,18 @@ fitted = hand_to_classifiers({"baseline": DummyClassifier()}, training_set)
 
 The tests (`ml/tests/test_training_pipeline.py`) run on a small made-up sample, because CI has no dataset. Its numbers say nothing about real model performance.
 
+## Training the classifiers
+
+`ml/training/classifiers.py` trains every model through the training pipeline, on the 8 features in the final feature list. The models are a baseline that always guesses the most common class, logistic regression, logistic regression with balanced class weights, a random forest and gradient boosting.
+
+Each model is scored with 5-fold cross-validation on the training rows. The folds are grouped by host, so no website is in two folds. They are stratified, so each fold keeps the phishing share. The seed is fixed. Inside each fold the scaler and the model sit in one Pipeline, so the scaler only learns from that fold's training rows. The test split is never loaded. From `ml/`, run:
+
+```bash
+uv run python -m training.classifiers
+```
+
+It saves `ml/reports/cv_results.json`: for every model and fold, phishing recall, precision, F1, ROC-AUC and accuracy on the held-out fold and on the fold's own training rows, plus the held-out fold's confusion counts. Phishing is the positive class.
+
 ## Source and licence
 
 | | |
