@@ -4,7 +4,7 @@ import pytest
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from features.hostname import FEATURE_NAMES
+from features.hostname import FEATURE_NAMES, extract_features
 from ranking.pca import (
     CHART_NAME,
     REPORT_NAME,
@@ -313,3 +313,28 @@ def test_main_stops_when_the_split_check_fails(tmp_path, capsys):
     assert code == 1
     assert not (tmp_path / "reports").exists()
     assert capsys.readouterr().out.startswith("PCA stopped:")
+
+
+def test_two_features_follow_exactly_from_the_others():
+    # Why the last two components explain 0%: these hold for every link by construction.
+    for link in ("https://www.example.com", "http://a1-b2.shop.example.co.uk", "http://192.0.2.10/x"):
+        features = extract_features(link)
+        counts = (
+            features["NoOfLettersInHostname"]
+            + features["NoOfDigitsInHostname"]
+            + features["NoOfSpecialCharsInHostname"]
+        )
+        ratios = (
+            features["LetterRatioInHostname"]
+            + features["DigitRatioInHostname"]
+            + features["SpecialCharRatioInHostname"]
+        )
+        assert counts == features["HostnameLength"]
+        assert ratios == pytest.approx(1.0)
+
+
+def test_report_says_why_the_last_components_explain_nothing():
+    text = report(fitted())
+
+    assert "letters plus the digits plus the special characters" in text
+    assert "The three ratios add up to 1" in text

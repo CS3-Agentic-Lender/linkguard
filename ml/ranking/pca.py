@@ -196,6 +196,8 @@ def report(pca: PCA) -> str:
         "",
         "- PCA ignores the label. The weights show how the features overlap, not which ones find phishing.",
         "  They are a guide for the final feature list, not the decision.",
+        "- Two of the ten features follow exactly from the others. `HostnameLength` is the letters plus the digits plus the special characters.",
+        "  The three ratios add up to 1. So the ten features hold only eight independent values, and the last two components explain nothing.",
         "- The components are never used as model inputs. The model keeps the real features.",
         "- No cross-validation happens here. Any later cross-validation puts the scaler and PCA in one scikit-learn Pipeline.",
         "  That Pipeline is fitted on each fold's training part only.",
