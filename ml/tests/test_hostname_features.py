@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from features.hostname import FEATURE_NAMES, extract_features
+from features.hostname import FEATURE_NAMES, cleaned_host, extract_features
 from leakage.excluded import EXCLUDED_FEATURES
 
 # Made-up links, only ever handled as text.
@@ -382,3 +382,35 @@ def test_there_is_exactly_one_copy_of_the_extractor():
             found.extend([path] * len(DEFINITION.findall(text)))
 
     assert found == [root / "ml" / "features" / "hostname.py"]
+
+
+@pytest.mark.parametrize(
+    ("link", "host"),
+    [
+        ("https://www.example.com/login", "example.com"),
+        ("HTTP://User:pw@WWW.Example.COM.:8080/a/b?q=1#top", "example.com"),
+        ("example.com", "example.com"),
+        ("//shop.example.co.uk/path", "shop.example.co.uk"),
+        ("www.www.example.com", "www.example.com"),
+        ("https://bücher.de/", "xn--bcher-kva.de"),
+        ("http://192.168.0.1:8080/", "192.168.0.1"),
+        ("http://[fd00::1234]/", "fd00::1234"),
+    ],
+)
+def test_cleaned_host_is_the_host_the_features_measure(link, host):
+    assert cleaned_host(link) == host
+    assert extract_features(link)["HostnameLength"] == len(host)
+
+
+def test_noisy_and_plain_links_share_one_cleaned_host():
+    assert cleaned_host("https://WWW.Example.com./x?y=1") == cleaned_host("example.com")
+
+
+@pytest.mark.parametrize("link", ["", "https://", "https://a..b.com", "https://exa mple.com/"])
+def test_cleaned_host_refuses_the_links_the_extractor_refuses(link):
+    with pytest.raises(ValueError) as from_extractor:
+        extract_features(link)
+    with pytest.raises(ValueError) as from_host:
+        cleaned_host(link)
+
+    assert str(from_host.value) == str(from_extractor.value)
