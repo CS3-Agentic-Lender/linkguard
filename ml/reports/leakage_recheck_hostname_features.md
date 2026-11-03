@@ -9,7 +9,7 @@ This reruns the single-feature check from section 2 of `ml/reports/leakage_repor
 
 It uses every cleaned row. That makes it a dataset audit that only flags features. Any choice of features is made in the feature ranking story, on training rows only.
 
-A one-split tree learns one threshold. It cannot memorise individual hosts. So folds that are not grouped by host do not inflate its score.
+A one-split tree learns only one threshold, so it has almost no room to memorise individual hosts. So folds that are not grouped by host can barely inflate its score. On this data the grouped and ungrouped scores differ by under one point.
 
 This check only finds a column that gives the answer away on its own. It does not find leakage from the split or the pipeline. The shared host-grouped split and the Pipeline rule guard against those.
 

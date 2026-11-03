@@ -94,6 +94,15 @@ def test_markdown_says_so_when_no_feature_is_over_95():
     assert "predicts the label on its own" not in markdown
     assert [mark for _, _, mark in _table_rows(markdown)] == [""] * len(FEATURE_NAMES)
 
+
+def test_markdown_does_not_overclaim_what_ungrouped_folds_do():
+    markdown = render_report(recheck_table(FEATURES), ROWS)
+
+    assert "can barely inflate its score" in markdown
+    assert "differ by under one point" in markdown
+    assert "do not inflate" not in markdown
+    assert "cannot memorise" not in markdown
+
 def test_recheck_uses_the_shared_check_and_feature_set_code_not_a_copy():
     assert recheck.single_feature_accuracy is leakage.single_feature.single_feature_accuracy
     assert recheck.build_feature_set is featureset.build.build_feature_set
