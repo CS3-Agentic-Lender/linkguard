@@ -64,13 +64,20 @@ def test_report_names_every_feature_with_its_reason():
     ranks = pd.DataFrame({m: range(1, 11) for m in ("Mutual information", "Forest (built-in)", "Forest (held-out hosts)", "PCA weight")},
                          index=list(FEATURE_NAMES))
 
-    page = report(ranks, 510, 188_295)
+    training = pd.DataFrame({
+        "IsDomainIP": [1, 1, 0, 0, 0],
+        "NoOfSubDomain": [2, 1, 0, 0, 1],
+        "label": [1, 1, 0, 0, 1],
+    })
+
+    page = report(ranks, training)
 
     for name in FEATURE_NAMES:
         assert f"`{name}`" in page
     for reason in DROPPED.values():
         assert reason in page
-    assert "only 510 of 188,295 training links use an IP address" in page
+    assert "only 2 of 5 training links use an IP address. But 100.0% of them are phishing" in page
+    assert "100.0% of legitimate links have no subdomain, against 0.0% of phishing links" in page
     kept_section = page.split("## Kept")[1].split("## Dropped")[0]
     kept_rows = [line for line in kept_section.splitlines() if line.startswith("| `")]
     assert len(kept_rows) == len(FINAL_FEATURES)

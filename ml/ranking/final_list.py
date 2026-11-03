@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from cleaning.labels import LABEL_COLUMN, LEGITIMATE, PHISHING
 from features.hostname import FEATURE_NAMES
 from ranking.compare_methods import CHART_DPI, LABEL_METHODS, METHODS, comparison_chart, ordinal, pca_weights, rank_table
 from ranking.forest_importance import forest_importance
@@ -37,9 +38,9 @@ WATCH = {
 KEPT = {
     "HostnameLength": "Long hosts are a common phishing trick. It came higher than NoOfLettersInHostname, so it is the one of that pair that stays.",
     "NoOfDigitsInHostname": "It came 3rd or 4th in all three methods, so the methods agree it helps.",
-    "DigitRatioInHostname": "It shows how much of the host is digits, which the count alone does not. It came 3rd by mutual information.",
+    "DigitRatioInHostname": "It is NoOfDigitsInHostname divided by HostnameLength. A model cannot easily divide one feature by another, so the ratio hands it that ready-made. It came 3rd by mutual information.",
     "NoOfSpecialCharsInHostname": "Many dots and hyphens are a common phishing sign. It came 2nd in two methods.",
-    "LetterRatioInHostname": "It came 1st by mutual information. It shows how much of the host is letters, which no count shows.",
+    "LetterRatioInHostname": "It came 1st by mutual information. It can be worked out from three counts we keep, but only by dividing. A model cannot easily do that itself, so the ratio hands it over ready-made.",
 }
 FINAL_FEATURES: tuple[str, ...] = tuple(name for name in FEATURE_NAMES if name not in DROPPED)
 REPORT_NAME = "final_feature_list.md"
@@ -60,19 +61,28 @@ def all_rankings(features: pd.DataFrame, split: pd.DataFrame, scaler) -> dict[st
     }
 
 
-def _why_kept(name: str, ip_rows: int, training_rows: int) -> str:
+def _why_kept(name: str, training: pd.DataFrame) -> str:
     if name == "IsDomainIP":
+        ip = training[training["IsDomainIP"] == 1]
         return (
-            f"It came last in all three methods that look at the label because only {ip_rows:,} of {training_rows:,} training links use an IP address. "
-            "It stays because a link that uses an IP address is a clear warning the result card can show."
+            f"It came last in all three methods that look at the label because only {len(ip):,} of {len(training):,} "
+            f"training links use an IP address. But {_percent(ip[LABEL_COLUMN] == PHISHING)} of them are phishing, "
+            "so it is right when it fires. A link that uses an IP address is also a clear warning the result card can show."
         )
     if name in WATCH:
         return "Kept, but watched. " + WATCH[name]
     return KEPT[name]
 
 
-def report(ranks: pd.DataFrame, ip_rows: int, training_rows: int) -> str:
-    """The final list as a Markdown page."""
+def _percent(flags: pd.Series) -> str:
+    return f"{100 * flags.mean():.1f}%"
+
+
+def report(ranks: pd.DataFrame, training: pd.DataFrame) -> str:
+    """The final list as a Markdown page. training is the training split, for the numbers behind two reasons."""
+    legitimate = training[training[LABEL_COLUMN] == LEGITIMATE]
+    phishing = training[training[LABEL_COLUMN] == PHISHING]
+
     def places(name: str) -> str:
         return ", ".join(ordinal(int(ranks.loc[name, method])) for method in LABEL_METHODS)
 
@@ -88,11 +98,12 @@ def report(ranks: pd.DataFrame, ip_rows: int, training_rows: int) -> str:
         "",
         "| Feature | Places (mutual information, forest, forest on held-out hosts) | Why it stays |",
         "|---|---|---|",
-        *(f"| `{name}` | {places(name)} | {_why_kept(name, ip_rows, training_rows)} |" for name in FINAL_FEATURES),
+        *(f"| `{name}` | {places(name)} | {_why_kept(name, training)} |" for name in FINAL_FEATURES),
         "",
         "## Dropped",
         "",
-        "PCA showed that two of the ten features are exact copies of others. Each one also came lower than the features it copies.",
+        "PCA showed that two of the ten features are exact copies of others, made by adding or taking away. Each one also came lower than the features it copies. "
+        "The two kept ratios are copies too, but only by dividing, which PCA cannot see. They stay for the reason given above.",
         "",
         "| Feature | Places | Why it goes |",
         "|---|---|---|",
@@ -119,6 +130,8 @@ def report(ranks: pd.DataFrame, ip_rows: int, training_rows: int) -> str:
         "- Two kept features are marked to watch. The legitimate links in the dataset are mostly front pages of big sites. "
         "Part of these features' strength may come from that, not from phishing itself:",
         *(f"  - `{name}`: {reason}" for name, reason in WATCH.items()),
+        f"- In the training rows, {_percent(legitimate['NoOfSubDomain'] == 0)} of legitimate links have no subdomain, "
+        f"against {_percent(phishing['NoOfSubDomain'] == 0)} of phishing links. That fits the front-page pattern.",
         "",
         "## All four rankings",
         "",
@@ -147,7 +160,7 @@ def main(ml_dir: Path) -> int:
     reports_dir.mkdir(parents=True, exist_ok=True)
     chart_path = reports_dir / CHART_NAME
     comparison_chart(ranks, set(DROPPED), set(WATCH)).savefig(chart_path, dpi=CHART_DPI)
-    page = report(ranks, int(training["IsDomainIP"].sum()), len(training))
+    page = report(ranks, training)
     report_path = reports_dir / REPORT_NAME
     report_path.write_text(page)
     print(page)
