@@ -91,7 +91,7 @@ The function cleans the link in this order:
 3. Keep only the host: drop the scheme, any `user:password@` part, the port, the path, the query and the fragment. The port is not checked. Lowercase the host.
 4. Refuse the link if it has no host, or if the host contains a space.
 5. Remove one trailing dot.
-6. Remove one leading `www.`. A host of only `www.` is treated as `www`.
+6. Remove one leading `www.`. A host of only `www.` is treated as `www`. Passing `strip_www=False` skips this step. Only the dataset comparison below does that.
 7. If the host is an IP address (IPv4 or IPv6), keep it as written.
 8. Otherwise convert non-English names to ASCII (`bücher.de` becomes `xn--bcher-kva.de`). Refuse the link if a part of the name is empty (such as `example.com..`) or longer than 63 characters.
 
@@ -109,6 +109,8 @@ The ten features are:
 | `DigitRatioInHostname` | Digits divided by `HostnameLength` | Decimal |
 | `NoOfSpecialCharsInHostname` | Everything that is not a letter or digit: dots, hyphens, and the colons in an IPv6 address | Whole number |
 | `SpecialCharRatioInHostname` | Special characters divided by `HostnameLength` | Decimal |
+
+**Checked against the dataset.** [`reports/feature_comparison.md`](reports/feature_comparison.md) compares `IsDomainIP`, `TLDLength`, `NoOfSubDomain` and `HostnameLength` with the dataset's own columns. It gives a reason for each kind of difference. Regenerate it from `ml/` with `uv run python -m comparison.compare`.
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
