@@ -22,6 +22,7 @@ OUTPUT_CSV_NAME = "training_features.csv"
 URL_COLUMN = "URL"
 ROW_COLUMN = "row"
 HOST_COLUMN = "host"
+NOT_TEXT_MESSAGE = "The link is not text."
 OUTPUT_COLUMNS: tuple[str, ...] = (ROW_COLUMN, *FEATURE_NAMES, LABEL_COLUMN, HOST_COLUMN)
 
 
@@ -43,6 +44,10 @@ def build_feature_set(rows: pd.DataFrame) -> BuildResult:
     failures = []
     # Every row is tried, so one run lists all the failures instead of only the first.
     for row, link, label in zip(rows.index, rows[URL_COLUMN], rows[LABEL_COLUMN]):
+        # A blank or missing cell is not a string, and the extractor only takes text.
+        if not isinstance(link, str):
+            failures.append(Failure(int(row), NOT_TEXT_MESSAGE))
+            continue
         try:
             features = extract_features(link)
             host = cleaned_host(link)

@@ -26,6 +26,15 @@ BROKEN = pd.DataFrame(
     },
     index=[0, 1, 2, 3],
 )
+# A cell that was never text: a blank cell read by pandas is NaN, and a bad
+# load could give None. The valid row comes last, so the build must carry on.
+NOT_TEXT = pd.DataFrame(
+    {
+        "URL": [None, float("nan"), "https://a..b.com", "https://example.com"],
+        "label": [1, 0, 1, 0],
+    },
+    index=[0, 1, 2, 3],
+)
 
 
 def test_columns_are_row_then_the_ten_features_then_label_and_host():
@@ -97,6 +106,30 @@ def test_main_reports_failures_writes_no_file_and_returns_1(tmp_path, capsys):
     assert "3 rows failed" in out
     assert f"2 rows: {features.hostname.BAD_HOST_MESSAGE} (for example row 1)" in out
     assert f"1 row: {features.hostname.EMPTY_LINK_MESSAGE} (for example row 2)" in out
+
+
+def test_a_link_that_is_not_text_is_a_failed_row_and_the_build_carries_on():
+    result = build_feature_set(NOT_TEXT)
+
+    assert [failure.row for failure in result.failures] == [0, 1, 2]
+    reasons = {failure.row: failure.reason for failure in result.failures}
+    assert reasons[0] == reasons[1] == build.NOT_TEXT_MESSAGE
+    assert reasons[2] == features.hostname.BAD_HOST_MESSAGE
+    assert result.features["row"].tolist() == [3]
+
+
+def test_main_reports_links_that_are_not_text_writes_no_file_and_returns_1(tmp_path, capsys, monkeypatch):
+    # load_cleaned reads blanks as "", so the loader is swapped to hand over None and NaN.
+    monkeypatch.setattr(build, "load_cleaned", lambda _path: NOT_TEXT)
+
+    code = main(tmp_path)
+
+    assert code == 1
+    assert not output_path(tmp_path).exists()
+    out = capsys.readouterr().out
+    assert "3 rows failed" in out
+    assert f"2 rows: {build.NOT_TEXT_MESSAGE} (for example row 0)" in out
+    assert f"1 row: {features.hostname.BAD_HOST_MESSAGE} (for example row 2)" in out
 
 
 def test_build_uses_the_shared_extractor_not_a_copy():
