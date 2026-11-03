@@ -9,7 +9,7 @@ The model trains on these 8 of the ten hostname features. Each method put the te
 | Feature | Places (mutual information, forest, forest on held-out hosts) | Why it stays |
 |---|---|---|
 | `HostnameLength` | 5th, 5th, 3rd | Long hosts are a common phishing trick. It came higher than NoOfLettersInHostname, so it is the one of that pair that stays. |
-| `IsDomainIP` | 10th, 10th, 10th | It came last in every method because only 510 of 188,295 training links use an IP address. It stays because a link that uses an IP address is a clear warning the result card can show. |
+| `IsDomainIP` | 10th, 10th, 10th | It came last in all three methods that look at the label because only 510 of 188,295 training links use an IP address. It stays because a link that uses an IP address is a clear warning the result card can show. |
 | `TLDLength` | 9th, 4th, 2nd | Kept, but watched. Common endings like .com are typical of the big sites' front pages that make up the legitimate links. |
 | `NoOfSubDomain` | 7th, 1st, 1st | Kept, but watched. Few subdomains is typical of the big sites' front pages that make up the legitimate links. |
 | `LetterRatioInHostname` | 1st, 7th, 7th | It came 1st by mutual information. It shows how much of the host is letters, which no count shows. |
