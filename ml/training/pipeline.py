@@ -8,7 +8,7 @@ It reads three files that earlier stories save, and makes none of its own:
 
 - the training feature set (FEATURES_PATH): one line per cleaned row with its row number,
   the ten hostname features in the extractor's order, the label (1 = phishing,
-  0 = legitimate) and the cleaned hostname, which is kept for grouping and is never a model input;
+  0 = legitimate) and the cleaned host, which is kept for grouping and is never a model input;
 - the shared train/test split (SPLIT_PATH): one line per row of the feature set, giving
   its row number and whether it is in the training or the test set;
 - the scaler fitted on the training set only (SCALER_PATH).
@@ -49,7 +49,7 @@ SCALER_PATH = ML_DIR / "models" / "scaler.joblib"
 
 # Column names in those files.
 ROW_COLUMN = "row"
-HOSTNAME_COLUMN = "hostname"
+HOSTNAME_COLUMN = "host"
 SPLIT_ROW_COLUMN = ROW_COLUMN
 SPLIT_SET_COLUMN = "set"
 TRAIN = "train"
@@ -119,7 +119,7 @@ def check_feature_columns(columns: Sequence[str]) -> list[str]:
     """Return the feature matrix columns, or stop if they are not exactly the agreed features.
 
     The feature matrix is every column of the feature set except the row number, the label
-    and the hostname.
+    and the host.
     It must hold the extractor's ten features in the extractor's order and nothing else, and
     any column on the never-a-model-input list stops the pipeline by name.
     """

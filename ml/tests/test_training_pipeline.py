@@ -43,7 +43,7 @@ TRAIN_ROWS = tuple(row for row in range(N_ROWS) if row not in TEST_ROWS)
 
 
 def made_up_features(n_rows: int = N_ROWS) -> pd.DataFrame:
-    """A made-up feature set in the feature set step's layout: row, ten features, label, hostname.
+    """A made-up feature set in the feature set step's layout: row, ten features, label, host.
 
     Values follow a fixed pattern, not real links.
     """
