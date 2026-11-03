@@ -13,7 +13,7 @@ A one-split tree learns one threshold. It cannot memorise individual hosts. So f
 
 This check only finds a column that gives the answer away on its own. It does not find leakage from the split or the pipeline. The shared host-grouped split and the Pipeline rule guard against those.
 
-**0 of 10** features score over 95%. None of them predicts the label on its own. The top one here is `NoOfSubDomain` at 73.00%. The original report's top score was `URLSimilarityIndex` at 99.67%.
+**0 of 10** features score over 95%. So none of them gives the answer away on its own. The top one here is `NoOfSubDomain` at 73.00%. The original report's top score was `URLSimilarityIndex` at 99.67%.
 
 | Column | Accuracy (%) | Over 95% |
 |---|---|---|
