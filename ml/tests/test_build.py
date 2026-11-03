@@ -6,13 +6,14 @@ import pandas as pd
 import pytest
 
 from cleaning.storage import CLEANED_CSV_NAME, save_cleaned
-from features.hostname import FEATURE_NAMES
+import features.hostname
+import splitting.build
+from features.hostname import FEATURE_NAMES, cleaned_host
 from splitting.build import (
     MAX_SHARE_GAP_POINTS,
     SCALING_CHART_NAME,
     build_split,
     check_run,
-    cleaned_host,
     main,
     save_outputs,
 )
@@ -34,6 +35,10 @@ def make_rows(host_count: int = 200) -> pd.DataFrame:
             urls.append(f"{prefix}{name}/page{page}")
             labels.append(label)
     return pd.DataFrame({"URL": urls, "label": labels}, index=range(5, 5 + 2 * len(urls), 2))
+
+
+def test_split_groups_by_the_extractors_own_cleaned_host_not_a_copy():
+    assert splitting.build.cleaned_host is features.hostname.cleaned_host
 
 
 def test_cleaned_host_drops_the_scheme_path_and_www():

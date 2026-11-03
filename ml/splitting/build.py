@@ -28,11 +28,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from cleaning.storage import CLEANED_CSV_NAME, load_cleaned
-from features.hostname import FEATURE_NAMES, extract_features
-
-# Temporary: the extractor's clean-up is private for now. Once the extractor has a
-# public hostname function, import that here instead. No copy of the clean-up code.
-from features.hostname import _normalized_host
+from features.hostname import FEATURE_NAMES, cleaned_host, extract_features
 from splitting.scaling import SCALER_FILE_NAME, fit_scaler, save_scaler, scale
 from splitting.scaling_chart import scaling_chart
 from splitting.split import (
@@ -69,12 +65,6 @@ class SavedPaths:
     split: Path
     scaler: Path
     chart: Path
-
-
-def cleaned_host(link: str) -> str:
-    """The host a link is grouped by: the extractor's own clean-up, without the IP flag."""
-    host, _ = _normalized_host(link)
-    return host
 
 
 def _per_row(urls: pd.Series, work) -> list:
