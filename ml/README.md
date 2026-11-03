@@ -206,6 +206,20 @@ The saved scaler is fitted on the whole training set. Any later step that fits a
 
 The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. The split is read with `load_split`, so its check file must match the feature set. If a file is missing, the split was made from different cleaned data, or a training row is not in the feature set, it stops with a message naming the step to run.
 
+### PCA
+
+PCA finds the directions in which the training rows spread out the most. Each direction is a component, a weighted mix of the ten features. The rows are scaled with the saved scaler from `ml/models/scaler.joblib`, which is only used to transform. It is never fitted again. PCA keeps all ten components and uses a fixed seed, so a second run gives the same result. From `ml/`, run:
+
+```bash
+uv run python -m ranking.pca
+```
+
+It saves [`ml/reports/pca.md`](reports/pca.md) and the chart [`ml/reports/pca_explained_variance.png`](reports/pca_explained_variance.png). The report has the variance of each component, the chart and each feature's weight on the main components, with the two largest on each marked. The main components are the fewest that reach 95% of the variance.
+
+**Result:** 5 of the 10 components reach 95% of the variance (95.5%).
+
+PCA ignores the label. Its weights guide which real features go on the final list. The components are never model inputs. Any later cross-validation puts the scaler and PCA in one scikit-learn Pipeline, fitted on each fold's training part.
+
 ### Mutual information
 
 Mutual information is 0 when a feature tells nothing about the label and grows the more it does. It also catches relationships that are not a straight line. The seven whole-number features are scored as discrete values. The three ratios are continuous. The seed is fixed, so a second run gives the same scores. From `ml/`, run:
@@ -215,6 +229,16 @@ uv run python -m ranking.mutual_info
 ```
 
 It prints the ranking and saves it to `ml/reports/mutual_information.md`.
+
+### Random forest importance
+
+A random forest is many decision trees, each trained on a random sample of the training rows. A feature's importance is how much its splits cut the mix of labels, averaged over every tree. The ten importances add up to 1. The forest uses the unscaled features, because scale makes no difference to a tree. It has 100 trees and a fixed seed, so a second run gives the same order. This built-in importance tends to favour features with many different values, so it is a cross-check, not a verdict. From `ml/`, run:
+
+```bash
+uv run python -m ranking.forest_importance
+```
+
+It prints the ranking and saves it to `ml/reports/forest_importance.md`.
 
 ## Chart numbers for the charts page
 
