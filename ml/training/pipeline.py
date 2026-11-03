@@ -6,9 +6,9 @@ Run it from ml/ with one command:
 
 It reads three files that earlier stories save, and makes none of its own:
 
-- the training feature set (FEATURES_PATH): one row per cleaned row, the ten hostname
-  features in the extractor's order, the label (1 = phishing, 0 = legitimate) and the
-  cleaned hostname, which is kept for grouping and is never a model input;
+- the training feature set (FEATURES_PATH): one line per cleaned row with its row number,
+  the ten hostname features in the extractor's order, the label (1 = phishing,
+  0 = legitimate) and the cleaned host, which is kept for grouping and is never a model input;
 - the shared train/test split (SPLIT_PATH): one line per row of the feature set, giving
   its row number and whether it is in the training or the test set;
 - the scaler fitted on the training set only (SCALER_PATH).
@@ -48,8 +48,9 @@ SPLIT_PATH = ML_DIR / "data" / "split.csv"
 SCALER_PATH = ML_DIR / "models" / "scaler.joblib"
 
 # Column names in those files.
-HOSTNAME_COLUMN = "hostname"
-SPLIT_ROW_COLUMN = "row"
+ROW_COLUMN = "row"
+HOSTNAME_COLUMN = "host"
+SPLIT_ROW_COLUMN = ROW_COLUMN
 SPLIT_SET_COLUMN = "set"
 TRAIN = "train"
 TEST = "test"
@@ -117,11 +118,12 @@ def load_training_rows(split_path: Path) -> np.ndarray:
 def check_feature_columns(columns: Sequence[str]) -> list[str]:
     """Return the feature matrix columns, or stop if they are not exactly the agreed features.
 
-    The feature matrix is every column of the feature set except the label and the hostname.
+    The feature matrix is every column of the feature set except the row number, the label
+    and the host.
     It must hold the extractor's ten features in the extractor's order and nothing else, and
     any column on the never-a-model-input list stops the pipeline by name.
     """
-    matrix = [column for column in columns if column not in (LABEL_COLUMN, HOSTNAME_COLUMN)]
+    matrix = [column for column in columns if column not in (ROW_COLUMN, LABEL_COLUMN, HOSTNAME_COLUMN)]
 
     excluded = [column for column in matrix if column in EXCLUDED_FEATURES]
     if excluded:
@@ -137,14 +139,20 @@ def check_feature_columns(columns: Sequence[str]) -> list[str]:
         raise PipelineError(
             f"The features are in the wrong order. Expected {list(FEATURE_NAMES)}, got {matrix}."
         )
-    for needed in (LABEL_COLUMN, HOSTNAME_COLUMN):
+    for needed in (ROW_COLUMN, LABEL_COLUMN, HOSTNAME_COLUMN):
         if needed not in columns:
             raise PipelineError(f"The feature set has no {needed!r} column.")
     return matrix
 
 
 def load_training_features(features_path: Path, rows: np.ndarray) -> pd.DataFrame:
-    """Read only the given rows of the feature set; every other line of the file is skipped unread."""
+    """Read only the given rows of the feature set; every other line of the file is skipped unread.
+
+    The file's lines are expected in row order, so row n is on data line n. Each line also
+    carries its row number, and every line read must carry the row the split asked for.
+    If a line were ever missing or out of place, the rows would no longer match and the
+    pipeline stops instead of training on the wrong rows.
+    """
     _require_file(features_path, "training feature set")
     header = pd.read_csv(features_path, nrows=0).columns
     check_feature_columns(list(header))
@@ -163,7 +171,18 @@ def load_training_features(features_path: Path, rows: np.ndarray) -> pd.DataFram
             f"The split names {len(rows)} training rows, but the feature set only has {len(frame)} of them. "
             "The split and the feature set must come from the same cleaned data."
         )
-    frame.index = pd.Index(rows, name=SPLIT_ROW_COLUMN)
+    if not pd.api.types.is_integer_dtype(frame[ROW_COLUMN]):
+        raise PipelineError("The feature set's row numbers must all be whole numbers.")
+    mismatched = np.flatnonzero(frame[ROW_COLUMN].to_numpy() != rows)
+    if mismatched.size:
+        first = mismatched[0]
+        raise PipelineError(
+            f"The feature set is out of step with the split: the line where row {rows[first]} should be "
+            f"holds row {frame[ROW_COLUMN].iloc[first]} "
+            f"({mismatched.size} training rows affected). Rebuild the feature set from the same cleaned data."
+        )
+    frame = frame.set_index(ROW_COLUMN)
+    frame.index.name = SPLIT_ROW_COLUMN
     return frame
 
 

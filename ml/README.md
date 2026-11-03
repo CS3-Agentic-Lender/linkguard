@@ -118,7 +118,7 @@ The ten features are:
 
 | File | Saved by | Holds |
 |---|---|---|
-| `ml/data/training_features.csv` | the training feature set step | One row per cleaned row: the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `hostname` |
+| `ml/data/training_features.csv` | the training feature set step | One line per cleaned row, in row order: `row` (the cleaned row number), the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `host` |
 | `ml/data/split.csv` | the split-and-scale step | Columns `row` and `set`: each feature-set row number (counting from 0) and whether it is `train` or `test` |
 | `ml/models/scaler.joblib` | the split-and-scale step | The scaler, fitted on the training rows only |
 
@@ -135,7 +135,8 @@ What it guarantees:
 - **No new split.** The training rows are exactly the `train` rows of the saved split.
 - **No scaler is fitted.** The saved scaler only transforms. The pipeline checks it was fitted on the ten features in the same order.
 - **Test rows are never read.** Only the training row numbers are taken from the split, and every other line of the feature file is skipped by the reader.
-- **Only the agreed features are model inputs.** The feature matrix must be the ten hostname features in order. Any column from the excluded list (`ml/leakage/excluded.py`) stops the run by name. `hostname` is kept for grouping the cross-validation folds and is never a feature.
+- **Rows can't slip.** Every line read must carry the `row` number the split asked for. If the feature set were ever out of step with the split, the run stops instead of training on the wrong rows.
+- **Only the agreed features are model inputs.** The feature matrix must be the ten hostname features in order. Any column from the excluded list (`ml/leakage/excluded.py`) stops the run by name. `row` and `host` are never features. `host` is kept for grouping the cross-validation folds.
 
 The classifier story uses it from Python:
 

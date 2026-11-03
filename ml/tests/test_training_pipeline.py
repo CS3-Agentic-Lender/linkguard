@@ -26,6 +26,7 @@ from leakage.excluded import EXCLUDED_FEATURES
 from training import pipeline
 from training.pipeline import (
     HOSTNAME_COLUMN,
+    ROW_COLUMN,
     PipelineError,
     TrainingSet,
     class_counts,
@@ -42,11 +43,14 @@ TRAIN_ROWS = tuple(row for row in range(N_ROWS) if row not in TEST_ROWS)
 
 
 def made_up_features(n_rows: int = N_ROWS) -> pd.DataFrame:
-    """A made-up feature set in the agreed layout. Values follow a fixed pattern, not real links."""
+    """A made-up feature set in the feature set step's layout: row, ten features, label, host.
+
+    Values follow a fixed pattern, not real links.
+    """
     rng = np.random.default_rng(0)
-    frame = pd.DataFrame(
-        {name: rng.integers(0, 30, size=n_rows) for name in FEATURE_NAMES},
-    )
+    frame = pd.DataFrame({ROW_COLUMN: range(n_rows)})
+    for name in FEATURE_NAMES:
+        frame[name] = rng.integers(0, 30, size=n_rows)
     for ratio in ("LetterRatioInHostname", "DigitRatioInHostname", "SpecialCharRatioInHostname"):
         frame[ratio] = rng.random(n_rows)
     frame[LABEL_COLUMN] = [1 if row % 3 == 0 else 0 for row in range(n_rows)]
@@ -286,16 +290,42 @@ def test_features_in_the_wrong_order_stop_the_run(tmp_path):
     paths, frame = write_artifacts(tmp_path)
     swapped = list(FEATURE_NAMES)
     swapped[0], swapped[1] = swapped[1], swapped[0]
-    frame[swapped + [LABEL_COLUMN, HOSTNAME_COLUMN]].to_csv(paths["features"], index=False)
+    frame[[ROW_COLUMN] + swapped + [LABEL_COLUMN, HOSTNAME_COLUMN]].to_csv(paths["features"], index=False)
     with pytest.raises(PipelineError, match="wrong order"):
         load(paths)
 
 
-@pytest.mark.parametrize("column", [LABEL_COLUMN, HOSTNAME_COLUMN])
-def test_a_missing_label_or_hostname_column_stops_the_run(tmp_path, column):
+@pytest.mark.parametrize("column", [ROW_COLUMN, LABEL_COLUMN, HOSTNAME_COLUMN])
+def test_a_missing_row_label_or_host_column_stops_the_run(tmp_path, column):
     paths, frame = write_artifacts(tmp_path)
     frame.drop(columns=column).to_csv(paths["features"], index=False)
     with pytest.raises(PipelineError, match=f"no '{column}' column"):
+        load(paths)
+
+
+def test_the_row_number_is_not_a_feature(artifacts):
+    paths, _ = artifacts
+    training_set = load(paths)
+    assert ROW_COLUMN not in training_set.features.columns
+    assert training_set.features.index.name == ROW_COLUMN
+
+
+def test_a_feature_set_out_of_step_with_the_split_stops_the_run(tmp_path):
+    # As if the feature set had lost row 3: every later line moves up by one, but the
+    # file still has enough lines for the row count check to pass.
+    paths, frame = write_artifacts(tmp_path)
+    shifted = frame.drop(index=3).reset_index(drop=True)
+    shifted = pd.concat([shifted, frame.tail(1)], ignore_index=True)
+    shifted.to_csv(paths["features"], index=False)
+    with pytest.raises(PipelineError, match="out of step with the split: the line where row 3 should be holds row 4"):
+        load(paths)
+
+
+def test_non_whole_row_numbers_in_the_feature_set_stop_the_run(tmp_path):
+    paths, frame = write_artifacts(tmp_path)
+    frame[ROW_COLUMN] = frame[ROW_COLUMN] + 0.5
+    frame.to_csv(paths["features"], index=False)
+    with pytest.raises(PipelineError, match="row numbers must all be whole numbers"):
         load(paths)
 
 
