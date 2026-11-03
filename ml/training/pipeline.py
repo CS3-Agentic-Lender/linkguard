@@ -67,7 +67,10 @@ class TrainingSet:
 
     rows: the row numbers from the saved split, in the order they are used.
     features: the ten features, unscaled, one row per training row (index = row number).
-    scaled: the same rows after the saved scaler's transform; what the classifiers get.
+    scaled: the same rows after the saved scaler's transform. Only for fitting a model on
+        the whole training part. The saved scaler has seen every training row, so inside
+        cross-validation use `features` instead, with the scaler and the model in one
+        Pipeline that each fold fits on its own training rows.
     labels: 1 = phishing, 0 = legitimate.
     hostnames: the cleaned hostname of each row, for hostname-grouped cross-validation.
         It is never a model input.
@@ -221,7 +224,11 @@ def load_training_set(
 
 
 def hand_to_classifiers(classifiers: Mapping[str, object], training_set: TrainingSet) -> dict[str, object]:
-    """Fit a fresh copy of each classifier on the same scaled training rows and return them by name."""
+    """Fit a fresh copy of each classifier on the same scaled training rows and return them by name.
+
+    This is for fitting on the whole training part only. Do not cross-validate on the
+    result: use `training_set.features` with the scaler and the model in one Pipeline.
+    """
     return {
         name: clone(classifier).fit(training_set.scaled, training_set.labels.to_numpy())
         for name, classifier in classifiers.items()
