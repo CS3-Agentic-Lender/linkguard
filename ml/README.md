@@ -112,6 +112,20 @@ The ten features are:
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
+## Feature ranking
+
+The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. If either is missing, or a training row is not in the feature set, it stops with a message naming the step to run.
+
+### Mutual information
+
+Mutual information is 0 when a feature tells nothing about the label and grows the more it does. It also catches relationships that are not a straight line. The seven whole-number features are scored as discrete values. The three ratios are continuous. The seed is fixed, so a second run gives the same scores. From `ml/`, run:
+
+```bash
+uv run python -m ranking.mutual_info
+```
+
+It prints the ranking and saves it to `ml/reports/mutual_information.md`.
+
 ## Source and licence
 
 | | |
