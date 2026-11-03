@@ -4,6 +4,7 @@ from featureset.build import OUTPUT_COLUMNS, output_path
 from features.hostname import FEATURE_NAMES
 from leakage.conflicting_hosts import (
     HostCount,
+    apply_conflicting_hosts_rule,
     conflicting_hosts,
     count_by_set,
     count_conflicting,
@@ -65,6 +66,30 @@ def test_a_set_with_no_such_host_counts_zero():
     assert counts == {TRAIN_SET: HostCount(hosts=2, rows=5), TEST_SET: HostCount(hosts=0, rows=0)}
 
 
+def test_the_rule_keeps_every_row_in_the_same_order():
+    kept = apply_conflicting_hosts_rule(ROWS)
+
+    pd.testing.assert_frame_equal(kept, ROWS)
+
+
+def test_the_rule_keeps_every_test_row_of_a_host_with_both_labels():
+    test_rows = ROWS[(SPLIT == TEST_SET) & ROWS["host"].isin(conflicting_hosts(ROWS))]
+    assert len(test_rows) > 0
+
+    kept = apply_conflicting_hosts_rule(ROWS)
+
+    assert test_rows.index.isin(kept.index).all()
+    assert (SPLIT.reindex(kept.index) == TEST_SET).sum() == (SPLIT == TEST_SET).sum()
+
+
+def test_the_rule_does_not_use_the_labels():
+    shuffled = ROWS.assign(label=ROWS["label"].sample(frac=1, random_state=1).to_numpy())
+    no_labels = ROWS.drop(columns="label")
+
+    assert apply_conflicting_hosts_rule(shuffled).index.equals(ROWS.index)
+    assert apply_conflicting_hosts_rule(no_labels).index.equals(ROWS.index)
+
+
 def _feature_table(rows: pd.DataFrame) -> pd.DataFrame:
     """A training feature set for the made-up rows: the real columns, with made-up feature values."""
     table = rows.rename_axis("row").reset_index()
@@ -90,6 +115,7 @@ def test_main_prints_the_counts_overall_and_in_each_set_and_returns_0(tmp_path, 
     assert "Hosts with both labels: 2, with 5 of 9 rows." in out
     assert "Training: 1 host, 3 rows." in out
     assert "Test: 1 host, 2 rows." in out
+    assert "Rule: keep every row. None is dropped." in out
 
 
 def test_main_reads_a_host_called_null_as_text(tmp_path, capsys):
