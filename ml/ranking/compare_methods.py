@@ -10,6 +10,8 @@ looks at the label, so this column says which features carry the spread of the d
 which ones predict phishing.
 """
 
+import textwrap
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -26,11 +28,12 @@ METHODS = ("Mutual information", "Forest (built-in)", "Forest (held-out hosts)",
 LABEL_METHODS = METHODS[:3]
 CHART_SIZE_INCHES = (8, 5.6)
 CHART_DPI = 100
-CHART_TITLE = (
-    "Each method puts the 10 features in order, 1st to 10th\n"
-    "Longer bar = more useful\n"
+CHART_KEY = (
+    "Each method puts the 10 features in order, 1st to 10th. Longer bar = more useful.\n"
+    "Places are mutual information, forest, forest on held-out hosts.\n"
     "Blue = keep, orange = keep but watch, grey = dropped (a copy)"
 )
+TAKEAWAY_WIDTH = 80  # characters per line, so the takeaway fits above the bars
 KEEP_COLOUR = "#1f4e8c"
 WATCH_COLOUR = "#e0a030"
 DROPPED_COLOUR = "#bbbbbb"
@@ -74,6 +77,15 @@ def usefulness(ranks: pd.DataFrame) -> pd.Series:
     return len(FEATURE_NAMES) + 1 - ranks[list(LABEL_METHODS)].mean(axis=1)
 
 
+def takeaway(ranks: pd.DataFrame, dropped: set[str]) -> str:
+    """One line saying which features lead and where the dropped ones land."""
+    scores = usefulness(ranks).sort_values(ascending=False, kind="stable")
+    first, second = scores.index[:2]
+    lowest = scores.index[-len(dropped) - 1 :]
+    where = "near the bottom" if dropped <= set(lowest) else "lower down"
+    return f"Takeaway: {first} and {second} rank highest. The {len(dropped)} dropped copies rank {where}."
+
+
 def comparison_chart(ranks: pd.DataFrame, dropped: set[str], watch: set[str]) -> Figure:
     """One bar per feature, longest first. Each bar says the places it came in the label methods.
 
@@ -89,6 +101,6 @@ def comparison_chart(ranks: pd.DataFrame, dropped: set[str], watch: set[str]) ->
     axes.set_xlim(0, len(FEATURE_NAMES) + 2)
     axes.set_xlabel("How useful (10 = came 1st in every method, 1 = came last in every method)")
     axes.set_ylabel("Feature")
-    axes.set_title(CHART_TITLE)
+    axes.set_title(textwrap.fill(takeaway(ranks, dropped), TAKEAWAY_WIDTH) + "\n" + CHART_KEY, fontsize=9)
     figure.tight_layout()
     return figure

@@ -63,7 +63,7 @@ def all_rankings(features: pd.DataFrame, split: pd.DataFrame, scaler) -> dict[st
 def _why_kept(name: str, ip_rows: int, training_rows: int) -> str:
     if name == "IsDomainIP":
         return (
-            f"It came last in every method because only {ip_rows:,} of {training_rows:,} training links use an IP address. "
+            f"It came last in all three methods that look at the label because only {ip_rows:,} of {training_rows:,} training links use an IP address. "
             "It stays because a link that uses an IP address is a clear warning the result card can show."
         )
     if name in WATCH:

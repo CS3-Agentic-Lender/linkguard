@@ -71,6 +71,11 @@ def test_report_names_every_feature_with_its_reason():
     for reason in DROPPED.values():
         assert reason in page
     assert "only 510 of 188,295 training links use an IP address" in page
+    kept_section = page.split("## Kept")[1].split("## Dropped")[0]
+    kept_rows = [line for line in kept_section.splitlines() if line.startswith("| `")]
+    assert len(kept_rows) == len(FINAL_FEATURES)
+    for name, reason in {**KEPT, **{watched: "Kept, but watched. " + why for watched, why in WATCH.items()}}.items():
+        assert any(row.startswith(f"| `{name}` |") and reason in row for row in kept_rows), name
     assert "Kept, but watched." in page
     assert CHART_NAME in page
 

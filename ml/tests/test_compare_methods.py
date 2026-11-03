@@ -82,6 +82,8 @@ def test_chart_has_one_bar_per_feature_with_places_and_colours():
     assert axes.get_xlabel().startswith("How useful")
     assert axes.get_ylabel() == "Feature"
     assert "Longer bar = more useful" in axes.get_title()
+    assert axes.get_title().startswith("Takeaway: ")
+    assert "mutual information, forest, forest on held-out hosts" in axes.get_title()
     assert len(axes.patches) == len(FEATURE_NAMES)
     labels = [tick.get_text() for tick in axes.get_yticklabels()]
     colours = {label: bar.get_facecolor() for label, bar in zip(labels, axes.patches)}

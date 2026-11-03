@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.ensemble import RandomForestClassifier
 
 from features.hostname import FEATURE_NAMES
 from ranking.held_out_importance import (
@@ -87,6 +88,29 @@ def test_test_rows_do_not_change_the_result():
     again = held_out_importance(poisoned, split)
     pd.testing.assert_frame_equal(again.table, baseline.table)
     assert again.held_out_accuracy == baseline.held_out_accuracy
+
+
+def test_the_forest_is_only_ever_fitted_on_the_learning_rows(monkeypatch):
+    # Test rows get a value no training row has. Every fit is recorded, so a stray fit on
+    # test rows would show up even if a later fit gave the right result.
+    features = made_up_feature_set()
+    split = made_up_split()
+    is_test = features["row"].isin(split.loc[split["set"] == "test", "row"])
+    features.loc[is_test, FEATURE_NAMES[0]] = 999
+    fits = []
+    real_fit = RandomForestClassifier.fit
+
+    def recording_fit(self, x, y, *args, **kwargs):
+        fits.append(x.copy())
+        return real_fit(self, x, y, *args, **kwargs)
+
+    monkeypatch.setattr(RandomForestClassifier, "fit", recording_fit)
+
+    outcome = held_out_importance(features, split)
+
+    assert len(fits) == 1
+    assert len(fits[0]) == outcome.learned_rows
+    assert not (fits[0][FEATURE_NAMES[0]] == 999).any()
 
 
 def test_report_has_the_table_accuracies_and_method():
