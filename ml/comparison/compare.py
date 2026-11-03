@@ -165,10 +165,60 @@ SHAPES: dict[str, Callable[[str], bool]] = {
 }
 
 
-def recompute_features(urls: pd.Series) -> pd.DataFrame:
-    """Our compared features for each URL, with www. kept. The index is kept."""
-    rows = [extract_features(url, strip_www=False) for url in urls]
-    return pd.DataFrame(rows, index=urls.index)[list(COMPARED_COLUMNS)]
+def recompute_features(urls: pd.Series) -> tuple[pd.DataFrame, dict[int, str]]:
+    """Our compared features for each URL, with www. kept, and the URLs we could not read.
+
+    The index is kept. A URL the extractor refuses is left out of the features and
+    returned with its reason instead, so one bad row never stops the comparison.
+    """
+    rows: dict[int, dict] = {}
+    refused: dict[int, str] = {}
+    for row, url in urls.items():
+        try:
+            rows[row] = extract_features(url, strip_www=False)
+        except ValueError as error:
+            refused[row] = f"Our extractor refused the link: {error}"
+    ours = pd.DataFrame(list(rows.values()), index=list(rows), columns=list(COMPARED_COLUMNS))
+    return ours, refused
+
+
+def _dataset_problems(raw: pd.DataFrame) -> dict[int, str]:
+    """The reason for each row with a compared dataset value that is blank or not a number."""
+    problems: dict[int, str] = {}
+    for column in COMPARED_COLUMNS.values():
+        values = raw[column]
+        blank = values.isna() | (values.astype(str).str.strip() == "")
+        not_number = pd.to_numeric(values, errors="coerce").isna() & ~blank
+        for row in values.index[blank]:
+            problems.setdefault(row, f"The dataset's {column} is blank.")
+        for row in values.index[not_number]:
+            problems.setdefault(row, f"The dataset's {column} is not a number.")
+    return problems
+
+
+@dataclass(frozen=True)
+class Comparison:
+    ours: pd.DataFrame  # our compared features, for the rows that can be compared
+    dataset: pd.DataFrame  # URL, Domain and the compared columns as numbers, for the same rows
+    skipped: pd.DataFrame  # row and reason, for each row that cannot be compared
+
+
+def prepare(raw: pd.DataFrame) -> Comparison:
+    """Split the raw rows into those that can be compared and those that cannot.
+
+    A row cannot be compared if the extractor refuses its URL, or if one of the
+    dataset's compared values is blank or not a number. Those rows are kept out of
+    every count, and each is recorded with its raw row id and the reason.
+    """
+    ours, refused = recompute_features(raw[URL_COLUMN])
+    # One reason per row. The extractor's reason comes first.
+    reasons = {**_dataset_problems(raw), **refused}
+    skipped = pd.DataFrame(sorted(reasons.items()), columns=["row", "reason"])
+    kept = raw.index.difference(skipped["row"])
+    columns = list(COMPARED_COLUMNS.values())
+    dataset = raw.loc[kept, [URL_COLUMN, DOMAIN_COLUMN, *columns]]
+    dataset = dataset.assign(**{column: pd.to_numeric(dataset[column]) for column in columns})
+    return Comparison(ours.loc[kept], dataset, skipped)
 
 
 def _differences(ours: pd.DataFrame, dataset: pd.DataFrame, feature: str) -> pd.Series:
@@ -252,6 +302,14 @@ def patterns_table(mismatches: pd.DataFrame, ours: pd.DataFrame, dataset: pd.Dat
     return pd.DataFrame(table).astype({"Example row": "Int64"})
 
 
+def skipped_table(skipped: pd.DataFrame) -> pd.DataFrame:
+    """One row per reason a row could not be compared: how many rows and the first one."""
+    rows = skipped.groupby("reason")["row"]
+    return pd.DataFrame(
+        {"Reason": rows.size().index, "Rows": rows.size().to_numpy(), "Example row": rows.min().to_numpy()}
+    )
+
+
 def shapes_table(domains: pd.Series, mismatching_rows: set[int]) -> pd.DataFrame:
     """For each expected shape, how many rows have it and how many of those differ."""
     hosts = domains.map(_host)
@@ -304,7 +362,25 @@ def _bug_line(patterns: pd.DataFrame) -> str:
     return "\n\n".join(lines)
 
 
-def render_report(summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.DataFrame, rows: int) -> str:
+def _skipped_section(skipped: pd.DataFrame) -> list[str]:
+    total = int(skipped["Rows"].sum())
+    if total == 0:
+        return ["Every row could be compared."]
+    verb = "row could" if total == 1 else "rows could"
+    return [
+        f"**{total:,} {verb} not be compared.** They are left out of every count in this report.",
+        "The example row is the 0-based data row in the raw file.",
+        "",
+        _markdown_table(
+            ["Reason", "Rows", "Example row"],
+            [[r["Reason"], f"{r['Rows']:,}", str(int(r["Example row"]))] for r in skipped.to_dict("records")],
+        ),
+    ]
+
+
+def render_report(
+    summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.DataFrame, skipped: pd.DataFrame, rows: int
+) -> str:
     """The Markdown report. URLs appear only as inline code, never as links."""
     summary_rows = [
         [
@@ -348,6 +424,7 @@ def render_report(summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.Data
             "",
             "## Summary",
             "",
+            "Rows compared leaves out the rows that could not be compared (next section).",
             "The median difference only counts rows that differ.",
             "",
             _markdown_table(
@@ -361,6 +438,10 @@ def render_report(summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.Data
                 ],
                 summary_rows,
             ),
+            "",
+            "## Rows that could not be compared",
+            "",
+            *_skipped_section(skipped),
             "",
             "## Mismatch patterns",
             "",
@@ -390,14 +471,19 @@ def render_report(summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.Data
 
 def main() -> None:
     raw = pd.read_csv(RAW_CSV, keep_default_na=False)
-    urls = raw[URL_COLUMN]
-    ours = recompute_features(urls)
-    summary = summary_table(ours, raw)
-    mismatches = find_mismatches(ours, raw)
-    patterns = patterns_table(mismatches, ours, raw)
-    shapes = shapes_table(raw[DOMAIN_COLUMN], set(mismatches["row"]))
-    REPORT_PATH.write_text(render_report(summary, patterns, shapes, len(raw)), encoding="utf-8")
+    comparison = prepare(raw)
+    ours, dataset = comparison.ours, comparison.dataset
+    summary = summary_table(ours, dataset)
+    mismatches = find_mismatches(ours, dataset)
+    patterns = patterns_table(mismatches, ours, dataset)
+    shapes = shapes_table(dataset[DOMAIN_COLUMN], set(mismatches["row"]))
+    skipped = skipped_table(comparison.skipped)
+    REPORT_PATH.write_text(render_report(summary, patterns, shapes, skipped, len(raw)), encoding="utf-8")
     print(summary.to_string(index=False))
+    print()
+    print(f"Rows that could not be compared: {len(comparison.skipped):,}")
+    if len(skipped):
+        print(skipped.to_string(index=False))
     print()
     print(patterns[["Pattern", "Kind", "Features", "Rows", "Example row"]].to_string(index=False))
     print()

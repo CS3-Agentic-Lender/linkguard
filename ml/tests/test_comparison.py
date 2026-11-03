@@ -10,11 +10,14 @@ from comparison.compare import (
     find_mismatches,
     pattern_for,
     patterns_table,
+    prepare,
     recompute_features,
     render_report,
     shapes_table,
+    skipped_table,
     summary_table,
 )
+from features.hostname import EMPTY_LINK_MESSAGE, NO_HOST_MESSAGE
 
 # Made-up links, only ever handled as text. 192.0.2.x is a range kept for examples.
 
@@ -29,13 +32,83 @@ def test_compares_four_features_with_the_dataset_columns():
 
 
 def test_recompute_keeps_the_www_label():
-    ours = recompute_features(pd.Series(["https://www.example.com/login"], index=[7]))
+    ours, refused = recompute_features(pd.Series(["https://www.example.com/login"], index=[7]))
 
     assert ours.index.tolist() == [7]
     assert ours.columns.tolist() == list(COMPARED_COLUMNS)
     # www.example.com, not example.com: 15 characters and 1 subdomain.
     assert ours.loc[7, "HostnameLength"] == 15
     assert ours.loc[7, "NoOfSubDomain"] == 1
+    assert refused == {}
+
+
+def test_recompute_skips_a_link_the_extractor_refuses_and_gives_the_reason():
+    ours, refused = recompute_features(pd.Series(["https://example.com", "http://", " "], index=[3, 4, 5]))
+
+    assert ours.index.tolist() == [3]
+    assert refused == {
+        4: f"Our extractor refused the link: {NO_HOST_MESSAGE}",
+        5: f"Our extractor refused the link: {EMPTY_LINK_MESSAGE}",
+    }
+
+
+RAW = pd.DataFrame(
+    {
+        "URL": ["https://example.com", "http://", "https://example.org", "https://example.net"],
+        "Domain": ["example.com", "", "example.org", "example.net"],
+        "IsDomainIP": ["0", "0", "0", "0"],
+        "TLDLength": ["3", "0", "3", "three"],
+        "NoOfSubDomain": ["0", "0", "0", "0"],
+        "DomainLength": ["11", "0", " ", "11"],
+    }
+)
+
+
+def test_prepare_leaves_out_rows_that_cannot_be_compared_and_says_why():
+    comparison = prepare(RAW)
+
+    assert comparison.skipped.to_dict("records") == [
+        {"row": 1, "reason": f"Our extractor refused the link: {NO_HOST_MESSAGE}"},
+        {"row": 2, "reason": "The dataset's DomainLength is blank."},
+        {"row": 3, "reason": "The dataset's TLDLength is not a number."},
+    ]
+    assert comparison.ours.index.tolist() == [0]
+    assert comparison.dataset.index.tolist() == [0]
+    # The dataset's values are numbers again, so they can be subtracted.
+    assert comparison.dataset.loc[0, "DomainLength"] == 11
+
+
+def test_rows_that_cannot_be_compared_are_left_out_of_the_match_rate():
+    comparison = prepare(RAW)
+    table = summary_table(comparison.ours, comparison.dataset).set_index("Our feature")
+
+    assert table.loc["HostnameLength", "Rows compared"] == 1
+    assert table.loc["HostnameLength", "Exact match (%)"] == pytest.approx(100.0)
+
+
+def test_skipped_table_counts_each_reason_with_an_example_row():
+    table = skipped_table(prepare(RAW).skipped)
+
+    assert table.to_dict("records") == [
+        {"Reason": f"Our extractor refused the link: {NO_HOST_MESSAGE}", "Rows": 1, "Example row": 1},
+        {"Reason": "The dataset's DomainLength is blank.", "Rows": 1, "Example row": 2},
+        {"Reason": "The dataset's TLDLength is not a number.", "Rows": 1, "Example row": 3},
+    ]
+
+
+def test_report_gives_the_count_and_an_example_of_rows_that_cannot_be_compared():
+    comparison = prepare(RAW)
+    mismatches = find_mismatches(comparison.ours, comparison.dataset)
+    text = render_report(
+        summary_table(comparison.ours, comparison.dataset),
+        patterns_table(mismatches, comparison.ours, comparison.dataset),
+        shapes_table(comparison.dataset["Domain"], set()),
+        skipped_table(comparison.skipped),
+        rows=len(RAW),
+    )
+
+    assert "3 rows could not be compared" in text
+    assert "| The dataset's TLDLength is not a number. | 1 | 3 |" in text
 
 
 OURS = pd.DataFrame(
@@ -174,7 +247,7 @@ MISMATCHES = pd.DataFrame(
 
 
 def _rows_ours():
-    return recompute_features(DATASET_ROWS["URL"])
+    return recompute_features(DATASET_ROWS["URL"])[0]
 
 
 def test_the_example_rows_mismatch_where_expected():
@@ -231,9 +304,12 @@ def test_shapes_table_counts_rows_with_each_shape_and_how_many_differ():
     assert table.loc["Non-English name (xn--)", "Rows with a mismatch"] == 0
 
 
+NOTHING_SKIPPED = skipped_table(pd.DataFrame({"row": [], "reason": []}))
+
+
 def _one_row(url, domain, **dataset_values):
     """Our features for url, and a one-row dataset equal to them except the columns given."""
-    ours = recompute_features(pd.Series([url]))
+    ours, _ = recompute_features(pd.Series([url]))
     values = {column: [ours.loc[0, feature]] for feature, column in COMPARED_COLUMNS.items()}
     values.update({column: [value] for column, value in dataset_values.items()})
     return ours, pd.DataFrame({"URL": [url], "Domain": [domain], **values})
@@ -247,6 +323,7 @@ def _report(url, domain, **dataset_values):
         summary_table(ours, dataset),
         patterns_table(mismatches, ours, dataset),
         shapes_table(dataset["Domain"], set(mismatches["row"])),
+        NOTHING_SKIPPED,
         rows=1,
     )
 
@@ -261,7 +338,7 @@ def _patterns(example_url):
 
 
 def test_report_shows_urls_as_code_never_as_links():
-    text = render_report(summary_table(OURS, DATASET), _patterns("http://a|b.example"), shapes_table(pd.Series(["a"]), {0}), rows=1)
+    text = render_report(summary_table(OURS, DATASET), _patterns("http://a|b.example"), shapes_table(pd.Series(["a"]), {0}), NOTHING_SKIPPED, rows=1)
 
     # A | inside a table cell is escaped so it does not split the cell.
     assert "`http://a\\|b.example`" in text
@@ -273,6 +350,7 @@ def test_report_marks_the_reasons_as_a_draft_and_says_www_removal_is_off():
     text = _report("https://example.com", "example.com")
 
     assert "Draft reasons, to be confirmed by Nic" in text
+    assert "Every row could be compared." in text
     assert "www." in text
     assert "No suspected extractor bug" in text
 
@@ -293,7 +371,7 @@ def test_report_names_a_pattern_marked_as_a_suspected_bug():
              "Reason": "None.", "Example row": None, "Example URL": ""},
         ]
     )
-    text = render_report(summary_table(OURS, DATASET), patterns, shapes_table(pd.Series(["a"]), set()), rows=1)
+    text = render_report(summary_table(OURS, DATASET), patterns, shapes_table(pd.Series(["a"]), set()), NOTHING_SKIPPED, rows=1)
 
     assert "Suspected extractor bug: Made-up fault." in text
     assert "No suspected extractor bug" not in text
