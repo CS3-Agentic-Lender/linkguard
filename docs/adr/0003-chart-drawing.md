@@ -1,12 +1,12 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Draw the phishing charts as plain React bars, with no chart library
 
 The phishing charts page compares phishing links with legitimate links, a few figures at a time, such as the share of each class that uses HTTPS. The frontend is React 19 built with Vite (see `0001-frontend-test-runner.md`), and AGENTS.md says a new library needs a team decision recorded here. We draw every chart as **plain horizontal bars built from our own React components and CSS**, with no chart library. Each bar carries its label and value as real text, and each chart comes with a table of the same numbers that a screen reader reads out.
 
-Proposed by Nikoloz on 3 November 2026 (Sprint 2). It becomes accepted once the team agrees; the agreement is recorded below.
+Proposed by Nikoloz on 3 November 2026 (Sprint 2) and accepted the same day with the agreement of Ibrahima (Product Owner) and Nic, recorded below.
 
 ## What the charts have to do
 
@@ -33,8 +33,8 @@ Build one small, reusable `BarChart` component in `frontend/src/` and draw every
   <div className="bar-chart" aria-hidden="true">
     <div className="bar-row">
       <span className="bar-label">Phishing</span>
-      <span className="bar-track"><span className="bar-fill" style={{ inlineSize: "47%" }} /></span>
-      <span className="bar-value">47%</span>
+      <span className="bar-track"><span className="bar-fill" style={{ inlineSize: "49.1%" }} /></span>
+      <span className="bar-value">49.1%</span>
     </div>
     <div className="bar-row">
       <span className="bar-label">Legitimate</span>
@@ -47,7 +47,7 @@ Build one small, reusable `BarChart` component in `frontend/src/` and draw every
     <caption>Links that use HTTPS, phishing compared with legitimate</caption>
     <thead><tr><th scope="col">Group</th><th scope="col">Share</th><th scope="col">Links</th></tr></thead>
     <tbody>
-      <tr><th scope="row">Phishing</th><td>47%</td><td>…</td></tr>
+      <tr><th scope="row">Phishing</th><td>49.1%</td><td>…</td></tr>
       <tr><th scope="row">Legitimate</th><td>100%</td><td>…</td></tr>
     </tbody>
   </table>
@@ -60,7 +60,7 @@ The markup above shows the structure, not final names or wording. The charts sto
 - **Bar length.** The bar fill's width is the value as a percentage of the chart's scale, set with an inline `inline-size` style. Horizontal bars are used because group names stay readable on a narrow phone screen and the value text sits at the end of the bar.
 - **Screen readers.** The picture is `aria-hidden`, and a real `<table>` with a `<caption>` and `<th scope>` headers holds the same numbers. A screen reader announces the chart's heading and takeaway, then reads the table cell by cell with its headers, which is the "table of the numbers" text alternative the chart story asks for. Whether the table is also shown on screen, or hidden visually with a standard visually-hidden class, is a design choice for the charts story's wireframe. The table stays in the page either way, so it is always read out.
 - **Keyboard.** The charts are not interactive: no hover, no tooltips, no clicking. There is nothing to focus, so keyboard users lose nothing, and the page's tab order stays the paste-a-link form and links only.
-- **Colours and type.** Bar colours, text sizes and spacing come from `frontend/src/styles/tokens.css`. Any new bar colour is added there and checked by `npm run contrast` against the 3:1 rule for non-text colour.
+- **Colours and type.** Bar colours, text sizes and spacing come from `frontend/src/styles/tokens.css`. Any new bar colour is added there, and a pair for it (the bar colour against the surface it sits on, minimum 3:1) is added to `PAIRS` in `frontend/scripts/check-contrast.mjs`. `npm run contrast` only checks the pairs listed there, so a colour without a pair is not checked.
 - **Responsive.** Bars are flexbox and percentage widths, so they fit any screen width with no resize listener or measuring code.
 - **No links.** The component only renders text from the summary file. It never turns a value into a link, so no dataset URL can become clickable.
 
@@ -94,7 +94,7 @@ Because the charts are ordinary DOM elements, the charts story tests them with R
 |---|---|
 | Labels on bars | Group name and value are text on every bar row |
 | Not colour alone | Text labels carry the meaning; colour is a second cue |
-| 3:1 contrast for bar colours | Colours are tokens, checked by `npm run contrast` |
+| 3:1 contrast for bar colours | Colours are tokens, each with a 3:1 pair in `check-contrast.mjs`, checked by `npm run contrast` |
 | Screen reader alternative | A `<table>` with caption and headers holds the same numbers; the picture is `aria-hidden` |
 | Keyboard | Nothing interactive, so nothing to reach; no hover-only content |
 | Zoom and small screens | HTML text reflows; bars are percentage widths |
@@ -109,4 +109,12 @@ Because the charts are ordinary DOM elements, the charts story tests them with R
 
 ## Team agreement
 
-Not yet agreed. Waiting for replies from the team, in particular Ibrahima, whose summary file for the charts feeds this component. This section will record who agreed, when and where before the status changes to accepted.
+Accepted on 3 November 2026.
+
+| Who | Role this sprint | Where and when |
+|---|---|---|
+| Nikoloz | Proposed it | This record and the #dev thread in Slack, 3 Nov |
+| Ibrahima | Product Owner; owns the chart numbers | Approving review on the pull request for this record, 3 Nov. Confirmed the chart summary file already gives each chart a title, takeaway and unit, and each group a label, value, count and total, so the file and the component match. |
+| Nic | Developer | Approving review on the pull request for this record, 3 Nov. Asked for the 49.1% example figure and the contrast-pair note, both made. |
+
+Solomon (Scrum Master) had not replied when this was accepted. If he objects, the decision is reopened with a new record.
