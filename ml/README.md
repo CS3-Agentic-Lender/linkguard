@@ -112,6 +112,44 @@ The ten features are:
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 
+## Training pipeline
+
+`ml/training/pipeline.py` loads the training rows every classifier trains on. It reads three files that earlier steps save, and makes none of its own:
+
+| File | Saved by | Holds |
+|---|---|---|
+| `ml/data/training_features.csv` | the training feature set step | One row per cleaned row: the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `hostname` |
+| `ml/data/split.csv` | the split-and-scale step | Columns `row` and `set`: each feature-set row number (counting from 0) and whether it is `train` or `test` |
+| `ml/models/scaler.joblib` | the split-and-scale step | The scaler, fitted on the training rows only |
+
+Run it from `ml/` with one command:
+
+```bash
+uv run python -m training.pipeline
+```
+
+`--features`, `--split` and `--scaler` point it at other files. It prints the number of training rows and the class counts, with phishing as label 1, and stops with a message naming the problem if a file is missing or does not match.
+
+What it guarantees:
+
+- **No new split.** The training rows are exactly the `train` rows of the saved split.
+- **No scaler is fitted.** The saved scaler only transforms. The pipeline checks it was fitted on the ten features in the same order.
+- **Test rows are never read.** Only the training row numbers are taken from the split, and every other line of the feature file is skipped by the reader.
+- **Only the agreed features are model inputs.** The feature matrix must be the ten hostname features in order. Any column from the excluded list (`ml/leakage/excluded.py`) stops the run by name. `hostname` is kept for grouping the cross-validation folds and is never a feature.
+
+The classifier story uses it from Python:
+
+```python
+from training.pipeline import hand_to_classifiers, load_training_set
+
+training_set = load_training_set()   # .scaled, .labels, .hostnames, .features (unscaled), .rows
+fitted = hand_to_classifiers({"baseline": DummyClassifier()}, training_set)
+```
+
+`hand_to_classifiers` fits a fresh copy of each classifier on the same scaled training rows. Cross-validation, where the scaler is refitted inside each fold's own pipeline, belongs to the classifier story and uses `.features` and `.hostnames`.
+
+The tests (`ml/tests/test_training_pipeline.py`) run on a small made-up sample, because CI has no dataset. Its numbers say nothing about real model performance.
+
 ## Source and licence
 
 | | |
