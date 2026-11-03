@@ -110,7 +110,7 @@ The ten features are:
 | `NoOfSpecialCharsInHostname` | Everything that is not a letter or digit: dots, hyphens, and the colons in an IPv6 address | Whole number |
 | `SpecialCharRatioInHostname` | Special characters divided by `HostnameLength` | Decimal |
 
-**Checked against the dataset.** [`reports/feature_comparison.md`](reports/feature_comparison.md) compares `IsDomainIP`, `TLDLength`, `NoOfSubDomain` and `HostnameLength` with the dataset's own columns. It gives a reason for each kind of difference. Regenerate it from `ml/` with `uv run python -m comparison.compare`.
+**Checked against the dataset.** [`reports/feature_comparison.md`](reports/feature_comparison.md) compares `IsDomainIP`, `TLDLength`, `NoOfSubDomain` and `HostnameLength` with the dataset's own columns. It gives a reason for each kind of difference. Each example is a row number in the raw file. The report shows no links from the dataset, because many of them are live phishing sites. Regenerate it from `ml/` with `uv run python -m comparison.compare`.
 
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
 

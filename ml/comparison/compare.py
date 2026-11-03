@@ -10,7 +10,8 @@ The leading www. is kept (strip_www=False) because the dataset's columns keep it
 The shape of each row is read from the dataset's own Domain column, the part between
 // and the first / as the dataset's authors read it. Our own reading of a link comes
 only from extract_features, so the URL parsing is never copied here.
-URLs are only read as text. None is opened or fetched.
+URLs are only read as text. None is opened or fetched. The report shows no links
+from the dataset, because many of them are live phishing sites.
 
 Run from ml/ with: uv run python -m comparison.compare
 """
@@ -47,10 +48,6 @@ UNEXPLAINED = "Unexplained"
 PORT_PATTERN = re.compile(r":\d+$")
 IPV4_START_PATTERN = re.compile(r"^\d{1,3}(\.\d{1,3}){3}\.")
 TWO_PART_ENDING_PATTERN = re.compile(r"\.(co|com|org|net|ac|gov|edu)\.[a-z]{2}$")
-BACKTICKS_PATTERN = re.compile(r"`+")
-EXAMPLE_URL_LIMIT = 80
-# Shown in place of a user:password@ part, so no login-shaped text is ever written.
-HIDDEN_USER_PART = "<user part hidden>@"
 
 
 # Our features for one row, as extract_features returns them.
@@ -200,7 +197,7 @@ def _dataset_problems(raw: pd.DataFrame) -> dict[int, str]:
 @dataclass(frozen=True)
 class Comparison:
     ours: pd.DataFrame  # our compared features, for the rows that can be compared
-    dataset: pd.DataFrame  # URL, Domain and the compared columns as numbers, for the same rows
+    dataset: pd.DataFrame  # Domain and the compared columns as numbers, for the same rows
     skipped: pd.DataFrame  # row and reason, for each row that cannot be compared
 
 
@@ -217,7 +214,7 @@ def prepare(raw: pd.DataFrame) -> Comparison:
     skipped = pd.DataFrame(sorted(reasons.items()), columns=["row", "reason"])
     kept = raw.index.difference(skipped["row"])
     columns = list(COMPARED_COLUMNS.values())
-    dataset = raw.loc[kept, [URL_COLUMN, DOMAIN_COLUMN, *columns]]
+    dataset = raw.loc[kept, [DOMAIN_COLUMN, *columns]]
     dataset = dataset.assign(**{column: pd.to_numeric(dataset[column]) for column in columns})
     return Comparison(ours.loc[kept], dataset, skipped)
 
@@ -272,7 +269,7 @@ def pattern_for(domain: str, ours: Ours, feature: str, dataset_value: int) -> st
 def patterns_table(mismatches: pd.DataFrame, ours: pd.DataFrame, dataset: pd.DataFrame) -> pd.DataFrame:
     """One row per pattern that has mismatches, plus the unexplained bucket, always.
 
-    dataset holds the URL, Domain and compared columns for the same rows as ours.
+    dataset holds the Domain and compared columns for the same rows as ours.
     """
     domains = dataset[DOMAIN_COLUMN]
     named = mismatches.assign(
@@ -296,11 +293,6 @@ def patterns_table(mismatches: pd.DataFrame, ours: pd.DataFrame, dataset: pd.Dat
                 "Rows": found["row"].nunique(),
                 "Reason": details[name].reason if name in details else "No pattern explains these rows yet.",
                 "Example row": example,
-                "Example URL": (
-                    _example_url(dataset[URL_COLUMN][example], dataset[DOMAIN_COLUMN][example])
-                    if example is not None
-                    else ""
-                ),
             }
         )
     # Int64 keeps the row ids whole numbers when the unexplained bucket has none.
@@ -325,38 +317,6 @@ def shapes_table(domains: pd.Series, mismatching_rows: set[int]) -> pd.DataFrame
             {"Shape": shape, "Rows with this shape": len(rows), "Rows with a mismatch": len(rows & mismatching_rows)}
         )
     return pd.DataFrame(table)
-
-
-def _hide_user_part(domain: str) -> str:
-    user = _user_part(domain)
-    return HIDDEN_USER_PART + domain.removeprefix(user) if user else domain
-
-
-def _example_url(url: str, domain: str) -> str:
-    """The start of url, up to the end of the dataset's domain, with any user part hidden.
-
-    The rest becomes ... . If the url does not hold the domain as written, only the
-    domain is shown.
-    """
-    found = url.find(domain) if domain else -1
-    if found < 0:
-        return _hide_user_part(domain) + "..."
-    end = found + len(domain)
-    start = url[:found] + _hide_user_part(domain)
-    if end < len(url):
-        start += "/..." if url[end] == "/" else "..."
-    return start
-
-
-def _code(text: str) -> str:
-    """Show text as inline code in a table cell, so a URL is never a clickable link."""
-    if len(text) > EXAMPLE_URL_LIMIT:
-        text = text[:EXAMPLE_URL_LIMIT] + "..."
-    # The fence must be longer than any run of backticks inside the text, or that run
-    # would close the code early. A space keeps a backtick at either end off the fence.
-    fence = "`" * (max(map(len, BACKTICKS_PATTERN.findall(text)), default=0) + 1)
-    pad = " " if text.startswith("`") or text.endswith("`") else ""
-    return f"{fence}{pad}{text.replace('|', chr(92) + '|')}{pad}{fence}"
 
 
 def _number(value: float, places: int) -> str:
@@ -402,7 +362,7 @@ def _skipped_section(skipped: pd.DataFrame) -> list[str]:
 def render_report(
     summary: pd.DataFrame, patterns: pd.DataFrame, shapes: pd.DataFrame, skipped: pd.DataFrame, rows: int
 ) -> str:
-    """The Markdown report. URLs appear only as inline code, never as links."""
+    """The Markdown report. It shows no URL or domain from the dataset, only row numbers."""
     summary_rows = [
         [
             f"`{r['Our feature']}`",
@@ -422,7 +382,6 @@ def render_report(
             f"{r['Rows']:,}",
             r["Reason"],
             "-" if r["Example row"] is None or pd.isna(r["Example row"]) else str(int(r["Example row"])),
-            _code(r["Example URL"]) if r["Example URL"] else "-",
         ]
         for r in patterns.to_dict("records")
     ]
@@ -475,10 +434,9 @@ def render_report(
             "Anything else goes to Unexplained.",
             "A row counts once per pattern. A row can fall under two patterns for different features.",
             "The example row is the 0-based data row in the raw file.",
-            "Example URLs stop after the host, because a path or query can hold a victim's email address.",
-            f"A user part before the host is shown as `{HIDDEN_USER_PART}`, because it can look like a login.",
+            "The report shows no links from the dataset, because many of them are live phishing sites.",
             "",
-            _markdown_table(["Pattern", "Kind", "Features", "Rows", "Reason", "Example row", "Example URL"], pattern_rows),
+            _markdown_table(["Pattern", "Kind", "Features", "Rows", "Reason", "Example row"], pattern_rows),
             "",
             "## Other shapes checked",
             "",

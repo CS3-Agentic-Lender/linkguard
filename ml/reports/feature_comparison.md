@@ -36,16 +36,15 @@ and `NoOfSubDomain` is the number of dots in `Domain` minus 1.
 Anything else goes to Unexplained.
 A row counts once per pattern. A row can fall under two patterns for different features.
 The example row is the 0-based data row in the raw file.
-Example URLs stop after the host, because a path or query can hold a victim's email address.
-A user part before the host is shown as `<user part hidden>@`, because it can look like a login.
+The report shows no links from the dataset, because many of them are live phishing sites.
 
-| Pattern | Kind | Features | Rows | Reason | Example row | Example URL |
-|---|---|---|---|---|---|---|
-| Host is an IP address | Definition difference | NoOfSubDomain, TLDLength | 608 | The dataset reads an IP address like a name, so its last number is the TLD and the first two numbers count as subdomains. We give 0 for both. | 125 | `http://198.98.58.123/...` |
-| Host starts with an IP address | Definition difference | IsDomainIP | 30 | The dataset marks a name that starts with an IP address as an IP. We mark only a host that is an IP address. | 2614 | `http://64.47.167.72.host.secureserver.net/...` |
-| User part in the link | Dataset quirk | HostnameLength, NoOfSubDomain | 10 | The dataset's domain keeps the user:password@ part. We drop it and measure only the host. | 5261 | `http://<user part hidden>@xn--80aaahorunoimsf3p.xn--p1ai/...` |
-| Port in the link | Dataset quirk | HostnameLength, TLDLength | 26 | The dataset's domain keeps the port, so com:443 counts as the TLD. We drop the port. | 22183 | `https://www-realizesolucoesfinanceiras-com-br-7.rds.land:443/...` |
-| Unexplained | Not known | - | 0 | No pattern explains these rows yet. | - | - |
+| Pattern | Kind | Features | Rows | Reason | Example row |
+|---|---|---|---|---|---|
+| Host is an IP address | Definition difference | NoOfSubDomain, TLDLength | 608 | The dataset reads an IP address like a name, so its last number is the TLD and the first two numbers count as subdomains. We give 0 for both. | 125 |
+| Host starts with an IP address | Definition difference | IsDomainIP | 30 | The dataset marks a name that starts with an IP address as an IP. We mark only a host that is an IP address. | 2614 |
+| User part in the link | Dataset quirk | HostnameLength, NoOfSubDomain | 10 | The dataset's domain keeps the user:password@ part. We drop it and measure only the host. | 5261 |
+| Port in the link | Dataset quirk | HostnameLength, TLDLength | 26 | The dataset's domain keeps the port, so com:443 counts as the TLD. We drop the port. | 22183 |
+| Unexplained | Not known | - | 0 | No pattern explains these rows yet. | - |
 
 ## Other shapes checked
 

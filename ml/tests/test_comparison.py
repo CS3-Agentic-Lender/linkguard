@@ -261,10 +261,15 @@ def test_patterns_table_counts_rows_and_gives_the_first_example():
     assert ip["Rows"] == 2
     assert ip["Features"] == "NoOfSubDomain, TLDLength"
     assert ip["Example row"] == 1
-    assert ip["Example URL"] == "http://192.0.2.10/..."
     assert ip["Kind"] == "Definition difference"
     assert ip["Reason"]
     assert table.loc["Port in the link", "Rows"] == 1
+
+
+def test_patterns_table_gives_no_example_url():
+    table = patterns_table(MISMATCHES, _rows_ours(), DATASET_ROWS)
+
+    assert "Example URL" not in table.columns
 
 
 def test_patterns_table_always_reports_the_unexplained_bucket():
@@ -275,7 +280,7 @@ def test_patterns_table_always_reports_the_unexplained_bucket():
 
     explained = patterns_table(MISMATCHES[MISMATCHES["row"] != 4], _rows_ours(), DATASET_ROWS).set_index("Pattern")
     assert explained.loc[UNEXPLAINED, "Rows"] == 0
-    assert explained.loc[UNEXPLAINED, "Example URL"] == ""
+    assert pd.isna(explained.loc[UNEXPLAINED, "Example row"])
 
 
 def test_patterns_table_leaves_out_patterns_with_no_rows():
@@ -328,24 +333,6 @@ def _report(url, domain, **dataset_values):
     )
 
 
-def _patterns(example_url):
-    return pd.DataFrame(
-        [
-            {"Pattern": UNEXPLAINED, "Kind": "Not known", "Features": "TLDLength", "Rows": 1,
-             "Reason": "None.", "Example row": 0, "Example URL": example_url},
-        ]
-    )
-
-
-def test_report_shows_urls_as_code_never_as_links():
-    text = render_report(summary_table(OURS, DATASET), _patterns("http://a|b.example"), shapes_table(pd.Series(["a"]), {0}), NOTHING_SKIPPED, rows=1)
-
-    # A | inside a table cell is escaped so it does not split the cell.
-    assert "`http://a\\|b.example`" in text
-    assert "](http" not in text
-    assert "<http" not in text
-
-
 def test_report_has_no_draft_marker_and_says_www_removal_is_off():
     text = _report("https://example.com", "example.com")
 
@@ -366,9 +353,9 @@ def test_report_names_a_pattern_marked_as_a_suspected_bug():
     patterns = pd.DataFrame(
         [
             {"Pattern": "Made-up fault", "Kind": "Suspected extractor bug", "Features": "TLDLength", "Rows": 3,
-             "Reason": "Made up for the test.", "Example row": 0, "Example URL": "https://example.com"},
+             "Reason": "Made up for the test.", "Example row": 0},
             {"Pattern": UNEXPLAINED, "Kind": "Not known", "Features": "", "Rows": 0,
-             "Reason": "None.", "Example row": None, "Example URL": ""},
+             "Reason": "None.", "Example row": None},
         ]
     )
     text = render_report(summary_table(OURS, DATASET), patterns, shapes_table(pd.Series(["a"]), set()), NOTHING_SKIPPED, rows=1)
@@ -377,60 +364,76 @@ def test_report_names_a_pattern_marked_as_a_suspected_bug():
     assert "No suspected extractor bug" not in text
 
 
-def test_report_shows_only_the_example_host_and_hides_the_rest():
-    # The path and query of a phishing link can hold a victim's email address.
-    text = _report("http://192.0.2.10/login?user=someone@example.com", "192.0.2.10", TLDLength=2)
-
-    assert "`http://192.0.2.10/...`" in text
-    assert "someone" not in text
-
-
-def test_report_shortens_a_very_long_example_host():
-    # Four labels of 60 letters: the extractor allows up to 63 per label.
-    url = "http://" + ".".join(["a" * 60] * 4) + ".example"
-    text = _report(url, url.removeprefix("http://"), DomainLength=999)
-
-    assert url not in text
-    assert "`" + url[:80] + "...`" in text
-
-
-@pytest.mark.parametrize(
-    ("example_url", "shown"),
-    [
-        ("http://a`b.example", "``http://a`b.example``"),
-        # The fence is one backtick longer than the longest run inside the text.
-        ("http://a``b.example", "```http://a``b.example```"),
-        ("http://a`b``c```d.example", "````http://a`b``c```d.example````"),
-        # A backtick at the edge gets a space, so it is not read as part of the fence.
-        ("`http://a.example", "`` `http://a.example ``"),
-    ],
+# Made-up rows, one for each pattern and one no pattern explains. Every link and
+# domain holds marker text, so any part of one that leaks into the report is found.
+MARKED_ROWS = pd.DataFrame(
+    {
+        "URL": [
+            "https://www.phish-marker.example/login?user=secret-marker@mail.example",
+            "http://198.51.100.77/phish-marker/verify",
+            "http://192.0.2.10.phish-marker.example/",
+            "http://victim-marker:pw@login.phish-marker.example/",
+            "https://pay.phish-marker.example:8443/x",
+            "https://odd.phish-marker.example/",
+        ],
+        "Domain": [
+            "www.phish-marker.example",
+            "198.51.100.77",
+            "192.0.2.10.phish-marker.example",
+            "victim-marker:pw@login.phish-marker.example",
+            "pay.phish-marker.example:8443",
+            "odd.phish-marker.example",
+        ],
+        "IsDomainIP": ["0", "1", "1", "0", "0", "0"],
+        # The dataset's definitions: the text after the last dot, and the dots minus 1.
+        "TLDLength": ["7", "2", "7", "7", "12", "7"],
+        "NoOfSubDomain": ["1", "2", "4", "1", "1", "1"],
+        # The last row's 99 is a difference no pattern explains.
+        "DomainLength": ["24", "13", "31", "43", "29", "99"],
+    }
 )
-def test_report_fences_backticks_in_a_url_so_the_code_span_holds(example_url, shown):
-    text = render_report(summary_table(OURS, DATASET), _patterns(example_url), shapes_table(pd.Series(["a"]), {0}), NOTHING_SKIPPED, rows=1)
-
-    assert f"| {shown} |" in text
 
 
-def test_report_hides_the_user_part_of_an_example_link():
-    # A user:password@ part can look like a real login, so it is never written out.
-    url = "http://www.example.com:911@host.example.net/login"
-    domain = "www.example.com:911@host.example.net"
-    text = _report(url, domain, DomainLength=len(domain))
-
-    assert "`http://<user part hidden>@host.example.net/...`" in text
-    assert "www.example.com:911" not in text
-
-
-def test_example_link_stops_after_the_dataset_domain():
-    # The @ and :99 are in the path, after the dataset's domain, so nothing is hidden.
-    ours, dataset = _one_row("https://example.com/a@b:99", "example.com", DomainLength=20)
-    table = patterns_table(find_mismatches(ours, dataset), ours, dataset).set_index("Pattern")
-
-    assert table.loc[UNEXPLAINED, "Example URL"] == "https://example.com/..."
+def _marked_report() -> str:
+    """The report for MARKED_ROWS, run through the same steps as main()."""
+    comparison = prepare(MARKED_ROWS)
+    mismatches = find_mismatches(comparison.ours, comparison.dataset)
+    return render_report(
+        summary_table(comparison.ours, comparison.dataset),
+        patterns_table(mismatches, comparison.ours, comparison.dataset),
+        shapes_table(comparison.dataset["Domain"], set(mismatches["row"])),
+        skipped_table(comparison.skipped),
+        rows=len(MARKED_ROWS),
+    )
 
 
-def test_example_link_falls_back_to_the_domain_when_the_url_does_not_hold_it():
-    ours, dataset = _one_row("https://Example.com/a", "u:pw@example.com", DomainLength=20)
-    table = patterns_table(find_mismatches(ours, dataset), ours, dataset).set_index("Pattern")
+def test_marked_rows_give_an_example_row_for_every_pattern():
+    comparison = prepare(MARKED_ROWS)
+    table = patterns_table(find_mismatches(comparison.ours, comparison.dataset), comparison.ours, comparison.dataset)
 
-    assert table.loc[UNEXPLAINED, "Example URL"] == "<user part hidden>@example.com..."
+    assert table.set_index("Pattern")["Example row"].to_dict() == {
+        "Host is an IP address": 1,
+        "Host starts with an IP address": 2,
+        "User part in the link": 3,
+        "Port in the link": 4,
+        UNEXPLAINED: 5,
+    }
+
+
+def test_report_has_no_example_url_column():
+    text = _marked_report()
+
+    assert "Example URL" not in text
+    assert "| Pattern | Kind | Features | Rows | Reason | Example row |" in text
+
+
+def test_report_shows_no_text_from_the_dataset_links():
+    text = _marked_report()
+
+    for value in [*MARKED_ROWS["URL"], *MARKED_ROWS["Domain"]]:
+        assert value not in text
+    for marker in ["phish-marker", "victim-marker", "secret-marker", "198.51.100.77", "192.0.2.10"]:
+        assert marker not in text
+    assert "http" not in text
+    assert "://" not in text
+    assert "user part hidden" not in text
