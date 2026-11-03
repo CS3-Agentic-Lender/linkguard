@@ -238,6 +238,26 @@ uv run python -m ranking.forest_importance
 
 It prints the ranking and saves it to `ml/reports/forest_importance.md`.
 
+### Random forest importance on held-out training hosts
+
+The built-in importance is measured on the rows the forest learned from. This is the fairer check. 80% of the training hosts teach the forest. The other 20% are held out, with no host on both sides. Each feature is then shuffled on the held-out rows, and the drop in accuracy shows how much the forest relies on it. The test split is never used. From `ml/`, run:
+
+```bash
+uv run python -m ranking.held_out_importance
+```
+
+It saves `ml/reports/held_out_importance.md`.
+
+### The final feature list
+
+The model trains on 8 of the ten features. The list, with a reason for every feature kept or dropped, is in [`ml/reports/final_feature_list.md`](reports/final_feature_list.md). It is made from the four rankings above with one chart that compares them. From `ml/`, run:
+
+```bash
+uv run python -m ranking.final_list
+```
+
+It saves `ml/reports/final_feature_list.md` and `ml/reports/feature_ranking_comparison.png`. The list is in code as `FINAL_FEATURES` in `ml/ranking/final_list.py`.
+
 ## Chart numbers for the charts page
 
 The phishing charts page reads a small summary file of counts and percentages, not the dataset. Make it from `ml/`:
