@@ -392,3 +392,20 @@ def test_report_shortens_a_very_long_example_host():
 
     assert url not in text
     assert "`" + url[:80] + "...`" in text
+
+
+@pytest.mark.parametrize(
+    ("example_url", "shown"),
+    [
+        ("http://a`b.example", "``http://a`b.example``"),
+        # The fence is one backtick longer than the longest run inside the text.
+        ("http://a``b.example", "```http://a``b.example```"),
+        ("http://a`b``c```d.example", "````http://a`b``c```d.example````"),
+        # A backtick at the edge gets a space, so it is not read as part of the fence.
+        ("`http://a.example", "`` `http://a.example ``"),
+    ],
+)
+def test_report_fences_backticks_in_a_url_so_the_code_span_holds(example_url, shown):
+    text = render_report(summary_table(OURS, DATASET), _patterns(example_url), shapes_table(pd.Series(["a"]), {0}), NOTHING_SKIPPED, rows=1)
+
+    assert f"| {shown} |" in text

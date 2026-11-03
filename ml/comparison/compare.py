@@ -49,6 +49,7 @@ IPV4_START_PATTERN = re.compile(r"^\d{1,3}(\.\d{1,3}){3}\.")
 TWO_PART_ENDING_PATTERN = re.compile(r"\.(co|com|org|net|ac|gov|edu)\.[a-z]{2}$")
 # The scheme and the part up to the first /, ? or #. Every pattern is about this part.
 URL_START_PATTERN = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*:)?(//)?[^/?#]*")
+BACKTICKS_PATTERN = re.compile(r"`+")
 EXAMPLE_URL_LIMIT = 80
 
 
@@ -334,8 +335,11 @@ def _code(text: str) -> str:
     """Show text as inline code in a table cell, so a URL is never a clickable link."""
     if len(text) > EXAMPLE_URL_LIMIT:
         text = text[:EXAMPLE_URL_LIMIT] + "..."
-    fence = "``" if "`" in text else "`"
-    return f"{fence}{text.replace('|', chr(92) + '|')}{fence}"
+    # The fence must be longer than any run of backticks inside the text, or that run
+    # would close the code early. A space keeps a backtick at either end off the fence.
+    fence = "`" * (max(map(len, BACKTICKS_PATTERN.findall(text)), default=0) + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text.replace('|', chr(92) + '|')}{pad}{fence}"
 
 
 def _number(value: float, places: int) -> str:
