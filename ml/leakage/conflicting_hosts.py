@@ -1,7 +1,7 @@
 """Count the hosts that appear with both labels, overall and in each set of the shared split.
 
 The rule for these hosts is to keep every row. apply_conflicting_hosts_rule()
-states it, and its docstring says why.
+states it. Its docstring says why.
 
 A host with both labels has at least one legitimate row and at least one phishing
 row. Every row has the same ten features as the other rows on its host, so these
@@ -40,7 +40,7 @@ def conflicting_hosts(rows: pd.DataFrame) -> set[str]:
 
 
 def count_conflicting(rows: pd.DataFrame) -> HostCount:
-    """How many hosts have both labels, and how many rows those hosts have between them."""
+    """How many hosts have both labels. Also how many rows those hosts have between them."""
     hosts = conflicting_hosts(rows)
     return HostCount(hosts=len(hosts), rows=int(rows[HOST_COLUMN].isin(hosts).sum()))
 
@@ -83,7 +83,7 @@ def _plural(count: int, noun: str) -> str:
 
 
 def _load_inputs(ml_dir: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """The training feature set keyed by row, and its split. Raises FileNotFoundError or SplitMismatchError."""
+    """The training feature set keyed by row, with its split. Raises FileNotFoundError or SplitMismatchError."""
     features_path = output_path(ml_dir)
     if not features_path.is_file():
         raise FileNotFoundError(f"The training feature set was not found at {features_path}. {FEATURE_SET_HINT}")
