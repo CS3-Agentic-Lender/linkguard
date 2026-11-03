@@ -320,6 +320,34 @@ fitted = hand_to_classifiers({"baseline": DummyClassifier()}, training_set)
 
 The tests (`ml/tests/test_training_pipeline.py`) run on a small made-up sample, because CI has no dataset. Its numbers say nothing about real model performance.
 
+## Model comparison
+
+`ml/training/model_comparison.py` turns the cross-validation results into one comparison table and picks the model. It reads `ml/reports/cv_results.json`, which `uv run python -m training.classifiers` saves, and trains nothing itself. Run it from `ml/`:
+
+```bash
+uv run python -m training.model_comparison
+```
+
+It writes:
+
+| File | Holds |
+|---|---|
+| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). The training recall and F1 sit next to the cross-validation ones. Under the table: the chosen model and why, a note on over- and underfitting, and the class balance note. |
+| `ml/reports/confusion_matrices/<model>.png` | One confusion matrix per model. It adds up the held-out folds, so every training row is predicted once by a model that never trained on it. |
+
+How the model is chosen:
+
+1. The highest mean phishing recall wins.
+2. If models are within 0.01 on recall, the highest mean F1 wins.
+3. If they are also within 0.01 on F1, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
+4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
+
+A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
+
+The run stops and saves nothing if the results file is missing a model or a score, was trained on a different feature list, or its held-out counts do not add up to every training row once.
+
+These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
+
 ## Source and licence
 
 | | |
