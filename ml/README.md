@@ -123,7 +123,7 @@ It has one row for each row of the cleaned file, with these columns in this orde
 | `row` | The row's number in `phiusiil_cleaned.csv`, counting from 0. It links each row back to the cleaned file. |
 | The ten features | Worked out by `extract_features`, in the order of the table above |
 | `label` | Copied from the cleaned file: 1 = phishing, 0 = legitimate |
-| `hostname` | The cleaned host from `cleaned_host` in `ml/features/hostname.py`. It is the host the features measure: `www.` removed, lowercase, non-English names in ASCII. An IP address stays as written. |
+| `host` | The cleaned host from `cleaned_host` in `ml/features/hostname.py`. It is the host the features measure: `www.` removed, lowercase, non-English names in ASCII. An IP address stays as written. |
 
 The script imports the shared extractor. It holds no copy of the feature code. It only reads each link as text and never opens it.
 

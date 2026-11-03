@@ -37,10 +37,10 @@ NOT_TEXT = pd.DataFrame(
 )
 
 
-def test_columns_are_row_then_the_ten_features_then_label_and_hostname():
+def test_columns_are_row_then_the_ten_features_then_label_and_host():
     result = build_feature_set(CLEANED)
 
-    assert OUTPUT_COLUMNS == ("row", *FEATURE_NAMES, "label", "hostname")
+    assert OUTPUT_COLUMNS == ("row", *FEATURE_NAMES, "label", "host")
     assert tuple(result.features.columns) == OUTPUT_COLUMNS
 
 
@@ -66,11 +66,11 @@ def test_label_is_passed_through_unchanged():
     assert result.features["label"].tolist() == CLEANED["label"].tolist()
 
 
-def test_hostname_column_is_the_cleaned_host():
+def test_host_column_is_the_cleaned_host():
     result = build_feature_set(CLEANED)
 
-    assert result.features["hostname"].tolist() == [cleaned_host(link) for link in CLEANED["URL"]]
-    assert result.features["hostname"].tolist() == ["example.com", "10.0.0.1", "shop.example.co.uk"]
+    assert result.features["host"].tolist() == [cleaned_host(link) for link in CLEANED["URL"]]
+    assert result.features["host"].tolist() == ["example.com", "10.0.0.1", "shop.example.co.uk"]
 
 
 def test_every_failing_row_is_counted_with_its_reason():

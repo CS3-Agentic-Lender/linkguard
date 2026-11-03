@@ -21,9 +21,9 @@ from features.hostname import FEATURE_NAMES, cleaned_host, extract_features
 OUTPUT_CSV_NAME = "training_features.csv"
 URL_COLUMN = "URL"
 ROW_COLUMN = "row"
-HOSTNAME_COLUMN = "hostname"
+HOST_COLUMN = "host"
 NOT_TEXT_MESSAGE = "The link is not text."
-OUTPUT_COLUMNS: tuple[str, ...] = (ROW_COLUMN, *FEATURE_NAMES, LABEL_COLUMN, HOSTNAME_COLUMN)
+OUTPUT_COLUMNS: tuple[str, ...] = (ROW_COLUMN, *FEATURE_NAMES, LABEL_COLUMN, HOST_COLUMN)
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ def build_feature_set(rows: pd.DataFrame) -> BuildResult:
         except ValueError as error:
             failures.append(Failure(int(row), str(error)))
             continue
-        records.append({ROW_COLUMN: int(row), **features, LABEL_COLUMN: label, HOSTNAME_COLUMN: host})
+        records.append({ROW_COLUMN: int(row), **features, LABEL_COLUMN: label, HOST_COLUMN: host})
     table = pd.DataFrame(records, columns=list(OUTPUT_COLUMNS))
     return BuildResult(table, tuple(failures))
 
