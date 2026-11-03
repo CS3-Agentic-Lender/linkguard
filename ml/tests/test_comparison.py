@@ -6,8 +6,11 @@ import pytest
 from features.hostname import extract_features
 from comparison.compare import (
     COMPARED_COLUMNS,
+    RAW_CSV_NAME,
+    REPORT_NAME,
     UNEXPLAINED,
     find_mismatches,
+    main,
     pattern_for,
     patterns_table,
     prepare,
@@ -437,3 +440,30 @@ def test_report_shows_no_text_from_the_dataset_links():
     assert "http" not in text
     assert "://" not in text
     assert "user part hidden" not in text
+
+
+def test_main_writes_the_report_from_the_raw_file(tmp_path, capsys):
+    raw_path = tmp_path / "data" / RAW_CSV_NAME
+    raw_path.parent.mkdir()
+    # One extra row the extractor refuses, so the run also reports a row it skipped.
+    refused = pd.DataFrame([{**MARKED_ROWS.iloc[0].to_dict(), "URL": "http://", "Domain": ""}])
+    pd.concat([MARKED_ROWS, refused], ignore_index=True).to_csv(raw_path, index=False)
+
+    assert main(tmp_path) == 0
+
+    report = (tmp_path / "reports" / REPORT_NAME).read_text(encoding="utf-8")
+    assert "(7 rows)" in report
+    assert "| Port in the link |" in report
+    assert "phish-marker" not in report
+    out = capsys.readouterr().out
+    assert "Rows that could not be compared: 1" in out
+    assert "Wrote reports/feature_comparison.md" in out
+
+
+def test_main_stops_without_the_raw_file(tmp_path, capsys):
+    assert main(tmp_path) == 1
+
+    out = capsys.readouterr().out
+    assert str(tmp_path / "data" / RAW_CSV_NAME) in out
+    assert "Get the dataset" in out
+    assert not (tmp_path / "reports").exists()
