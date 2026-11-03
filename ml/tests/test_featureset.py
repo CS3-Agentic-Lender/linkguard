@@ -108,6 +108,16 @@ def test_main_reports_failures_writes_no_file_and_returns_1(tmp_path, capsys):
     assert f"1 row: {features.hostname.EMPTY_LINK_MESSAGE} (for example row 2)" in out
 
 
+def test_main_explains_a_missing_cleaned_file_writes_no_file_and_returns_1(tmp_path, capsys):
+    code = main(tmp_path)
+
+    assert code == 1
+    assert not output_path(tmp_path).exists()
+    out = capsys.readouterr().out
+    assert "The cleaned file was not found" in out
+    assert build.MISSING_CLEANED_HINT in out
+
+
 def test_a_link_that_is_not_text_is_a_failed_row_and_the_build_carries_on():
     result = build_feature_set(NOT_TEXT)
 
@@ -120,7 +130,10 @@ def test_a_link_that_is_not_text_is_a_failed_row_and_the_build_carries_on():
 
 def test_main_reports_links_that_are_not_text_writes_no_file_and_returns_1(tmp_path, capsys, monkeypatch):
     # load_cleaned reads blanks as "", so the loader is swapped to hand over None and NaN.
+    # The file only has to exist to get past the missing-file check.
     monkeypatch.setattr(build, "load_cleaned", lambda _path: NOT_TEXT)
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / CLEANED_CSV_NAME).touch()
 
     code = main(tmp_path)
 

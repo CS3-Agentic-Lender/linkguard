@@ -23,6 +23,7 @@ URL_COLUMN = "URL"
 ROW_COLUMN = "row"
 HOST_COLUMN = "host"
 NOT_TEXT_MESSAGE = "The link is not text."
+MISSING_CLEANED_HINT = "Make it first by running every cell of ml/notebooks/03_clean_dataset.ipynb."
 OUTPUT_COLUMNS: tuple[str, ...] = (ROW_COLUMN, *FEATURE_NAMES, LABEL_COLUMN, HOST_COLUMN)
 
 
@@ -78,8 +79,12 @@ def output_path(ml_dir: Path) -> Path:
 
 
 def main(ml_dir: Path) -> int:
-    """Build the feature set and save it. Returns 1 and saves nothing if any row fails."""
-    rows = load_cleaned(ml_dir / "data" / CLEANED_CSV_NAME)
+    """Build the feature set and save it. Returns 1 and saves nothing if the cleaned file is missing or any row fails."""
+    cleaned_path = ml_dir / "data" / CLEANED_CSV_NAME
+    if not cleaned_path.is_file():
+        print(f"The cleaned file was not found at {cleaned_path}. {MISSING_CLEANED_HINT}")
+        return 1
+    rows = load_cleaned(cleaned_path)
     result = build_feature_set(rows)
     if result.failures:
         print("\n".join(failure_lines(result.failures)))
