@@ -320,6 +320,18 @@ fitted = hand_to_classifiers({"baseline": DummyClassifier()}, training_set)
 
 The tests (`ml/tests/test_training_pipeline.py`) run on a small made-up sample, because CI has no dataset. Its numbers say nothing about real model performance.
 
+## Training the classifiers
+
+`ml/training/classifiers.py` trains every model through the training pipeline, on the 8 features in the final feature list. The models are a baseline that always guesses the most common class, logistic regression, logistic regression with balanced class weights, a random forest and gradient boosting.
+
+Each model is scored with 5-fold cross-validation on the training rows. The folds are grouped by host, so no website is in two folds. They are stratified, so each fold keeps the phishing share. The seed is fixed. Inside each fold the scaler and the model sit in one Pipeline, so the scaler only learns from that fold's training rows. The test split is never loaded. From `ml/`, run:
+
+```bash
+uv run python -m training.classifiers
+```
+
+It saves `ml/reports/cv_results.json`: for every model and fold, phishing recall, precision, F1, ROC-AUC and accuracy on the held-out fold and on the fold's own training rows, plus the held-out fold's confusion counts. Phishing is the positive class.
+
 ## Model comparison
 
 `ml/training/model_comparison.py` turns the cross-validation results into one comparison table and picks the model. It reads `ml/reports/cv_results.json`, which `uv run python -m training.classifiers` saves, and trains nothing itself. Run it from `ml/`:
@@ -332,7 +344,7 @@ It writes:
 
 | File | Holds |
 |---|---|
-| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). A second table puts each model's training recall and F1 next to its cross-validation ones, with the note on over- and underfitting under it. Then the chosen model, why, and what the choice costs on the other measures, then the class balance note. |
+| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). A second table puts each model's training recall and F1 next to its cross-validation ones, with the note on over- and underfitting under it. Then the chosen model, the reason and what the choice costs on the other measures. The class balance note comes last. |
 | `ml/reports/confusion_matrices/<model>.png` | One confusion matrix per model. It adds up the held-out folds, so every training row is predicted once by a model that never trained on it. |
 
 How the model is chosen:
@@ -352,7 +364,7 @@ The run stops and saves nothing if the results file:
 - has held-out counts that do not add up to every training row once, or are not whole numbers of 0 or more
 - has a fold whose recall, precision, F1 or accuracy does not match its own confusion counts
 
-The report also names a known limitation. The split keeps each host in one set but not each parent domain, and 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
+The report also names a known limitation. The split keeps each host in one set but not each parent domain. On the shared split, 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
 
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
 

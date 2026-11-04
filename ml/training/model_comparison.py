@@ -7,7 +7,7 @@ on the rows it trained on, and the counts of its held-out predictions. Writes:
 - ml/reports/model_comparison.md: the mean and standard deviation over the folds of phishing
   recall, precision, F1, ROC-AUC and accuracy for every model and the baseline, a second table
   with the training recall and F1 next to the cross-validation ones and a note on over- and
-  underfitting, then the chosen model, why and what it costs, and the class balance note.
+  underfitting, then the chosen model with the reason and its cost. The class balance note is last.
 - ml/reports/confusion_matrices/<model>.png: one confusion matrix per model. It adds up the
   5 held-out folds, so every training row is predicted once, by a model that never saw it.
 
