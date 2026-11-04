@@ -54,6 +54,10 @@ ROUNDING_TOLERANCE = 1e-9
 OVERFIT_GAP = 0.05
 # A model whose F1 on its own training rows is under this cannot even fit them, so it looks underfit.
 UNDERFIT_F1 = 0.70
+# Counted once on the shared split (registered domain from the public suffix list, private suffixes
+# such as web.app treated as the parent). This script never reads the rows, so the counts live here.
+SHARED_PARENT_TEST = 0.235
+SHARED_PARENT_TEST_PHISHING = 0.518
 CHART_DPI = 100
 CHART_SIZE_INCHES = (5.6, 4.8)
 
@@ -338,6 +342,21 @@ def method_lines(results: dict) -> list[str]:
     ]
 
 
+def limitation_lines() -> list[str]:
+    """The known limitation: hosts are kept apart, but their parent domains are not."""
+    return [
+        "The split and the folds keep each host in one set. They do not look at the parent domain. "
+        "Many phishing links sit on shared platforms such as `web.app`, `firebaseapp.com` and `ipfs.io`. "
+        "So a fold's held-out links can share a parent domain with the links its model trained on.",
+        "",
+        f"On the shared split, {SHARED_PARENT_TEST:.1%} of test links share a parent domain with training links. "
+        f"For phishing links it is {SHARED_PARENT_TEST_PHISHING:.1%}. "
+        "The scores above may look better than they would on links from parent domains the model has never seen.",
+        "",
+        "Regrouping the split by parent domain is a separate ticket. The split does not change this sprint.",
+    ]
+
+
 def report(results: dict) -> str:
     """The comparison table and the notes under it, as a Markdown page."""
     table = score_table(results)
@@ -375,6 +394,10 @@ def report(results: dict) -> str:
         "",
         f"By the choosing rule the highest mean phishing recall wins. If models are within {CLOSE} of the best recall, the highest F1 wins. "
         f"If they are also within {CLOSE} of the best F1 among them, the simpler model wins. The baseline is not a candidate.",
+        "",
+        "## Known limitation: shared parent domains",
+        "",
+        *limitation_lines(),
         "",
         "## Class balance and class weights",
         "",

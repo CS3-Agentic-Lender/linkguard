@@ -222,6 +222,17 @@ def test_the_fit_note_flags_a_model_low_on_training_rows_too():
     assert f"{BASELINE} looks underfit" not in note
 
 
+# Known limitation
+
+
+def test_the_report_names_the_shared_parent_domain_limitation():
+    page = report(made_up_results())
+    assert "## Known limitation: shared parent domains" in page
+    assert "23.5% of test links share a parent domain" in page
+    assert "51.8%" in page
+    assert page.index("Known limitation") > page.index("Chosen model:")
+
+
 # Class balance and class weights (AC8)
 
 

@@ -352,6 +352,8 @@ The run stops and saves nothing if the results file:
 - has held-out counts that do not add up to every training row once, or are not whole numbers of 0 or more
 - has a fold whose recall, precision, F1 or accuracy does not match its own confusion counts
 
+The report also names a known limitation. The split keeps each host in one set but not each parent domain, and 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
+
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
 
 ## Source and licence
