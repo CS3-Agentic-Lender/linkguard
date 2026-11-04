@@ -332,14 +332,14 @@ It writes:
 
 | File | Holds |
 |---|---|
-| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). The training recall and F1 sit next to the cross-validation ones. Under the table: the chosen model and why, a note on over- and underfitting, and the class balance note. |
+| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). A second table puts each model's training recall and F1 next to its cross-validation ones, with the note on over- and underfitting under it. Then the chosen model, why, and what the choice costs on the other measures, then the class balance note. |
 | `ml/reports/confusion_matrices/<model>.png` | One confusion matrix per model. It adds up the held-out folds, so every training row is predicted once by a model that never trained on it. |
 
 How the model is chosen:
 
 1. The highest mean phishing recall wins.
-2. If models are within 0.01 on recall, the highest mean F1 wins.
-3. If they are also within 0.01 on F1, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
+2. If models are within 0.01 of the best recall, the highest mean F1 wins.
+3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
 4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
 
 A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.

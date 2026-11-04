@@ -24,6 +24,7 @@ from training.model_comparison import (
     report,
     score_table,
     scores_from_counts,
+    trade_off,
     main,
 )
 
@@ -128,6 +129,28 @@ def test_the_simpler_model_wins_when_recall_and_f1_are_both_close():
     assert "simpler" in reason
 
 
+def test_a_tie_on_recall_is_described_against_the_best():
+    results = with_means(**{"Gradient boosting": (0.815, 5, 0.93, 0.84, 0.88)})
+    _, reason = choose_model(mean_scores(results, "cv"))
+    assert "within 0.01 of the best mean phishing recall" in reason
+    assert "of each other" not in reason
+
+
+def test_the_reason_says_what_the_choice_costs():
+    cv_means = mean_scores(made_up_results(), "cv")
+    # Gradient boosting flags fewer legitimate links, so the forest gives up some precision.
+    cost = trade_off(cv_means, "Random forest")
+    assert "precision (0.845 against 0.889 for Gradient boosting)" in cost
+    assert "ROC-AUC" not in cost
+    page = report(made_up_results())
+    assert page.index(cost) > page.index("Chosen model: Random forest")
+
+
+def test_the_reason_says_when_the_choice_costs_nothing():
+    results = with_means(**{"Random forest": (0.82, 0, 0.95, 0.83, 0.90)})
+    assert "costs nothing" in trade_off(mean_scores(results, "cv"), "Random forest")
+
+
 def test_the_baseline_is_never_chosen():
     results = with_means(**{BASELINE: (0.98, 300, 0.5, 1.0, 0.60)})
     name, _ = choose_model(mean_scores(results, "cv"))
@@ -144,14 +167,43 @@ def test_the_page_is_labelled_as_in_dataset_results_and_names_the_choice_under_t
 # Training scores next to the cross-validation scores (AC5)
 
 
+def _tables(page):
+    """The header and rows of each table on the page, in order."""
+    tables, current = [], None
+    for line in page.splitlines():
+        if line.startswith("| Model |"):
+            current = {"columns": [cell.strip() for cell in line.strip("|").split("|")], "rows": {}}
+            tables.append(current)
+        elif current is not None and line.startswith("| ") and not line.startswith("|---"):
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            current["rows"][cells[0]] = cells
+        elif not line.startswith("|"):
+            current = None
+    return tables
+
+
+def test_the_main_table_keeps_the_four_measures_together_with_accuracy_last():
+    main_table = _tables(report(made_up_results()))[0]
+    assert main_table["columns"] == ["Model", "Phishing recall", "Precision", "F1", "ROC-AUC", "Accuracy"]
+
+
 def test_training_recall_and_f1_sit_next_to_the_cross_validation_ones():
+    tables = _tables(report(made_up_results()))
+    assert len(tables) == 2
+    fit_table = tables[1]
+    assert fit_table["columns"] == ["Model", "Phishing recall", "Recall on training rows", "F1", "F1 on training rows"]
+    assert set(fit_table["rows"]) == set(MODEL_NAMES)
+    forest = fit_table["rows"]["Random forest"]
+    assert forest[1] == "0.820"
+    assert forest[2] == "0.990"
+    assert forest[4] == "0.990"
+
+
+def test_the_fit_note_sits_under_the_training_table_and_says_what_it_checks():
     page = report(made_up_results())
-    header = next(line for line in page.splitlines() if line.startswith("| Model |"))
-    columns = [cell.strip() for cell in header.strip("|").split("|")]
-    assert columns.index("Recall on training rows") == columns.index("Phishing recall") + 1
-    assert columns.index("F1 on training rows") == columns.index("F1") + 1
-    forest_row = next(line for line in page.splitlines() if line.startswith("| Random forest |"))
-    assert "0.990" in forest_row
+    assert page.index("Random forest looks overfit") > page.index("| Model | Phishing recall | Recall on training rows")
+    note = fit_note(*(mean_scores(with_means(**{"Random forest": (0.82, 30, 0.92, 0.83, 0.73)}), part) for part in ("train", "cv")))
+    assert "Every training recall and F1 is within 0.05 of its cross-validation score." in note
 
 
 def test_the_fit_note_flags_a_model_much_better_on_training_rows():

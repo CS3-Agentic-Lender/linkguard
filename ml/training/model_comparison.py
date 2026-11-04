@@ -5,9 +5,9 @@ model's scores on every one of the 5 host-grouped folds of the training rows, it
 on the rows it trained on, and the counts of its held-out predictions. Writes:
 
 - ml/reports/model_comparison.md: the mean and standard deviation over the folds of phishing
-  recall, precision, F1, ROC-AUC and accuracy for every model and the baseline, with the
-  training recall and F1 next to them, then the chosen model and why, a note on over- and
-  underfitting, and the class balance note.
+  recall, precision, F1, ROC-AUC and accuracy for every model and the baseline, a second table
+  with the training recall and F1 next to the cross-validation ones and a note on over- and
+  underfitting, then the chosen model, why and what it costs, and the class balance note.
 - ml/reports/confusion_matrices/<model>.png: one confusion matrix per model. It adds up the
   5 held-out folds, so every training row is predicted once, by a model that never saw it.
 
@@ -177,10 +177,10 @@ def score_table(results: dict) -> pd.DataFrame:
 
 
 def choose_model(cv_means: pd.DataFrame) -> tuple[str, str]:
-    """The chosen model and the reason, by the team's rule.
+    """The chosen model and the reason, by the choosing rule.
 
-    The highest mean phishing recall wins. Models within CLOSE of it are split by F1.
-    Models also within CLOSE on F1 go to the simplest. The baseline is never a candidate.
+    The highest mean phishing recall wins. Models within CLOSE of the best recall are split by F1.
+    Models also within CLOSE of the best F1 among them go to the simplest. The baseline is never a candidate.
     """
     candidates = cv_means.drop(index=BASELINE)
     best_recall = candidates["recall"].max()
@@ -199,15 +199,30 @@ def choose_model(cv_means: pd.DataFrame) -> tuple[str, str]:
     name = close_on_f1.index[0]
     if len(close_on_f1) == 1:
         reason = (
-            f"{tied} are within {CLOSE} of each other on mean phishing recall. "
+            f"{tied} are within {CLOSE} of the best mean phishing recall. "
             f"{name} has the highest F1 of them, {best_f1:.3f}."
         )
     else:
         reason = (
-            f"{' and '.join(close_on_f1.index)} are within {CLOSE} of each other on both mean phishing recall and F1, "
+            f"{' and '.join(close_on_f1.index)} are within {CLOSE} of the best mean phishing recall and of the best F1 among them, "
             f"so the simpler model, {name}, is chosen."
         )
     return name, reason
+
+
+def trade_off(cv_means: pd.DataFrame, chosen: str) -> str:
+    """What the chosen model gives up on the other measures, against the best candidate on each."""
+    candidates = cv_means.drop(index=BASELINE)
+    costs = []
+    for metric, label in (("precision", "precision"), ("f1", "F1"), ("roc_auc", "ROC-AUC")):
+        best = candidates[metric].idxmax()
+        # Compare at the 3 decimals the table shows, so a cost is never "0.712 against 0.712".
+        if round(candidates.loc[best, metric], 3) > round(candidates.loc[chosen, metric], 3):
+            costs.append(f"{label} ({candidates.loc[chosen, metric]:.3f} against {candidates.loc[best, metric]:.3f} for {best})")
+    if not costs:
+        return "It is also the best candidate on precision, F1 and ROC-AUC, so the choice costs nothing on them."
+    listed = costs[0] if len(costs) == 1 else ", ".join(costs[:-1]) + " and " + costs[-1]
+    return f"The choice costs some {listed}, in return for the higher recall."
 
 
 def fit_note(train_means: pd.DataFrame, cv_means: pd.DataFrame) -> str:
@@ -225,7 +240,7 @@ def fit_note(train_means: pd.DataFrame, cv_means: pd.DataFrame) -> str:
         for name in candidates
         if train_means.loc[name, "f1"] < UNDERFIT_F1
     ]
-    parts = overfit or [f"No model looks overfit. Every training score is within {OVERFIT_GAP} of the cross-validation score."]
+    parts = overfit or [f"No model looks overfit. Every training recall and F1 is within {OVERFIT_GAP} of its cross-validation score."]
     parts += underfit or [f"No model looks underfit. Every training F1 is {UNDERFIT_F1:.2f} or more."]
     parts.append("The baseline is left out, because it always predicts the same class.")
     return " ".join(parts)
@@ -302,39 +317,42 @@ def report(results: dict) -> str:
         "- Inside each fold the scaler and the model are fitted together on the fold's training rows only.",
         f"- The {len(results['features'])} final features: {features}.",
         "- Phishing (label 1) is the positive class. Each score is the mean over the folds ± the standard deviation.",
-        "- The training columns are the mean score on the rows each fold's model trained on.",
         "",
         "## Cross-validation scores",
         "",
-        "| Model | Phishing recall | Recall on training rows | Precision | F1 | F1 on training rows | ROC-AUC | Accuracy |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Model | Phishing recall | Precision | F1 | ROC-AUC | Accuracy |",
+        "|---|---|---|---|---|---|",
     ]
     for name in MODEL_NAMES:
-        cells = [
-            _cell(table, name, "recall"),
-            f"{train_means.loc[name, 'recall']:.3f}",
-            _cell(table, name, "precision"),
-            _cell(table, name, "f1"),
-            f"{train_means.loc[name, 'f1']:.3f}",
-            _cell(table, name, "roc_auc"),
-            _cell(table, name, "accuracy"),
-        ]
+        cells = [_cell(table, name, metric) for metric in METRICS]
         lines.append(f"| {name} | " + " | ".join(cells) + " |")
     lines += [
         "",
         "Phishing recall is the main measure. It is the share of phishing links the model catches. "
         "Accuracy comes last, because the dataset's legitimate links are mostly big sites' front pages, which makes it look higher than it is.",
         "",
+        "### Training rows next to cross-validation",
+        "",
+        "Each training score is the mean over the folds on the rows that fold's model trained on.",
+        "",
+        "| Model | Phishing recall | Recall on training rows | F1 | F1 on training rows |",
+        "|---|---|---|---|---|",
+    ]
+    for name in MODEL_NAMES:
+        cells = [f"{means.loc[name, metric]:.3f}" for metric in ("recall", "f1") for means in (cv_means, train_means)]
+        lines.append(f"| {name} | " + " | ".join(cells) + " |")
+    lines += [
+        "",
+        fit_note(train_means, cv_means),
+        "",
         f"## Chosen model: {chosen}",
         "",
         reason,
         "",
-        f"By the team's rule the highest mean phishing recall wins. If models are within {CLOSE} on recall, the highest F1 wins. "
-        f"If they are also within {CLOSE} on F1, the simpler model wins. The baseline is not a candidate.",
+        trade_off(cv_means, chosen),
         "",
-        "## Over- and underfitting",
-        "",
-        fit_note(train_means, cv_means),
+        f"By the choosing rule the highest mean phishing recall wins. If models are within {CLOSE} of the best recall, the highest F1 wins. "
+        f"If they are also within {CLOSE} of the best F1 among them, the simpler model wins. The baseline is not a candidate.",
         "",
         "## Class balance and class weights",
         "",
