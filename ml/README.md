@@ -332,6 +332,42 @@ uv run python -m training.classifiers
 
 It saves `ml/reports/cv_results.json`: for every model and fold, phishing recall, precision, F1, ROC-AUC and accuracy on the held-out fold and on the fold's own training rows, plus the held-out fold's confusion counts. Phishing is the positive class.
 
+## Model comparison
+
+`ml/training/model_comparison.py` turns the cross-validation results into one comparison table and picks the model. It reads `ml/reports/cv_results.json`, which `uv run python -m training.classifiers` saves, and trains nothing itself. Run it from `ml/`:
+
+```bash
+uv run python -m training.model_comparison
+```
+
+It writes:
+
+| File | Holds |
+|---|---|
+| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). A second table puts each model's training recall and F1 next to its cross-validation ones, with the note on over- and underfitting under it. Then the chosen model, the reason and what the choice costs on the other measures. The class balance note comes last. |
+| `ml/reports/confusion_matrices/<model>.png` | One confusion matrix per model. It adds up the held-out folds, so every training row is predicted once by a model that never trained on it. |
+
+How the model is chosen:
+
+1. The highest mean phishing recall wins.
+2. If models are within 0.01 of the best recall, the highest mean F1 wins.
+3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
+4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
+
+A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
+
+The run stops and saves nothing if the results file:
+
+- is cut off or is not valid JSON
+- is missing a model, a score or any other value the report reads, or does not have exactly 5 folds
+- was trained on a different feature list
+- has held-out counts that do not add up to every training row once, or are not whole numbers of 0 or more
+- has a fold whose recall, precision, F1 or accuracy does not match its own confusion counts
+
+The report also names a known limitation. The split keeps each host in one set but not each parent domain. On the shared split, 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
+
+These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
+
 ## Source and licence
 
 | | |
