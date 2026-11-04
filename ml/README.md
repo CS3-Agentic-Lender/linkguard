@@ -346,7 +346,8 @@ A model looks overfit when its training recall or F1 is more than 0.05 above its
 
 The run stops and saves nothing if the results file:
 
-- is missing a model or a score, or does not have exactly 5 folds
+- is cut off or is not valid JSON
+- is missing a model, a score or any other value the report reads, or does not have exactly 5 folds
 - was trained on a different feature list
 - has held-out counts that do not add up to every training row once, or are not whole numbers of 0 or more
 - has a fold whose recall, precision, F1 or accuracy does not match its own confusion counts

@@ -252,6 +252,17 @@ def double_counts(counts):
         (lambda r: r["models"][PLAIN_LR]["folds"][0]["confusion"].update(tp=134.5, fn=65.5), "whole number"),
         (lambda r: r["models"][PLAIN_LR]["folds"][0]["confusion"].update(tp=-1, fn=201), "whole number"),
         (lambda r: r["class_balance"].update(legitimate=1), "class balance"),
+        # A partial file: each key the report reads is missing in turn.
+        (lambda r: r.pop("training_rows"), "training_rows is missing"),
+        (lambda r: r.pop("class_balance"), "class_balance is missing"),
+        (lambda r: r.pop("seed"), "seed is missing"),
+        (lambda r: r["class_balance"].pop("legitimate"), "legitimate is missing"),
+        (lambda r: r["models"][PLAIN_LR].pop("folds"), "folds is missing"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][2].pop("confusion"), "fold 3: confusion is missing"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0].pop("train"), "train is missing"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0].update(confusion=[1, 2, 3, 4]), "not a set of named values"),
+        (lambda r: r.update(models=[]), "not a set of named values"),
+        (lambda r: r["models"][PLAIN_LR].update(folds="five"), "folds are not a list"),
     ],
 )
 def test_a_wrong_results_file_is_refused_by_name(spoil, message):
@@ -293,3 +304,32 @@ def test_main_stops_and_saves_nothing_for_a_wrong_results_file(tmp_path, capsys)
     assert "Model comparison stopped" in capsys.readouterr().out
     assert not (reports / REPORT_NAME).exists()
     assert not (reports / MATRIX_DIR_NAME).exists()
+
+
+def test_a_results_file_that_is_not_a_set_of_named_values_is_refused():
+    with pytest.raises(ModelComparisonError, match="not a set of named values"):
+        check_results([1, 2, 3])
+
+
+def test_main_stops_and_saves_nothing_for_a_cut_off_results_file(tmp_path, capsys):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    whole = json.dumps(made_up_results())
+    (reports / RESULTS_NAME).write_text(whole[: len(whole) // 2])
+    assert main(tmp_path) == 1
+    out = capsys.readouterr().out
+    assert "Model comparison stopped" in out
+    assert "not valid JSON" in out
+    assert not (reports / REPORT_NAME).exists()
+    assert not (reports / MATRIX_DIR_NAME).exists()
+
+
+def test_main_stops_and_saves_nothing_for_a_partial_results_file(tmp_path, capsys):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    results = made_up_results()
+    del results["models"][PLAIN_LR]["folds"][0]["cv"]
+    (reports / RESULTS_NAME).write_text(json.dumps(results))
+    assert main(tmp_path) == 1
+    assert "cv is missing" in capsys.readouterr().out
+    assert not (reports / REPORT_NAME).exists()

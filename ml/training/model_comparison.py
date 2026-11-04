@@ -39,6 +39,9 @@ MODEL_NAMES = (BASELINE, PLAIN_LR, BALANCED_LR, "Random forest", "Gradient boost
 METRICS = ("recall", "precision", "f1", "roc_auc", "accuracy")
 COUNTS = ("tp", "fp", "fn", "tn")
 CLASSES = ("phishing", "legitimate")
+# The keys the report reads. A results file missing any of them is refused by name.
+RESULTS_KEYS = ("features", "folds", "seed", "training_rows", "class_balance", "models")
+FOLD_KEYS = ("fold", "cv", "train", "confusion")
 FOLDS = 5
 LABEL = "In-dataset cross-validation results, not real-world accuracy."
 # The results file rounds scores to 6 decimals, so a score may differ from its counts by this much.
@@ -59,15 +62,23 @@ class ModelComparisonError(Exception):
     """The results file is missing something, or its numbers do not add up."""
 
 
+def _check_keys(where: str, value: object, keys: tuple[str, ...]) -> None:
+    if not isinstance(value, dict):
+        raise ModelComparisonError(f"{where}: not a set of named values.")
+    missing = [key for key in keys if key not in value]
+    if missing:
+        raise ModelComparisonError(f"{where}: {', '.join(missing)} is missing.")
+
+
 def _check_scores(name: str, fold: int, part: str, scores: dict) -> None:
+    _check_keys(f"{name}, fold {fold}, {part} scores", scores, METRICS)
     for metric in METRICS:
-        if metric not in scores:
-            raise ModelComparisonError(f"{name}, fold {fold}: the {part} scores have no {metric}.")
         if not 0 <= scores[metric] <= 1:
             raise ModelComparisonError(f"{name}, fold {fold}: the {part} {metric} is {scores[metric]}, not between 0 and 1.")
 
 
 def _check_counts(name: str, fold: int, counts: dict) -> None:
+    _check_keys(f"{name}, fold {fold}, confusion counts", counts, ())
     for count in COUNTS:
         value = counts.get(count)
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
@@ -100,16 +111,24 @@ def _check_scores_match_counts(name: str, fold: int, scores: dict, counts: dict)
 
 def check_results(results: dict) -> None:
     """Stop with a message naming the problem if the results file is not what this report expects."""
-    if results.get("features") != list(FINAL_FEATURES):
+    _check_keys("The results file", results, RESULTS_KEYS)
+    _check_keys("The class balance", results["class_balance"], CLASSES)
+    _check_keys("The models", results["models"], ())
+    if results["features"] != list(FINAL_FEATURES):
         raise ModelComparisonError(f"The results were not trained on the final feature list {list(FINAL_FEATURES)}.")
-    missing = [name for name in MODEL_NAMES if name not in results.get("models", {})]
+    missing = [name for name in MODEL_NAMES if name not in results["models"]]
     if missing:
         raise ModelComparisonError(f"The results have no {', '.join(missing)}.")
     folds = results["folds"]
     if folds != FOLDS:
         raise ModelComparisonError(f"The results have {folds} folds, but the comparison needs {FOLDS} folds.")
     for name in MODEL_NAMES:
+        _check_keys(name, results["models"][name], ("folds",))
         model_folds = results["models"][name]["folds"]
+        if not isinstance(model_folds, list):
+            raise ModelComparisonError(f"{name}'s folds are not a list.")
+        for position, fold in enumerate(model_folds, start=1):
+            _check_keys(f"{name}, fold {position}", fold, FOLD_KEYS)
         if [fold["fold"] for fold in model_folds] != list(range(1, folds + 1)):
             raise ModelComparisonError(f"{name} does not have exactly {folds} folds, numbered 1 to {folds}.")
         model_totals = dict.fromkeys(COUNTS, 0)
@@ -336,7 +355,10 @@ def report(results: dict) -> str:
 def load_results(path: Path) -> dict:
     if not path.is_file():
         raise ModelComparisonError(f'{path} was not found. Make it with "uv run python -m training.classifiers".')
-    results = json.loads(path.read_text())
+    try:
+        results = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        raise ModelComparisonError(f"{path} is not valid JSON ({error}). It may be cut off. Make it again.") from error
     check_results(results)
     return results
 
