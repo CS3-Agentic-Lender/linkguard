@@ -47,11 +47,13 @@
   --color-risk-high-surface: #fef2f2;
 
   /* Colour: chart bars. Never the only signal: every bar carries its group's
-     name and value as text (docs/adr/0003-chart-drawing.md). Neither is a risk
+     name and value as text (docs/adr/0003-chart-drawing.md). None is a risk
      colour, so a bar never suggests that a group of links is safe. Each has a 3:1
-     pair in scripts/check-contrast.mjs. */
+     pair in scripts/check-contrast.mjs. "Other" is a neutral bar for any group
+     label that is neither Phishing nor Legitimate. */
   --color-chart-phishing: #9a3412;
   --color-chart-legitimate: #64748b;
+  --color-chart-other: #57534e;
   --color-chart-track: #e2e8f0;
 
   /* Type. Body text is 18px and nothing is smaller than 16px. */

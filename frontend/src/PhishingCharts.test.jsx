@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import summary from "../../ml/reports/chart_summary.json";
 import App from "./App.jsx";
-import { formatCount, formatShare } from "./BarChart.jsx";
+import { captionFor, formatCount, formatShare } from "./BarChart.jsx";
 import PhishingCharts from "./PhishingCharts.jsx";
 
 // A small made-up summary in the same shape as ml/reports/chart_summary.json.
@@ -63,13 +63,28 @@ describe("phishing charts page, from the real summary file", () => {
       expect(chart).toHaveAccessibleDescription(expected.takeaway);
       expect(within(chart).getByText(expected.takeaway)).toBeVisible();
 
-      const table = within(chart).getByRole("table", { name: expected.title });
+      const table = within(chart).getByRole("table", { name: captionFor(expected) });
       for (const group of expected.groups) {
         const row = within(table).getByRole("row", { name: new RegExp(`^${group.label}`) });
         expect(row).toHaveTextContent(formatShare(group.value, group.count));
         expect(row).toHaveTextContent(formatCount(group.count, group.total));
       }
     }
+  });
+
+  // Review follow-up: the caption must not just repeat the heading, but each table
+  // still needs its own name, so screen-reader users can tell the tables apart.
+  it("words each table caption differently from its heading, and gives every table its own name", () => {
+    render(<PhishingCharts />);
+
+    const captions = charts().map((chart, index) => {
+      const title = summary.charts[index].title;
+      const caption = within(chart).getByRole("table").querySelector("caption").textContent;
+      expect(caption).toBe(`${title}, phishing compared with legitimate`);
+      expect(within(chart).getAllByText(title)).toHaveLength(1);
+      return caption;
+    });
+    expect(new Set(captions).size).toBe(captions.length);
   });
 
   it("hides the bars from screen readers, so the numbers are not read twice", () => {
@@ -142,6 +157,43 @@ describe("phishing charts page, from a made-up summary", () => {
     const fills = first.querySelectorAll(".bar-fill");
     expect(fills[0]).toHaveStyle({ inlineSize: "25%" });
     expect(fills[1]).toHaveStyle({ inlineSize: "50%" });
+  });
+
+  it("gives Phishing and Legitimate bars their own class and any other group neither", () => {
+    const data = {
+      ...MADE_UP,
+      charts: [
+        {
+          id: "odd",
+          title: "Chart with an unknown group",
+          takeaway: "Odd takeaway.",
+          unit: "percent",
+          groups: [
+            { label: "Phishing", value: 10, count: 4, total: 40 },
+            { label: "Legitimate", value: 20, count: 12, total: 60 },
+            { label: "Unknown", value: 30, count: 3, total: 10 },
+          ],
+        },
+      ],
+    };
+    render(<PhishingCharts data={data} />);
+
+    const [phishing, legitimate, unknown] = screen.getByTestId("bars").querySelectorAll(".bar-fill");
+    expect(phishing).toHaveClass("bar-fill--phishing");
+    expect(phishing).not.toHaveClass("bar-fill--legitimate");
+    expect(legitimate).toHaveClass("bar-fill--legitimate");
+    expect(legitimate).not.toHaveClass("bar-fill--phishing");
+    expect(unknown).not.toHaveClass("bar-fill--phishing");
+    expect(unknown).not.toHaveClass("bar-fill--legitimate");
+  });
+
+  it("names a made-up chart's table from its title and the groups it compares", () => {
+    render(<PhishingCharts data={MADE_UP} />);
+
+    const first = screen.getByRole("figure", { name: "First made-up chart" });
+    expect(
+      within(first).getByRole("table", { name: "First made-up chart, phishing compared with legitimate" }),
+    ).toBeInTheDocument();
   });
 
   it("shows a small share that rounds to 0.0 as under 0.1%, not as zero", () => {

@@ -203,9 +203,14 @@ h1 {
   overflow: hidden;
 }
 
+/* Neutral by default, so a group the page doesn't know never looks like legitimate. */
 .bar-fill {
   display: block;
   height: 100%;
+  background: var(--color-chart-other);
+}
+
+.bar-fill--legitimate {
   background: var(--color-chart-legitimate);
 }
 

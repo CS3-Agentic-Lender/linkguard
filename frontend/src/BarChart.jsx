@@ -21,7 +21,16 @@ export function formatCount(count, total) {
   return `${COUNT.format(count)} of ${COUNT.format(total)}`;
 }
 
+// The table's caption keeps the chart's title, so each table has its own name when a
+// screen reader lists tables, and adds what is compared, so it isn't just the heading
+// again: "Links that use HTTPS, phishing compared with legitimate".
+export function captionFor(chart) {
+  const groups = chart.groups.map((group) => group.label.toLowerCase()).join(" compared with ");
+  return `${chart.title}, ${groups}`;
+}
+
 // A class name per group, so each group keeps its own bar colour on every chart.
+// Only Phishing and Legitimate have colours; any other label gets the neutral bar.
 function groupClass(label) {
   return `bar-fill bar-fill--${label.toLowerCase().replace(/[^a-z]+/g, "-")}`;
 }
@@ -54,7 +63,8 @@ export default function BarChart({ chart }) {
       {/* A table ignores the width and clipping that hide it, so a div hides it instead. */}
       <div className="visually-hidden">
         <table>
-          <caption>{chart.title}</caption>
+          {/* Worded differently from the heading, so a screen reader doesn't just repeat it. */}
+          <caption>{captionFor(chart)}</caption>
           <thead>
             <tr>
               <th scope="col">Group</th>
