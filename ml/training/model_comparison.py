@@ -77,7 +77,10 @@ def _check_keys(where: str, value: object, keys: tuple[str, ...]) -> None:
 def _check_scores(name: str, fold: int, part: str, scores: dict) -> None:
     _check_keys(f"{name}, fold {fold}, {part} scores", scores, METRICS)
     for metric in METRICS:
-        if not 0 <= scores[metric] <= 1:
+        value = scores[metric]
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            raise ModelComparisonError(f"{name}, fold {fold}: the {part} {metric} is {value!r}, not a number.")
+        if not 0 <= value <= 1:
             raise ModelComparisonError(f"{name}, fold {fold}: the {part} {metric} is {scores[metric]}, not between 0 and 1.")
 
 

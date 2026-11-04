@@ -306,6 +306,10 @@ def double_counts(counts):
         (lambda r: r.update(features=r["features"][:-1]), "final feature list"),
         (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].pop("roc_auc"), "roc_auc"),
         (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].update(recall=1.5), "between 0 and 1"),
+        # A hand-edited file could hold a score as text, null or true.
+        (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].update(recall="high"), "not a number"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0]["train"].update(f1=None), "not a number"),
+        (lambda r: r["models"][PLAIN_LR]["folds"][0]["cv"].update(roc_auc=True), "not a number"),
         # Doubling every count keeps the scores but predicts some rows twice.
         (lambda r: double_counts(r["models"][PLAIN_LR]["folds"][0]["confusion"]), "every training row"),
         (lambda r: r.update(training_rows=999), "every training row"),
