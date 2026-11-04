@@ -176,6 +176,11 @@ def score_table(results: dict) -> pd.DataFrame:
     return pd.DataFrame(columns).T
 
 
+def _close_to_best(models: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """The models whose mean score is within CLOSE of the best one on this metric."""
+    return models[models[metric] >= models[metric].max() - CLOSE - ROUNDING_TOLERANCE]
+
+
 def choose_model(cv_means: pd.DataFrame) -> tuple[str, str]:
     """The chosen model and the reason, by the choosing rule.
 
@@ -184,7 +189,7 @@ def choose_model(cv_means: pd.DataFrame) -> tuple[str, str]:
     """
     candidates = cv_means.drop(index=BASELINE)
     best_recall = candidates["recall"].max()
-    close_on_recall = candidates[candidates["recall"] >= best_recall - CLOSE - ROUNDING_TOLERANCE]
+    close_on_recall = _close_to_best(candidates, "recall")
     if len(close_on_recall) == 1:
         name = close_on_recall.index[0]
         runner = candidates.drop(index=name)["recall"].idxmax()
@@ -195,7 +200,7 @@ def choose_model(cv_means: pd.DataFrame) -> tuple[str, str]:
         return name, reason
     tied = " and ".join(close_on_recall.index)
     best_f1 = close_on_recall["f1"].max()
-    close_on_f1 = close_on_recall[close_on_recall["f1"] >= best_f1 - CLOSE - ROUNDING_TOLERANCE]
+    close_on_f1 = _close_to_best(close_on_recall, "f1")
     name = close_on_f1.index[0]
     if len(close_on_f1) == 1:
         reason = (
@@ -299,12 +304,45 @@ def _cell(table: pd.DataFrame, name: str, metric: str) -> str:
     return f"{table.loc[name, f'{metric} mean']:.3f} ± {table.loc[name, f'{metric} std']:.3f}"
 
 
+def _table(columns: list[str], rows: dict[str, list[str]]) -> list[str]:
+    """A Markdown table, one row per model."""
+    lines = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
+    lines += [f"| {name} | " + " | ".join(cells) + " |" for name, cells in rows.items()]
+    return lines
+
+
+def score_lines(table: pd.DataFrame) -> list[str]:
+    """The main table: the cross-validation mean ± spread of each measure, accuracy last."""
+    rows = {name: [_cell(table, name, metric) for metric in METRICS] for name in MODEL_NAMES}
+    return _table(["Model", "Phishing recall", "Precision", "F1", "ROC-AUC", "Accuracy"], rows)
+
+
+def fit_lines(cv_means: pd.DataFrame, train_means: pd.DataFrame) -> list[str]:
+    """The training recall and F1 of each model next to its cross-validation ones."""
+    rows = {
+        name: [f"{means.loc[name, metric]:.3f}" for metric in ("recall", "f1") for means in (cv_means, train_means)]
+        for name in MODEL_NAMES
+    }
+    return _table(["Model", "Phishing recall", "Recall on training rows", "F1", "F1 on training rows"], rows)
+
+
+def method_lines(results: dict) -> list[str]:
+    """How the scores were made: the rows, the folds, the fitting and the features."""
+    features = ", ".join(f"`{name}`" for name in results["features"])
+    return [
+        f"- {results['training_rows']:,} training rows. They are the training part of the shared host-grouped split. The test rows were not used.",
+        f"- Stratified {results['folds']}-fold cross-validation, grouped by host, with seed {results['seed']}. No host is in two folds.",
+        "- Inside each fold the scaler and the model are fitted together on the fold's training rows only.",
+        f"- The {len(results['features'])} final features: {features}.",
+        "- Phishing (label 1) is the positive class. Each score is the mean over the folds ± the standard deviation.",
+    ]
+
+
 def report(results: dict) -> str:
     """The comparison table and the notes under it, as a Markdown page."""
     table = score_table(results)
     cv_means, train_means = mean_scores(results, "cv"), mean_scores(results, "train")
     chosen, reason = choose_model(cv_means)
-    features = ", ".join(f"`{name}`" for name in results["features"])
     lines = [
         "# Model comparison",
         "",
@@ -312,21 +350,11 @@ def report(results: dict) -> str:
         "",
         "## How it was made",
         "",
-        f"- {results['training_rows']:,} training rows. They are the training part of the shared host-grouped split. The test rows were not used.",
-        f"- Stratified {results['folds']}-fold cross-validation, grouped by host, with seed {results['seed']}. No host is in two folds.",
-        "- Inside each fold the scaler and the model are fitted together on the fold's training rows only.",
-        f"- The {len(results['features'])} final features: {features}.",
-        "- Phishing (label 1) is the positive class. Each score is the mean over the folds ± the standard deviation.",
+        *method_lines(results),
         "",
         "## Cross-validation scores",
         "",
-        "| Model | Phishing recall | Precision | F1 | ROC-AUC | Accuracy |",
-        "|---|---|---|---|---|---|",
-    ]
-    for name in MODEL_NAMES:
-        cells = [_cell(table, name, metric) for metric in METRICS]
-        lines.append(f"| {name} | " + " | ".join(cells) + " |")
-    lines += [
+        *score_lines(table),
         "",
         "Phishing recall is the main measure. It is the share of phishing links the model catches. "
         "Accuracy comes last, because the dataset's legitimate links are mostly big sites' front pages, which makes it look higher than it is.",
@@ -335,13 +363,7 @@ def report(results: dict) -> str:
         "",
         "Each training score is the mean over the folds on the rows that fold's model trained on.",
         "",
-        "| Model | Phishing recall | Recall on training rows | F1 | F1 on training rows |",
-        "|---|---|---|---|---|",
-    ]
-    for name in MODEL_NAMES:
-        cells = [f"{means.loc[name, metric]:.3f}" for metric in ("recall", "f1") for means in (cv_means, train_means)]
-        lines.append(f"| {name} | " + " | ".join(cells) + " |")
-    lines += [
+        *fit_lines(cv_means, train_means),
         "",
         fit_note(train_means, cv_means),
         "",
