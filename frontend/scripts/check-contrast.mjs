@@ -32,6 +32,10 @@ const PAIRS = [
   ["focus", "surface", NON_TEXT, "Focus outline on a card"],
   ["focus", "background", NON_TEXT, "Focus outline on the page"],
   ["focus", "primary", NON_TEXT, "Focus outline next to the button"],
+  ["chart-phishing", "surface", NON_TEXT, "Phishing bar on a chart card"],
+  ["chart-legitimate", "surface", NON_TEXT, "Legitimate bar on a chart card"],
+  ["chart-phishing", "chart-track", NON_TEXT, "Phishing bar against its empty track"],
+  ["chart-legitimate", "chart-track", NON_TEXT, "Legitimate bar against its empty track"],
 ];
 
 export function readColours(css) {
