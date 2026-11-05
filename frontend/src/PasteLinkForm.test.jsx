@@ -8,6 +8,9 @@ import PasteLinkForm, { CANT_CHECK, CHECKING, LABEL } from "./PasteLinkForm.jsx"
 // Made-up links, only ever handled as text.
 const LINK = "https://parcel-redelivery.example/track?id=4821";
 
+// A /scan reply with a real level, as the trained model will send it.
+const RESULT = { url: LINK, risk_level: "Suspicious", score: 0.6, reasons: [], placeholder: false };
+
 // A check whose reply we release by hand, so a test can look at the page while it waits.
 function pendingCheck() {
   let reply;
@@ -31,7 +34,7 @@ describe("paste-a-link form", () => {
 
   it("lets a keyboard user Tab to the box, then the button, and check with Enter", async () => {
     const user = userEvent.setup();
-    const check = vi.fn().mockResolvedValue("Reply");
+    const check = vi.fn().mockResolvedValue(RESULT);
     render(<PasteLinkForm check={check} />);
 
     await user.tab();
@@ -44,7 +47,7 @@ describe("paste-a-link form", () => {
     expect(check).toHaveBeenCalledExactlyOnceWith(LINK);
   });
 
-  it("shows Checking… while waiting, then the reply in a polite live region, without moving focus", async () => {
+  it("shows Checking… while waiting, then the result card in a polite live region, without moving focus", async () => {
     const user = userEvent.setup();
     const { check, reply } = pendingCheck();
     render(<PasteLinkForm check={check} />);
@@ -55,8 +58,10 @@ describe("paste-a-link form", () => {
     expect(status).toHaveTextContent(CHECKING);
     expect(screen.getByRole("button", { name: "Check" })).toHaveAttribute("aria-disabled", "true");
 
-    reply().resolve("The reply from the check");
-    expect(await screen.findByText("The reply from the check")).toBe(status);
+    reply().resolve(RESULT);
+    expect(await screen.findByRole("heading", { name: "Suspicious" })).toBeInTheDocument();
+    expect(status).toContainElement(screen.getByRole("heading", { name: "Suspicious" }));
+    expect(status).not.toHaveTextContent(CHECKING);
     expect(screen.getByLabelText(LABEL)).toHaveFocus();
     expect(screen.getByRole("button", { name: "Check" })).toHaveAttribute("aria-disabled", "false");
   });
@@ -86,11 +91,11 @@ describe("paste-a-link form", () => {
 
   it("never shows the pasted link as a clickable link", async () => {
     const user = userEvent.setup();
-    const check = vi.fn().mockResolvedValue(`Checked ${LINK}`);
+    const check = vi.fn().mockResolvedValue(RESULT);
     const { container } = render(<App check={check} />);
 
     await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
-    await screen.findByText(`Checked ${LINK}`);
+    expect(await screen.findByText(LINK)).toBeInTheDocument();
 
     expect(screen.queryAllByRole("link")).toHaveLength(0);
     expect(container.querySelectorAll("a, [href]")).toHaveLength(0);

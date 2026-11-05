@@ -8,9 +8,9 @@ export const PLACEHOLDER = "Checking isn't switched on yet, so we can't give a r
 export class LinkError extends Error {}
 
 /**
- * Sends the pasted text to the backend's POST /scan and resolves with the
- * message to show. This is the only request the page makes: the link itself
- * is never opened, fetched or previewed.
+ * Sends the pasted text to the backend's POST /scan and resolves with its
+ * reply, for the result card to show. This is the only request the page makes:
+ * the link itself is never opened, fetched or previewed.
  *
  * Rejects with a LinkError when the backend says what's wrong with the pasted
  * text. Rejects with a plain Error when the backend can't be reached, replies
@@ -33,10 +33,5 @@ export async function checkLink(link, fetchImpl = fetch) {
     throw new Error(`/scan replied with status ${response.status}.`);
   }
 
-  const reply = await response.json();
-  if (reply.placeholder === true) {
-    return PLACEHOLDER;
-  }
-  // A real risk level belongs on the result card, which isn't built yet.
-  throw new Error("/scan sent a result this page can't show yet.");
+  return response.json();
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import ResultCard from "./ResultCard.jsx";
 import { LinkError } from "./scan.js";
 
 // Wording is copied word for word from the paste-a-link story.
@@ -8,15 +9,16 @@ export const CHECKING = "Checking…";
 export const CANT_CHECK = "We couldn't check that link just now. Please try again.";
 
 /**
- * The box and the Check button. `check(link)` sends the pasted text off and
- * resolves with the message to show, or rejects with a LinkError saying what's
- * wrong with the pasted text. The link is only ever held as text: it is never
+ * The box, the Check button and the result card. `check(link)` sends the
+ * pasted text off and resolves with the /scan reply for the card, or rejects
+ * with a LinkError saying what's wrong with the pasted text. The link is only ever held as text: it is never
  * opened, fetched, previewed or shown as a clickable link.
  */
 export default function PasteLinkForm({ check }) {
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
+  // The /scan reply the card shows, or null before the first check.
+  const [reply, setReply] = useState(null);
   const [error, setError] = useState("");
 
   async function handleSubmit(event) {
@@ -26,16 +28,16 @@ export default function PasteLinkForm({ check }) {
     if (busy) return;
     setBusy(true);
     setError("");
-    setStatus(CHECKING);
+    setReply(null);
     try {
-      setStatus(await check(link));
+      setReply(await check(link));
     } catch (failure) {
       if (failure instanceof LinkError) {
         // The pasted text stays in the box, so the user can fix it.
-        setStatus("");
         setError(failure.message);
       } else {
-        setStatus(CANT_CHECK);
+        // A reply with no level: the card shows its "couldn't check" message.
+        setReply({});
       }
     } finally {
       setBusy(false);
@@ -76,10 +78,10 @@ export default function PasteLinkForm({ check }) {
       <p id="link-help" className="help">
         Press Enter or select Check.
       </p>
-      {/* Always in the page, so screen readers pick up each new message without focus moving. */}
-      <p className="status" role="status" aria-live="polite">
-        {status}
-      </p>
+      {/* Always in the page, so screen readers pick up each new result without focus moving. */}
+      <div className="status" role="status" aria-live="polite">
+        {busy ? CHECKING : reply && <ResultCard reply={reply} />}
+      </div>
     </form>
   );
 }

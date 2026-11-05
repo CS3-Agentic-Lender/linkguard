@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.jsx";
 import { CANT_CHECK, LABEL } from "./PasteLinkForm.jsx";
+import { SAFE_CAVEAT } from "./ResultCard.jsx";
 import { PLACEHOLDER, checkLink } from "./scan.js";
 
 // Made-up link, only ever handled as text.
@@ -36,10 +37,10 @@ describe("checkLink", () => {
     });
   });
 
-  it("gives the placeholder message while the reply is a placeholder", async () => {
+  it("passes the placeholder reply on to the result card", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(reply(200, PLACEHOLDER_REPLY));
 
-    await expect(checkLink(LINK, fetchImpl)).resolves.toBe(PLACEHOLDER);
+    await expect(checkLink(LINK, fetchImpl)).resolves.toEqual(PLACEHOLDER_REPLY);
   });
 
   it("fails when the backend can't be reached", async () => {
@@ -54,11 +55,11 @@ describe("checkLink", () => {
     await expect(checkLink(LINK, fetchImpl)).rejects.toThrow(String(status));
   });
 
-  it("never passes on a risk level, because the result card isn't built yet", async () => {
+  it("passes a reply with a risk level on to the result card", async () => {
     const result = { url: LINK, risk_level: "Safe", score: 0.1, reasons: [], placeholder: false };
     const fetchImpl = vi.fn().mockResolvedValue(reply(200, result));
 
-    await expect(checkLink(LINK, fetchImpl)).rejects.toThrow();
+    await expect(checkLink(LINK, fetchImpl)).resolves.toEqual(result);
   });
 });
 
@@ -97,4 +98,55 @@ describe("paste-a-link page connected to /scan", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent(CANT_CHECK);
   });
+
+  it.each([
+    ["Safe", "safe"],
+    ["Suspicious", "suspicious"],
+    ["High risk", "high"],
+  ])("shows a %s reply on the result card after one request to /scan", async (level, dataLevel) => {
+    const result = { url: LINK, risk_level: level, score: 0.5, reasons: [], placeholder: false };
+    const fetchImpl = vi.fn().mockResolvedValue(reply(200, result));
+    vi.stubGlobal("fetch", fetchImpl);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
+
+    const status = await screen.findByRole("status");
+    const heading = await screen.findByRole("heading", { name: level });
+    expect(status).toContainElement(heading);
+    expect(status.querySelector(".result-card")).toHaveAttribute("data-level", dataLevel);
+    expect(status).not.toHaveTextContent(CANT_CHECK);
+    expect(status).not.toHaveTextContent(PLACEHOLDER);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(fetchImpl.mock.calls[0][0]).toBe("/scan");
+  });
+
+  it("shows the Safe caveat with a Safe reply", async () => {
+    const result = { url: LINK, risk_level: "Safe", score: 0.1, reasons: [], placeholder: false };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, result)));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(SAFE_CAVEAT);
+  });
+
+  it.each([["Unknown"], ["safe"], [""], [null]])(
+    "shows the couldn't-check message, not a level, for a reply with risk level %j",
+    async (level) => {
+      const result = { url: LINK, risk_level: level, score: 0.5, reasons: [], placeholder: false };
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, result)));
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
+
+      const status = await screen.findByRole("status");
+      await screen.findByText(CANT_CHECK);
+      expect(status).toHaveTextContent(CANT_CHECK);
+      expect(screen.queryByRole("heading", { name: /Safe|Suspicious|High risk/ })).not.toBeInTheDocument();
+    },
+  );
 });
