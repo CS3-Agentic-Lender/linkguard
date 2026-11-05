@@ -1,0 +1,616 @@
+{
+  "features": [
+    "HostnameLength",
+    "IsDomainIP",
+    "TLDLength",
+    "NoOfSubDomain",
+    "LetterRatioInHostname",
+    "NoOfDigitsInHostname",
+    "DigitRatioInHostname",
+    "NoOfSpecialCharsInHostname"
+  ],
+  "folds": 5,
+  "seed": 0,
+  "training_rows": 188295,
+  "class_balance": {
+    "phishing": 80416,
+    "legitimate": 107879
+  },
+  "models": {
+    "Baseline (most common class)": {
+      "folds": [
+        {
+          "fold": 1,
+          "cv": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572931
+          },
+          "train": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572924
+          },
+          "confusion": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 16083,
+            "tn": 21576
+          }
+        },
+        {
+          "fold": 2,
+          "cv": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572916
+          },
+          "train": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572928
+          },
+          "confusion": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 16084,
+            "tn": 21576
+          }
+        },
+        {
+          "fold": 3,
+          "cv": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572931
+          },
+          "train": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572924
+          },
+          "confusion": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 16083,
+            "tn": 21576
+          }
+        },
+        {
+          "fold": 4,
+          "cv": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572931
+          },
+          "train": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572924
+          },
+          "confusion": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 16083,
+            "tn": 21576
+          }
+        },
+        {
+          "fold": 5,
+          "cv": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572919
+          },
+          "train": {
+            "recall": 0.0,
+            "precision": 0.0,
+            "f1": 0.0,
+            "roc_auc": 0.5,
+            "accuracy": 0.572927
+          },
+          "confusion": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 16083,
+            "tn": 21575
+          }
+        }
+      ]
+    },
+    "Logistic regression": {
+      "folds": [
+        {
+          "fold": 1,
+          "cv": {
+            "recall": 0.604178,
+            "precision": 0.876986,
+            "f1": 0.715459,
+            "roc_auc": 0.783627,
+            "accuracy": 0.794764
+          },
+          "train": {
+            "recall": 0.597096,
+            "precision": 0.879862,
+            "f1": 0.711411,
+            "roc_auc": 0.785145,
+            "accuracy": 0.793111
+          },
+          "confusion": {
+            "tp": 9717,
+            "fp": 1363,
+            "fn": 6366,
+            "tn": 20213
+          }
+        },
+        {
+          "fold": 2,
+          "cv": {
+            "recall": 0.59295,
+            "precision": 0.881586,
+            "f1": 0.709018,
+            "roc_auc": 0.783722,
+            "accuracy": 0.79214
+          },
+          "train": {
+            "recall": 0.600168,
+            "precision": 0.878638,
+            "f1": 0.713184,
+            "roc_auc": 0.78745,
+            "accuracy": 0.793839
+          },
+          "confusion": {
+            "tp": 9537,
+            "fp": 1281,
+            "fn": 6547,
+            "tn": 20295
+          }
+        },
+        {
+          "fold": 3,
+          "cv": {
+            "recall": 0.574147,
+            "precision": 0.879931,
+            "f1": 0.694887,
+            "roc_auc": 0.783469,
+            "accuracy": 0.784673
+          },
+          "train": {
+            "recall": 0.602941,
+            "precision": 0.881168,
+            "f1": 0.715975,
+            "roc_auc": 0.786452,
+            "accuracy": 0.7957
+          },
+          "confusion": {
+            "tp": 9234,
+            "fp": 1260,
+            "fn": 6849,
+            "tn": 20316
+          }
+        },
+        {
+          "fold": 4,
+          "cv": {
+            "recall": 0.593981,
+            "precision": 0.878275,
+            "f1": 0.70868,
+            "roc_auc": 0.786873,
+            "accuracy": 0.791444
+          },
+          "train": {
+            "recall": 0.599646,
+            "precision": 0.879368,
+            "f1": 0.713055,
+            "roc_auc": 0.784314,
+            "accuracy": 0.793887
+          },
+          "confusion": {
+            "tp": 9553,
+            "fp": 1324,
+            "fn": 6530,
+            "tn": 20252
+          }
+        },
+        {
+          "fold": 5,
+          "cv": {
+            "recall": 0.626624,
+            "precision": 0.879253,
+            "f1": 0.731748,
+            "roc_auc": 0.787944,
+            "accuracy": 0.803787
+          },
+          "train": {
+            "recall": 0.592946,
+            "precision": 0.876738,
+            "f1": 0.707442,
+            "roc_auc": 0.784708,
+            "accuracy": 0.790556
+          },
+          "confusion": {
+            "tp": 10078,
+            "fp": 1384,
+            "fn": 6005,
+            "tn": 20191
+          }
+        }
+      ]
+    },
+    "Logistic regression (balanced)": {
+      "folds": [
+        {
+          "fold": 1,
+          "cv": {
+            "recall": 0.644221,
+            "precision": 0.782198,
+            "f1": 0.706536,
+            "roc_auc": 0.783203,
+            "accuracy": 0.771449
+          },
+          "train": {
+            "recall": 0.645143,
+            "precision": 0.789425,
+            "f1": 0.710028,
+            "roc_auc": 0.784996,
+            "accuracy": 0.774954
+          },
+          "confusion": {
+            "tp": 10361,
+            "fp": 2885,
+            "fn": 5722,
+            "tn": 18691
+          }
+        },
+        {
+          "fold": 2,
+          "cv": {
+            "recall": 0.631497,
+            "precision": 0.808614,
+            "f1": 0.709164,
+            "roc_auc": 0.783367,
+            "accuracy": 0.778784
+          },
+          "train": {
+            "recall": 0.645542,
+            "precision": 0.807863,
+            "f1": 0.717638,
+            "roc_auc": 0.787057,
+            "accuracy": 0.783052
+          },
+          "confusion": {
+            "tp": 10157,
+            "fp": 2404,
+            "fn": 5927,
+            "tn": 19172
+          }
+        },
+        {
+          "fold": 3,
+          "cv": {
+            "recall": 0.647329,
+            "precision": 0.804933,
+            "f1": 0.717579,
+            "roc_auc": 0.783601,
+            "accuracy": 0.782389
+          },
+          "train": {
+            "recall": 0.644211,
+            "precision": 0.801966,
+            "f1": 0.714484,
+            "roc_auc": 0.785909,
+            "accuracy": 0.780112
+          },
+          "confusion": {
+            "tp": 10411,
+            "fp": 2523,
+            "fn": 5672,
+            "tn": 19053
+          }
+        },
+        {
+          "fold": 4,
+          "cv": {
+            "recall": 0.633588,
+            "precision": 0.791333,
+            "f1": 0.703729,
+            "roc_auc": 0.786916,
+            "accuracy": 0.772166
+          },
+          "train": {
+            "recall": 0.645625,
+            "precision": 0.791912,
+            "f1": 0.711325,
+            "roc_auc": 0.784851,
+            "accuracy": 0.776202
+          },
+          "confusion": {
+            "tp": 10190,
+            "fp": 2687,
+            "fn": 5893,
+            "tn": 18889
+          }
+        },
+        {
+          "fold": 5,
+          "cv": {
+            "recall": 0.662501,
+            "precision": 0.795803,
+            "f1": 0.723059,
+            "roc_auc": 0.78762,
+            "accuracy": 0.78326
+          },
+          "train": {
+            "recall": 0.639625,
+            "precision": 0.790233,
+            "f1": 0.706997,
+            "roc_auc": 0.784778,
+            "accuracy": 0.773582
+          },
+          "confusion": {
+            "tp": 10655,
+            "fp": 2734,
+            "fn": 5428,
+            "tn": 18841
+          }
+        }
+      ]
+    },
+    "Random forest": {
+      "folds": [
+        {
+          "fold": 1,
+          "cv": {
+            "recall": 0.609774,
+            "precision": 0.902706,
+            "f1": 0.727873,
+            "roc_auc": 0.83351,
+            "accuracy": 0.805279
+          },
+          "train": {
+            "recall": 0.618998,
+            "precision": 0.911885,
+            "f1": 0.737424,
+            "roc_auc": 0.842189,
+            "accuracy": 0.811738
+          },
+          "confusion": {
+            "tp": 9807,
+            "fp": 1057,
+            "fn": 6276,
+            "tn": 20519
+          }
+        },
+        {
+          "fold": 2,
+          "cv": {
+            "recall": 0.600224,
+            "precision": 0.903425,
+            "f1": 0.721255,
+            "roc_auc": 0.831578,
+            "accuracy": 0.801859
+          },
+          "train": {
+            "recall": 0.620749,
+            "precision": 0.912402,
+            "f1": 0.738834,
+            "roc_auc": 0.842609,
+            "accuracy": 0.81258
+          },
+          "confusion": {
+            "tp": 9654,
+            "fp": 1032,
+            "fn": 6430,
+            "tn": 20544
+          }
+        },
+        {
+          "fold": 3,
+          "cv": {
+            "recall": 0.58652,
+            "precision": 0.914671,
+            "f1": 0.71473,
+            "roc_auc": 0.82967,
+            "accuracy": 0.800048
+          },
+          "train": {
+            "recall": 0.610915,
+            "precision": 0.919453,
+            "f1": 0.734082,
+            "roc_auc": 0.843248,
+            "accuracy": 0.810975
+          },
+          "confusion": {
+            "tp": 9433,
+            "fp": 880,
+            "fn": 6650,
+            "tn": 20696
+          }
+        },
+        {
+          "fold": 4,
+          "cv": {
+            "recall": 0.598893,
+            "precision": 0.903989,
+            "f1": 0.720473,
+            "roc_auc": 0.83046,
+            "accuracy": 0.801535
+          },
+          "train": {
+            "recall": 0.622449,
+            "precision": 0.911126,
+            "f1": 0.739617,
+            "roc_auc": 0.843047,
+            "accuracy": 0.812827
+          },
+          "confusion": {
+            "tp": 9632,
+            "fp": 1023,
+            "fn": 6451,
+            "tn": 20553
+          }
+        },
+        {
+          "fold": 5,
+          "cv": {
+            "recall": 0.624946,
+            "precision": 0.903867,
+            "f1": 0.738963,
+            "roc_auc": 0.837618,
+            "accuracy": 0.811434
+          },
+          "train": {
+            "recall": 0.614894,
+            "precision": 0.912694,
+            "f1": 0.734767,
+            "roc_auc": 0.841923,
+            "accuracy": 0.810412
+          },
+          "confusion": {
+            "tp": 10051,
+            "fp": 1069,
+            "fn": 6032,
+            "tn": 20506
+          }
+        }
+      ]
+    },
+    "Gradient boosting": {
+      "folds": [
+        {
+          "fold": 1,
+          "cv": {
+            "recall": 0.609028,
+            "precision": 0.904098,
+            "f1": 0.727793,
+            "roc_auc": 0.836568,
+            "accuracy": 0.805438
+          },
+          "train": {
+            "recall": 0.614677,
+            "precision": 0.909664,
+            "f1": 0.733628,
+            "roc_auc": 0.840126,
+            "accuracy": 0.809368
+          },
+          "confusion": {
+            "tp": 9795,
+            "fp": 1039,
+            "fn": 6288,
+            "tn": 20537
+          }
+        },
+        {
+          "fold": 2,
+          "cv": {
+            "recall": 0.603395,
+            "precision": 0.901784,
+            "f1": 0.723013,
+            "roc_auc": 0.834723,
+            "accuracy": 0.802549
+          },
+          "train": {
+            "recall": 0.620298,
+            "precision": 0.906458,
+            "f1": 0.73656,
+            "roc_auc": 0.840732,
+            "accuracy": 0.810502
+          },
+          "confusion": {
+            "tp": 9705,
+            "fp": 1057,
+            "fn": 6379,
+            "tn": 20519
+          }
+        },
+        {
+          "fold": 3,
+          "cv": {
+            "recall": 0.591308,
+            "precision": 0.911094,
+            "f1": 0.717168,
+            "roc_auc": 0.833324,
+            "accuracy": 0.800818
+          },
+          "train": {
+            "recall": 0.613231,
+            "precision": 0.910331,
+            "f1": 0.732813,
+            "roc_auc": 0.841097,
+            "accuracy": 0.809023
+          },
+          "confusion": {
+            "tp": 9510,
+            "fp": 928,
+            "fn": 6573,
+            "tn": 20648
+          }
+        },
+        {
+          "fold": 4,
+          "cv": {
+            "recall": 0.592675,
+            "precision": 0.90781,
+            "f1": 0.71715,
+            "roc_auc": 0.833207,
+            "accuracy": 0.80034
+          },
+          "train": {
+            "recall": 0.617133,
+            "precision": 0.911705,
+            "f1": 0.73604,
+            "roc_auc": 0.84113,
+            "accuracy": 0.810962
+          },
+          "confusion": {
+            "tp": 9532,
+            "fp": 968,
+            "fn": 6551,
+            "tn": 20608
+          }
+        },
+        {
+          "fold": 5,
+          "cv": {
+            "recall": 0.627122,
+            "precision": 0.903035,
+            "f1": 0.740203,
+            "roc_auc": 0.839992,
+            "accuracy": 0.811992
+          },
+          "train": {
+            "recall": 0.6139,
+            "precision": 0.907908,
+            "f1": 0.732503,
+            "roc_auc": 0.839856,
+            "accuracy": 0.808513
+          },
+          "confusion": {
+            "tp": 10086,
+            "fp": 1083,
+            "fn": 5997,
+            "tn": 20492
+          }
+        }
+      ]
+    }
+  }
+}

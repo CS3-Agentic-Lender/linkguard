@@ -126,6 +126,93 @@ h1 {
   margin: var(--space-6) 0 0;
 }
 
+/*
+ * The result card, built to the result card mock-up. Each level sets its own
+ * colour and surface; the word and icon always show with it, so the level never
+ * depends on colour alone.
+ */
+.result-card {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-6);
+  border: 2px solid var(--card-accent);
+  border-radius: var(--radius-md);
+  background: var(--card-surface);
+}
+
+.result-card[data-level="safe"] {
+  --card-accent: var(--color-risk-safe);
+  --card-surface: var(--color-risk-safe-surface);
+}
+
+.result-card[data-level="suspicious"] {
+  --card-accent: var(--color-risk-suspicious);
+  --card-surface: var(--color-risk-suspicious-surface);
+}
+
+.result-card[data-level="high"] {
+  --card-accent: var(--color-risk-high);
+  --card-surface: var(--color-risk-high-surface);
+}
+
+.result-card[data-level="placeholder"] {
+  --card-accent: var(--color-border);
+  --card-surface: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.result-card[data-level="error"] {
+  --card-accent: var(--color-error);
+  --card-surface: var(--color-error-surface);
+  color: var(--color-error);
+}
+
+.result-card__level {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin: 0;
+  color: var(--card-accent);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-heading);
+}
+
+.result-card__level svg {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+/* The checked link is plain text. Long links wrap rather than push the card wider. */
+.result-card__link {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.result-card__link span {
+  color: var(--color-text);
+}
+
+.result-card__caveat {
+  margin: var(--space-4) 0 0;
+}
+
+/* Placeholder and failure: smaller and with no level word, so they never look like a result. */
+.result-card__notice {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.result-card__notice svg {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
 /* Phone width: the button moves under the box and fills the width. */
 @media (max-width: 30rem) {
   .check-row {
