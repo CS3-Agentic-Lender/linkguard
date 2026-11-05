@@ -6,7 +6,6 @@ import { LinkError } from "./scan.js";
 // Wording is copied word for word from the paste-a-link story.
 export const LABEL = "Paste the link here";
 export const CHECKING = "Checking…";
-export const CANT_CHECK = "We couldn't check that link just now. Please try again.";
 
 /**
  * The box, the Check button and the result card. `check(link)` sends the

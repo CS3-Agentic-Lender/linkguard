@@ -1,9 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { CANT_CHECK } from "./PasteLinkForm.jsx";
 import ResultCard, { SAFE_CAVEAT } from "./ResultCard.jsx";
-import { PLACEHOLDER } from "./scan.js";
+import { CANT_CHECK, PLACEHOLDER } from "./scan.js";
 
 // A made-up link, only ever handled as text.
 const LINK = "https://parcel-redelivery.example/track?id=4821";

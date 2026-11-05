@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App.jsx";
-import PasteLinkForm, { CANT_CHECK, CHECKING, LABEL } from "./PasteLinkForm.jsx";
+import PasteLinkForm, { CHECKING, LABEL } from "./PasteLinkForm.jsx";
+import { CANT_CHECK } from "./scan.js";
 
 // Made-up links, only ever handled as text.
 const LINK = "https://parcel-redelivery.example/track?id=4821";
@@ -64,6 +65,26 @@ describe("paste-a-link form", () => {
     expect(status).not.toHaveTextContent(CHECKING);
     expect(screen.getByLabelText(LABEL)).toHaveFocus();
     expect(screen.getByRole("button", { name: "Check" })).toHaveAttribute("aria-disabled", "false");
+  });
+
+  it("takes the old card away while a second check runs", async () => {
+    const user = userEvent.setup();
+    const { check, reply } = pendingCheck();
+    render(<PasteLinkForm check={check} />);
+    const status = screen.getByRole("status");
+
+    await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
+    reply().resolve(RESULT);
+    await screen.findByRole("heading", { name: "Suspicious" });
+
+    await user.keyboard("{Enter}");
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(status).toHaveTextContent(CHECKING);
+    expect(screen.queryByRole("heading", { name: "Suspicious" })).not.toBeInTheDocument();
+
+    reply().resolve({ ...RESULT, risk_level: "High risk" });
+    expect(await screen.findByRole("heading", { name: "High risk" })).toBeInTheDocument();
+    expect(status.querySelectorAll(".result-card")).toHaveLength(1);
   });
 
   it("sends only one check while one is already waiting", async () => {

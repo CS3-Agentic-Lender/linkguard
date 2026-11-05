@@ -1,5 +1,4 @@
-import { CANT_CHECK } from "./PasteLinkForm.jsx";
-import { PLACEHOLDER } from "./scan.js";
+import { CANT_CHECK, PLACEHOLDER } from "./scan.js";
 
 // Wording is copied word for word from the result card story.
 export const SAFE_CAVEAT =

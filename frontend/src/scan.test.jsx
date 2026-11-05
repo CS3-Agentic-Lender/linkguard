@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.jsx";
-import { CANT_CHECK, LABEL } from "./PasteLinkForm.jsx";
+import { LABEL } from "./PasteLinkForm.jsx";
 import { SAFE_CAVEAT } from "./ResultCard.jsx";
-import { PLACEHOLDER, checkLink } from "./scan.js";
+import { CANT_CHECK, PLACEHOLDER, checkLink } from "./scan.js";
 
 // Made-up link, only ever handled as text.
 const LINK = "https://bank-login.example/verify";
@@ -54,6 +54,15 @@ describe("checkLink", () => {
 
     await expect(checkLink(LINK, fetchImpl)).rejects.toThrow(String(status));
   });
+
+  it.each([[null], [0], [""], [false], [[]]])(
+    "passes an empty reply on for a body of %j, so the card shows its failure message",
+    async (body) => {
+      const fetchImpl = vi.fn().mockResolvedValue(reply(200, body));
+
+      await expect(checkLink(LINK, fetchImpl)).resolves.toEqual({});
+    },
+  );
 
   it("passes a reply with a risk level on to the result card", async () => {
     const result = { url: LINK, risk_level: "Safe", score: 0.1, reasons: [], placeholder: false };
@@ -147,6 +156,20 @@ describe("paste-a-link page connected to /scan", () => {
       await screen.findByText(CANT_CHECK);
       expect(status).toHaveTextContent(CANT_CHECK);
       expect(screen.queryByRole("heading", { name: /Safe|Suspicious|High risk/ })).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([[null], [0], [""], [false]])(
+    "shows the couldn't-check message when /scan replies 200 with a body of %j",
+    async (body) => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(200, body)));
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
+
+      await screen.findByText(CANT_CHECK);
+      expect(screen.getByRole("status")).toHaveTextContent(CANT_CHECK);
     },
   );
 });
