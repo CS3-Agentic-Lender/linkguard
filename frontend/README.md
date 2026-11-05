@@ -39,3 +39,7 @@ The contrast check reads the colours from the tokens file and checks every pair 
 ```bash
 npm run contrast
 ```
+
+## The phishing charts
+
+Under the paste-a-link form, the page shows charts comparing phishing and legitimate links. They are drawn from `ml/reports/chart_summary.json`, which the chart numbers script in `ml/` writes, so the page only shows what that file holds. Each chart is plain bars with the group name and value as text, plus a table of the same numbers for screen readers, with no chart library (see `docs/adr/0003-chart-drawing.md`). To change the numbers or takeaways, rerun the chart numbers script and commit the new file. Bar colours are tokens in `src/styles/tokens.css`, each with a 3:1 pair in `scripts/check-contrast.mjs`.
