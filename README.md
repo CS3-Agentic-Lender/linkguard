@@ -99,7 +99,7 @@ None of the checks needs a `.env` file, the dataset or a model file. The tests m
 
 #### Run the same checks on your machine
 
-Run these before you push, so a red cross doesn't surprise you. Each part needs its tools from [Setup](#setup): uv for `backend/` and `ml/`, Node 22.22.2+ or 24.15.0+ for `frontend/`, betterleaks for the secret scan.
+Run these before you push, so a red cross doesn't surprise you. Each part needs its own tools: uv for `backend/` and `ml/` and betterleaks for the secret scan (both in [Setup](#setup)), and Node 22.22.2+ or 24.15.0+ for `frontend/`.
 
 ```bash
 # backend tests, from backend/
