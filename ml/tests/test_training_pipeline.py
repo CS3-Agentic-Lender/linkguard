@@ -137,7 +137,38 @@ def test_default_paths_point_at_gitignored_places():
         text=True,
         check=False,
     )
-    assert len(result.stdout.split()) == 3
+    assert result.returncode == 0, result.stderr
+    assert len(result.stdout.splitlines()) == 3
+
+
+@pytest.mark.parametrize("missing_path", [None, "FEATURES_PATH", "SPLIT_PATH", "SCALER_PATH"])
+def test_default_paths_ignore_check_handles_spaces_and_missing_rules(tmp_path, monkeypatch, missing_path):
+    repo = tmp_path / "repository with spaces"
+    ml_dir = repo / "ml"
+    ml_dir.mkdir(parents=True)
+    subprocess.run(["git", "init", "--quiet", str(repo)], check=True, capture_output=True, text=True)
+    # Keep the user's global ignore rules from masking a missing rule in this repository.
+    subprocess.run(
+        ["git", "config", "core.excludesFile", str(repo / ".git" / "info" / "exclude")],
+        cwd=repo, check=True, capture_output=True, text=True,
+    )
+    paths = {
+        "FEATURES_PATH": ml_dir / "data" / "training_features.csv",
+        "SPLIT_PATH": ml_dir / "data" / "split.csv",
+        "SCALER_PATH": ml_dir / "models" / "scaler.joblib",
+    }
+    (repo / ".gitignore").write_text(
+        "".join(f"/{path.relative_to(repo).as_posix()}\n" for name, path in paths.items() if name != missing_path)
+    )
+    monkeypatch.setitem(globals(), "ML_DIR", ml_dir)
+    for name, path in paths.items():
+        monkeypatch.setattr(pipeline, name, path)
+
+    if missing_path is None:
+        test_default_paths_point_at_gitignored_places()
+    else:
+        with pytest.raises(AssertionError):
+            test_default_paths_point_at_gitignored_places()
 
 
 # Criterion 2: the training rows are exactly the saved split's; no new split, no scaler fit.
