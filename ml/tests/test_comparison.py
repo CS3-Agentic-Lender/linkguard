@@ -1,4 +1,5 @@
 import math
+from pathlib import PurePosixPath, PureWindowsPath
 
 import pandas as pd
 import pytest
@@ -16,6 +17,7 @@ from comparison.compare import (
     prepare,
     recompute_features,
     render_report,
+    report_label,
     shapes_table,
     skipped_table,
     summary_table,
@@ -458,6 +460,17 @@ def test_main_writes_the_report_from_the_raw_file(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "Rows that could not be compared: 1" in out
     assert "Wrote reports/feature_comparison.md" in out
+
+
+@pytest.mark.parametrize(
+    "ml_dir",
+    [PureWindowsPath(r"C:\Users\team\LinkGuard\ml"), PurePosixPath("/home/team/LinkGuard/ml")],
+)
+def test_report_label_uses_forward_slashes_on_every_system(ml_dir):
+    # Windows paths can be built on any system, so this checks the Windows case on CI too.
+    report_path = ml_dir / "reports" / REPORT_NAME
+
+    assert report_label(report_path, ml_dir) == "reports/feature_comparison.md"
 
 
 def test_main_stops_without_the_raw_file(tmp_path, capsys):

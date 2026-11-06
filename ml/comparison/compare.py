@@ -21,7 +21,7 @@ import re
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import pandas as pd
 
@@ -455,6 +455,11 @@ def render_report(
     )
 
 
+def report_label(report_path: PurePath, ml_dir: PurePath) -> str:
+    """The report's path under ml_dir, with forward slashes on every system, so Windows prints it the same way."""
+    return report_path.relative_to(ml_dir).as_posix()
+
+
 def main(ml_dir: Path = ML_DIR) -> int:
     """Compare the raw file under ml_dir and write the report. Returns 1 and writes nothing if the raw file is missing."""
     raw_path = ml_dir / "data" / RAW_CSV_NAME
@@ -481,7 +486,7 @@ def main(ml_dir: Path = ML_DIR) -> int:
     print(patterns[["Pattern", "Kind", "Features", "Rows", "Example row"]].to_string(index=False))
     print()
     print(shapes.to_string(index=False))
-    print(f"\nWrote {report_path.relative_to(ml_dir)}")
+    print(f"\nWrote {report_label(report_path, ml_dir)}")
     return 0
 
 
