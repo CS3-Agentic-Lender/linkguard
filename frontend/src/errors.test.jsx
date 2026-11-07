@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.jsx";
-import { CANT_CHECK, LABEL } from "./PasteLinkForm.jsx";
-import { LinkError, PLACEHOLDER, checkLink } from "./scan.js";
+import { LABEL } from "./PasteLinkForm.jsx";
+import { CANT_CHECK, LinkError, PLACEHOLDER, checkLink } from "./scan.js";
 
 // The three messages, word for word from the clear-errors story. The backend
 // sends them as {"error": "..."} with status 400.

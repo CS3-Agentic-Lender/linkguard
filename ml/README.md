@@ -91,7 +91,7 @@ The function cleans the link in this order:
 3. Keep only the host: drop the scheme, any `user:password@` part, the port, the path, the query and the fragment. The port is not checked. Lowercase the host.
 4. Refuse the link if it has no host, or if the host contains a space.
 5. Remove one trailing dot.
-6. Remove one leading `www.`. A host of only `www.` is treated as `www`.
+6. Remove one leading `www.`. A host of only `www.` is treated as `www`. Passing `strip_www=False` skips this step. Only the dataset comparison below does that.
 7. If the host is an IP address (IPv4 or IPv6), keep it as written.
 8. Otherwise convert non-English names to ASCII (`bücher.de` becomes `xn--bcher-kva.de`). Refuse the link if a part of the name is empty (such as `example.com..`) or longer than 63 characters.
 
@@ -110,7 +110,263 @@ The ten features are:
 | `NoOfSpecialCharsInHostname` | Everything that is not a letter or digit: dots, hyphens, and the colons in an IPv6 address | Whole number |
 | `SpecialCharRatioInHostname` | Special characters divided by `HostnameLength` | Decimal |
 
+**Checked against the dataset.** [`reports/feature_comparison.md`](reports/feature_comparison.md) compares `IsDomainIP`, `TLDLength`, `NoOfSubDomain` and `HostnameLength` with the dataset's own columns. It gives a reason for each kind of difference. Each example is a row number in the raw file. The report shows no links from the dataset, because many of them are live phishing sites. Regenerate it from `ml/` with `uv run python -m comparison.compare`.
+
 **Limitation: `.co.uk` and similar endings.** The code does not have a list of two-part endings such as `.co.uk` or `.com.au`, so it always treats the last part as the ending. For a name such as `shop.example.co.uk`, `NoOfSubDomain` is 2 when the real count is 1, because `co` is counted as a subdomain. `TLDLength` is the length of `uk`, not of `co.uk`. Keep this in mind when reading these two features for names under those endings.
+
+## The training feature set
+
+`ml/featureset/build.py` works out the ten features above for every row of the cleaned file. It saves them to `ml/data/training_features.csv`. It is the input for training. It is ignored by git like the other data files, so each person builds their own copy.
+
+It has one row for each row of the cleaned file, with these columns in this order:
+
+| Column | Holds |
+|---|---|
+| `row` | The row's number in `phiusiil_cleaned.csv`, counting from 0. It links each row back to the cleaned file. |
+| The ten features | Worked out by `extract_features`, in the order of the table above |
+| `label` | Copied from the cleaned file: 1 = phishing, 0 = legitimate |
+| `host` | The cleaned host from `cleaned_host` in `ml/features/hostname.py`. It is the host the features measure: `www.` removed, lowercase, non-English names in ASCII. An IP address stays as written. |
+
+The script imports the shared extractor. It holds no copy of the feature code. It only reads each link as text and never opens it.
+
+### Build it
+
+From the raw dataset, in two steps:
+
+1. Make the cleaned file. Open `ml/notebooks/03_clean_dataset.ipynb` and run every cell. It writes `ml/data/phiusiil_cleaned.csv`.
+2. Build the feature set. From `ml/`, run:
+
+```bash
+uv run python -m featureset.build
+```
+
+If the cleaned file is already there, step 2 is enough.
+
+Every row is checked before anything is saved. If a link can't be read, the script prints how many rows failed for each reason, with an example row number. It then stops with exit code 1 and saves nothing. No row is dropped without being reported.
+
+### Leakage recheck
+
+`ml/leakage/recheck.py` reruns the single-feature leakage check on the ten features. The result is in `ml/reports/leakage_recheck_hostname_features.md`. To make it again, run `uv run python -m leakage.recheck` from `ml/`. It needs the cleaned file too.
+
+### Hosts with both labels
+
+Some hosts have legitimate rows as well as phishing rows. These rows share the same ten features but have different labels. In the cleaned data there are:
+
+| | Hosts | Rows |
+|---|---|---|
+| All rows | 58 | 159 of 235,370 |
+| Training set | 46 | 133 |
+| Test set | 12 | 26 |
+
+Each host is in one set only, because the split groups rows by host.
+
+**Rule: keep every row. None is dropped.** The reasons:
+
+- **No leakage.** These hosts were found with the labels of every row, test rows included. No row is removed because of its label. So nothing about the test labels can reach training or shape the test set. Dropping these rows from the whole data would also take the hardest cases out of the test set. Scores would then look better than they are.
+- **They are real.** A hosting platform or a hacked site can serve safe links as well as phishing links.
+- **Too few to matter.** 159 rows out of 235,370 are too few to change a model.
+- **Dropping them from training only gains nothing.** It would need a rule that filters the saved split. The split must never be rebuilt for it, because that would move about 31% of the rows to another set. The gain would be too small to measure.
+
+The rule is `apply_conflicting_hosts_rule()` in `ml/leakage/conflicting_hosts.py`. It returns every row unchanged and never reads the labels. A test checks that it keeps every test-set row of these hosts.
+
+To count them again, run this from `ml/`. It needs the training feature set and the split first (`uv run python -m featureset.build`, then `uv run python -m splitting.build`).
+
+```bash
+uv run python -m leakage.conflicting_hosts
+```
+
+## The train/test split and the scaler
+
+Every model is trained and tested on one shared split. Make it once, from `ml/`:
+
+```bash
+uv run python -m splitting.build
+```
+
+It needs `ml/data/phiusiil_cleaned.csv` and takes about 25 seconds. It works out the ten hostname features for every row with the shared extractor, then:
+
+- **Splits by host.** 80% training, 20% test, with every link on one host in the same set and the phishing share kept the same in both (scikit-learn's `StratifiedGroupKFold`, seed 42). The features only read the hostname, so a host in both sets would let the model be tested on rows it has already seen.
+- **Scales on training rows only.** A `StandardScaler` (mean 0, spread 1) is fitted on the training rows and only applied to the test rows. It keeps a long count such as `HostnameLength` from swamping a 0-to-1 ratio in models such as logistic regression.
+- **Stops before saving** if a set is empty, any host or link is in both sets, or a set's phishing share is more than 0.5 percentage points from the whole data's. The host check reads each link's host with Python's own URL parser (`plain_host`), not the clean-up the split groups by, so a mistake in the grouping is caught instead of passing its own check.
+
+| Output | Holds | In git? |
+|---|---|---|
+| `ml/data/split.csv` | Each cleaned row's index and its set (`train` or `test`). Load it with `load_split()` from `ml/splitting/split.py`. | No |
+| `ml/data/split_check.json` | The number of cleaned rows and a fingerprint of every row's host, saved with the split | No |
+| `ml/models/scaler.joblib` | The fitted scaler. Load it with `load_scaler()` from `ml/splitting/scaling.py`. | No |
+| `ml/reports/scaling_distributions.png` | Each feature on the training rows, before and after scaling | Yes |
+
+Training and evaluation load these files and never make a split of their own. Rerunning gives exactly the same split.
+
+`load_split(path, hosts)` takes the cleaned hosts of the data it will be used with, one per row (the training feature set's `host` column, for example). It stops with a message if the cleaned data has been rebuilt or reordered since the split was made, if a row is missing or listed twice, or if the check file is missing. Without this, an old split used with reordered cleaned data would quietly put about 2,200 hosts in both sets. The fix is always to rerun `uv run python -m splitting.build`.
+
+The saved scaler is fitted on the whole training set. Any later step that fits a scaler of its own, for example inside cross-validation or after feature selection, fits it on training rows only, never on test rows.
+
+## Feature ranking
+
+The code in `ml/ranking/` ranks the ten features by how much they help. It only reads the training split: the feature set's rows that `ml/data/split.csv` marks `train`. Test rows are dropped before anything is scored. It needs both files. The split is read with `load_split`, so its check file must match the feature set. If a file is missing, the split was made from different cleaned data, or a training row is not in the feature set, it stops with a message naming the step to run.
+
+### PCA
+
+PCA finds the directions in which the training rows spread out the most. Each direction is a component, a weighted mix of the ten features. The rows are scaled with the saved scaler from `ml/models/scaler.joblib`, which is only used to transform. It is never fitted again. PCA keeps all ten components and uses a fixed seed, so a second run gives the same result. From `ml/`, run:
+
+```bash
+uv run python -m ranking.pca
+```
+
+It saves [`ml/reports/pca.md`](reports/pca.md) and the chart [`ml/reports/pca_explained_variance.png`](reports/pca_explained_variance.png). The report has the variance of each component, the chart and each feature's weight on the main components, with the two largest on each marked. The main components are the fewest that reach 95% of the variance.
+
+**Result:** 5 of the 10 components reach 95% of the variance (95.5%).
+
+PCA ignores the label. Its weights guide which real features go on the final list. The components are never model inputs. Any later cross-validation puts the scaler and PCA in one scikit-learn Pipeline, fitted on each fold's training part.
+
+### Mutual information
+
+Mutual information is 0 when a feature tells nothing about the label and grows the more it does. It also catches relationships that are not a straight line. The seven whole-number features are scored as discrete values. The three ratios are continuous. The seed is fixed, so a second run gives the same scores. From `ml/`, run:
+
+```bash
+uv run python -m ranking.mutual_info
+```
+
+It prints the ranking and saves it to `ml/reports/mutual_information.md`.
+
+### Random forest importance
+
+A random forest is many decision trees, each trained on a random sample of the training rows. A feature's importance is how much its splits cut the mix of labels, averaged over every tree. The ten importances add up to 1. The forest uses the unscaled features, because scale makes no difference to a tree. It has 100 trees and a fixed seed, so a second run gives the same order. This built-in importance tends to favour features with many different values, so it is a cross-check, not a verdict. From `ml/`, run:
+
+```bash
+uv run python -m ranking.forest_importance
+```
+
+It prints the ranking and saves it to `ml/reports/forest_importance.md`.
+
+### Random forest importance on held-out training hosts
+
+The built-in importance is measured on the rows the forest learned from. This is the fairer check. 80% of the training hosts teach the forest. The other 20% are held out, with no host on both sides. Each feature is then shuffled on the held-out rows, and the drop in accuracy shows how much the forest relies on it. The test split is never used. From `ml/`, run:
+
+```bash
+uv run python -m ranking.held_out_importance
+```
+
+It saves `ml/reports/held_out_importance.md`.
+
+### The final feature list
+
+The model trains on 8 of the ten features. The list, with a reason for every feature kept or dropped, is in [`ml/reports/final_feature_list.md`](reports/final_feature_list.md). It is made from the four rankings above with one chart that compares them. From `ml/`, run:
+
+```bash
+uv run python -m ranking.final_list
+```
+
+It saves `ml/reports/final_feature_list.md` and `ml/reports/feature_ranking_comparison.png`. The list is in code as `FINAL_FEATURES` in `ml/ranking/final_list.py`.
+
+## Chart numbers for the charts page
+
+The phishing charts page reads a small summary file of counts and percentages, not the dataset. Make it from `ml/`:
+
+```bash
+uv run python -m charts.summary
+```
+
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says whether the dataset is balanced, using the share of the smaller class: 45% or more is balanced, 20% to 45% is mildly imbalanced, and under 20% is heavily imbalanced. Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
+
+| Field | Holds |
+|---|---|
+| `source` | The credit and the "modified version" line the licence asks for |
+| `dataset_note` | Every legitimate link here is a homepage, so the charts show warning signs, not proof of safety |
+| `totals` | Phishing and legitimate link counts |
+| `charts[]` | `id`, `title`, `takeaway`, `unit` (`percent`) and `groups`: for Phishing and Legitimate, the `value` (percent, 1 decimal), the `count` with the sign and the `total` |
+
+**A value of 0.0 is not always zero.** `value` is rounded to one decimal, so a small share shows as `0.0`. For example, 13 of the 134,850 legitimate links are longer than 50 characters, which is 0.01%. The charts page should check `count`, and show something like "under 0.1%" when `value` is `0.0` but `count` is not 0.
+
+It stops without saving if the totals differ from `ml/reports/cleaning_report.md`, which would mean the label is the wrong way round. No link from the dataset goes into the file, and no takeaway may say that HTTPS, a padlock or a short link means safe (a test checks every takeaway). Another test checks the committed file against its own counts and the cleaning report, so a hand edit is caught: rerun the script instead.
+
+## Training pipeline
+
+`ml/training/pipeline.py` loads the training rows every classifier trains on. It reads three files that earlier steps save, and makes none of its own:
+
+| File | Saved by | Holds |
+|---|---|---|
+| `ml/data/training_features.csv` | the training feature set (above) | One line per cleaned row, in row order: `row` (the cleaned row number), the ten hostname features in the extractor's order, `label` (1 = phishing, 0 = legitimate) and `host` |
+| `ml/data/split.csv` | the train/test split (above) | Columns `row` and `set`: each feature-set row number (counting from 0) and whether it is `train` or `test` |
+| `ml/models/scaler.joblib` | the train/test split (above) | The scaler, fitted on the training rows only |
+
+Run it from `ml/` with one command:
+
+```bash
+uv run python -m training.pipeline
+```
+
+`--features`, `--split` and `--scaler` point it at other files. It prints the number of training rows and the class counts, with phishing as label 1, and stops with a message naming the problem if a file is missing or does not match.
+
+What it guarantees:
+
+- **No new split.** The training rows are exactly the `train` rows of the saved split.
+- **No scaler is fitted.** The saved scaler only transforms. The pipeline checks it was fitted on the ten features in the same order.
+- **Test rows are never read.** Only the training row numbers are taken from the split, and every other line of the feature file is skipped by the reader.
+- **Rows can't slip.** Every line read must carry the `row` number the split asked for. If the feature set were ever out of step with the split, the run stops instead of training on the wrong rows.
+- **Only the agreed features are model inputs.** The feature matrix must be the ten hostname features in order. Any column from the excluded list (`ml/leakage/excluded.py`) stops the run by name. `row` and `host` are never features. `host` is kept for grouping the cross-validation folds.
+
+The classifier story uses it from Python:
+
+```python
+from training.pipeline import hand_to_classifiers, load_training_set
+
+training_set = load_training_set()   # .scaled, .labels, .hostnames, .features (unscaled), .rows
+fitted = hand_to_classifiers({"baseline": DummyClassifier()}, training_set)
+```
+
+`hand_to_classifiers` fits a fresh copy of each classifier on the same scaled training rows. Cross-validation, where the scaler is refitted inside each fold's own pipeline, belongs to the classifier story and uses `.features` and `.hostnames`.
+
+The tests (`ml/tests/test_training_pipeline.py`) run on a small made-up sample, because CI has no dataset. Its numbers say nothing about real model performance.
+
+## Training the classifiers
+
+`ml/training/classifiers.py` trains every model through the training pipeline, on the 8 features in the final feature list. The models are a baseline that always guesses the most common class, logistic regression, logistic regression with balanced class weights, a random forest and gradient boosting.
+
+Each model is scored with 5-fold cross-validation on the training rows. The folds are grouped by host, so no website is in two folds. They are stratified, so each fold keeps the phishing share. The seed is fixed. Inside each fold the scaler and the model sit in one Pipeline, so the scaler only learns from that fold's training rows. The test split is never loaded. From `ml/`, run:
+
+```bash
+uv run python -m training.classifiers
+```
+
+It saves `ml/reports/cv_results.json`: for every model and fold, phishing recall, precision, F1, ROC-AUC and accuracy on the held-out fold and on the fold's own training rows, plus the held-out fold's confusion counts. Phishing is the positive class.
+
+## Model comparison
+
+`ml/training/model_comparison.py` turns the cross-validation results into one comparison table and picks the model. It reads `ml/reports/cv_results.json`, which `uv run python -m training.classifiers` saves, and trains nothing itself. Run it from `ml/`:
+
+```bash
+uv run python -m training.model_comparison
+```
+
+It writes:
+
+| File | Holds |
+|---|---|
+| `ml/reports/model_comparison.md` | For each model and the baseline, the mean and standard deviation over the 5 folds of phishing recall, precision, F1, ROC-AUC and accuracy (last). A second table puts each model's training recall and F1 next to its cross-validation ones, with the note on over- and underfitting under it. Then the chosen model, the reason and what the choice costs on the other measures. The class balance note comes last. |
+| `ml/reports/confusion_matrices/<model>.png` | One confusion matrix per model. It adds up the held-out folds, so every training row is predicted once by a model that never trained on it. |
+
+How the model is chosen:
+
+1. The highest mean phishing recall wins.
+2. If models are within 0.01 of the best recall, the highest mean F1 wins.
+3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
+4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
+
+A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
+
+The run stops and saves nothing if the results file:
+
+- is cut off or is not valid JSON
+- is missing a model, a score or any other value the report reads, or does not have exactly 5 folds
+- was trained on a different feature list
+- has held-out counts that do not add up to every training row once, or are not whole numbers of 0 or more
+- has a fold whose recall, precision, F1 or accuracy does not match its own confusion counts
+
+The report also names a known limitation. The split keeps each host in one set but not each parent domain. On the shared split, 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
+
+These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
 
 ## Source and licence
 

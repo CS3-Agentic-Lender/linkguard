@@ -4,6 +4,11 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
+    // The charts read ml/reports/chart_summary.json, which lives outside frontend/,
+    // so the dev server is allowed to serve that one folder too.
+    fs: {
+      allow: [".", "../ml/reports"],
+    },
     // In development the page and the backend run on different ports. The dev
     // server passes /scan on to the backend, so the page only ever calls its own origin.
     // BACKEND_URL points it elsewhere if the backend isn't on its default port.

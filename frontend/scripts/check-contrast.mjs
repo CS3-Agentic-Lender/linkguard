@@ -27,11 +27,23 @@ const PAIRS = [
   ["risk-safe", "surface", TEXT, "Safe word on a card"],
   ["risk-suspicious", "surface", TEXT, "Suspicious word on a card"],
   ["risk-high", "surface", TEXT, "High risk word on a card"],
+  ["text", "risk-safe-surface", TEXT, "Body text on a Safe result card"],
+  ["text", "risk-suspicious-surface", TEXT, "Body text on a Suspicious result card"],
+  ["text", "risk-high-surface", TEXT, "Body text on a High risk result card"],
+  ["text-muted", "risk-safe-surface", TEXT, "Link checked on a Safe result card"],
+  ["text-muted", "risk-suspicious-surface", TEXT, "Link checked on a Suspicious result card"],
+  ["text-muted", "risk-high-surface", TEXT, "Link checked on a High risk result card"],
   ["border", "surface", NON_TEXT, "Link box border"],
   ["border", "background", NON_TEXT, "Link box border on the page"],
   ["focus", "surface", NON_TEXT, "Focus outline on a card"],
   ["focus", "background", NON_TEXT, "Focus outline on the page"],
   ["focus", "primary", NON_TEXT, "Focus outline next to the button"],
+  ["chart-phishing", "surface", NON_TEXT, "Phishing bar on a chart card"],
+  ["chart-legitimate", "surface", NON_TEXT, "Legitimate bar on a chart card"],
+  ["chart-phishing", "chart-track", NON_TEXT, "Phishing bar against its empty track"],
+  ["chart-legitimate", "chart-track", NON_TEXT, "Legitimate bar against its empty track"],
+  ["chart-other", "surface", NON_TEXT, "Bar of any other group on a chart card"],
+  ["chart-other", "chart-track", NON_TEXT, "Bar of any other group against its empty track"],
 ];
 
 export function readColours(css) {

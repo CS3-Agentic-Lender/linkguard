@@ -1,4 +1,5 @@
 import PasteLinkForm from "./PasteLinkForm.jsx";
+import PhishingCharts from "./PhishingCharts.jsx";
 import { checkLink } from "./scan.js";
 
 export default function App({ check = checkLink }) {
@@ -10,6 +11,7 @@ export default function App({ check = checkLink }) {
         Paste a link from a text, email or message. We check it for you without opening it.
       </p>
       <PasteLinkForm check={check} />
+      <PhishingCharts />
     </main>
   );
 }
