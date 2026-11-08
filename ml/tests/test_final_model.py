@@ -22,9 +22,11 @@ from training.final_model import (
     MODEL_PATH,
     FinalModelError,
     build_model,
+    check_rows,
     chosen_settings,
     load_check,
     main,
+    save_checked,
     save_model,
 )
 from training.pipeline import ML_DIR
@@ -173,6 +175,30 @@ def test_load_check_catches_a_file_that_will_not_load(tmp_path):
         load_check(path, scaled[:CHECK_ROWS], model)
 
 
+def test_a_file_that_fails_the_check_is_not_left_where_the_backend_loads(tmp_path, monkeypatch):
+    model, scaled = fitted(made_up_frame())
+    path = tmp_path / "model.joblib"
+
+    def failing_check(file, rows, fitted_model):
+        raise FinalModelError("different")
+
+    monkeypatch.setattr("training.final_model.load_check", failing_check)
+
+    with pytest.raises(FinalModelError):
+        save_checked(model, path, scaled[:CHECK_ROWS])
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_check_rows_are_spread_over_the_training_set():
+    scaled = np.arange(1000, dtype=float).reshape(-1, 1)
+
+    rows = check_rows(scaled)
+
+    assert len(rows) == CHECK_ROWS
+    assert rows[0, 0] == 0 and rows[-1, 0] == 999
+
+
 # Stopping with a message.
 
 
@@ -193,6 +219,16 @@ def test_main_stops_when_the_results_use_another_feature_list(tmp_path, capsys):
 
     assert not paths["model"].exists()
     assert "final feature list" in capsys.readouterr().err
+
+
+def test_main_stops_cleanly_when_the_results_file_is_broken(tmp_path, capsys):
+    paths, _, _ = write_inputs(tmp_path)
+    paths["results"].write_text("{not json")
+
+    assert main(arguments(paths)) == 1
+
+    assert not paths["model"].exists()
+    assert "could not be read" in capsys.readouterr().err
 
 
 def test_chosen_settings_reads_c_and_l1_ratio(tmp_path):

@@ -404,7 +404,7 @@ How to use the two files for one link:
 2. Transform them with the saved scaler, `ml/models/scaler.joblib` (transform only).
 3. Pass all ten scaled values to the model. Its first step keeps only the 8 in the final feature list, so the backend never picks columns itself. `predict_proba(...)[:, 1]` is the phishing score.
 
-After saving, the script loads the file in a fresh Python session and predicts 10 training rows. It stops if those predictions differ from the ones the model made before saving. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
+The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
 
 ## Source and licence
 
