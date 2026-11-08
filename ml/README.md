@@ -368,6 +368,25 @@ The report also names a known limitation. The split keeps each host in one set b
 
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
 
+## Tuning the chosen model
+
+`ml/training/tuning.py` tunes the chosen model, logistic regression with balanced class weights. It tries every combination of these settings:
+
+| Setting | Values | Why |
+|---|---|---|
+| `C` | 0.001, 0.01, 0.1, 1, 10, 100, 1000 | How closely the model may fit the training rows. A small C keeps it simple. The default is 1. |
+| `l1_ratio` | 0 (l2) or 1 (l1) | l1 can switch a weak feature off. l2 shrinks every weight a little. scikit-learn 1.8 renamed the old `penalty` setting to this. |
+| `solver` | `liblinear`, fixed | It supports both penalties, so they are compared fairly. |
+| `class_weight` | `balanced`, fixed | Not searched. If the search could change how much gets flagged, F2 would reward flagging every link. The risk-level cut-offs decide that. |
+
+Each combination is scored with the same host-grouped, stratified 5-fold cross-validation as the model comparison (same folds, seed 0). The scaler and the model sit in one Pipeline per fold. The scoring measure is **F2**, which counts phishing recall more than precision. It was chosen before the search ran. The highest mean F2 wins. On an exact tie the smaller C wins, because it is the simpler model. The test split is never loaded. Run it from `ml/` (about 20 seconds):
+
+```bash
+uv run python -m training.tuning
+```
+
+It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination). "Before" is the model as the comparison scored it: C = 1, l2.
+
 ## Source and licence
 
 | | |
