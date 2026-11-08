@@ -52,7 +52,7 @@ If `git status` lists the CSV, stop and tell the team. It means the ignore rules
 | Path | Holds | In git? |
 |---|---|---|
 | `ml/data/` | The downloaded dataset and any cleaned copies | No, the whole folder is ignored |
-| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`) | No, those file types are ignored |
+| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`). The final model is `ml/models/model.joblib` (see "The final model" below). | No, those file types are ignored |
 
 Training code saves the model and scaler to `ml/models/`, and the backend loads them from there. Like the dataset, they are shared outside git.
 
@@ -386,6 +386,25 @@ uv run python -m training.tuning
 ```
 
 It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination). "Before" uses the comparison's settings (C = 1, l2), scored again with liblinear on the same folds. The comparison itself used the default lbfgs solver, which can't do l1, so its numbers differ slightly from this row.
+
+## The final model
+
+`ml/training/final_model.py` fits the tuned model on every training row and saves it to **`ml/models/model.joblib`**. It reads the chosen settings from `ml/reports/tuning_results.json`, so run the tuning first. From `ml/`:
+
+```bash
+uv run python -m training.tuning        # if tuning_results.json is not there yet
+uv run python -m training.final_model
+```
+
+The test split is never loaded. Like the scaler, the model file is gitignored and shared outside git. Anyone can rebuild it with the two commands above.
+
+How to use the two files for one link:
+
+1. Work out the ten hostname features with `extract_features`, in the order of `FEATURE_NAMES`.
+2. Transform them with the saved scaler, `ml/models/scaler.joblib` (transform only).
+3. Pass all ten scaled values to the model. Its first step keeps only the 8 in the final feature list, so the backend never picks columns itself. `predict_proba(...)[:, 1]` is the phishing score.
+
+After saving, the script loads the file in a fresh Python session and predicts 10 training rows. It stops if those predictions differ from the ones the model made before saving. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
 
 ## Source and licence
 
