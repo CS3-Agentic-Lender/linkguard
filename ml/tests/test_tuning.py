@@ -160,6 +160,19 @@ def test_on_a_tie_the_smaller_c_wins():
     assert choose(rows)["C"] == 0.1
 
 
+def test_a_tiny_f2_difference_still_decides_and_is_not_rounded_away():
+    rows = [scored(0.1, 0.0, 0.7000001), scored(10.0, 0.0, 0.7000004)]
+
+    assert choose(rows)["C"] == 10.0
+
+
+def test_the_saved_scores_are_rounded_to_six_places():
+    rows = tuning.rounded([scored(1.0, 0.0, 0.123456789)])
+
+    assert rows[0]["f2"]["mean"] == 0.123457
+    assert rows[0]["C"] == 1.0
+
+
 def test_every_combination_has_every_measure():
     features, labels, hosts = made_up_rows()
 

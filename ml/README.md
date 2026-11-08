@@ -385,7 +385,7 @@ Each combination is scored with the same host-grouped, stratified 5-fold cross-v
 uv run python -m training.tuning
 ```
 
-It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination). "Before" is the model as the comparison scored it: C = 1, l2.
+It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination). "Before" uses the comparison's settings (C = 1, l2), scored again with liblinear on the same folds. The comparison itself used the default lbfgs solver, which can't do l1, so its numbers differ slightly from this row.
 
 ## Source and licence
 

@@ -99,21 +99,42 @@ def run_search(features: pd.DataFrame, labels: pd.Series, hosts: pd.Series, n_jo
 
 
 def combinations(search: GridSearchCV) -> list[dict]:
-    """One entry per combination: its settings and each measure's mean and spread over the folds."""
+    """One entry per combination: its settings and each measure's mean and spread over the folds.
+
+    Scores are kept at full precision, so choosing is never decided by rounding. They are only
+    rounded when saved (see `rounded`).
+    """
     results = search.cv_results_
     rows = []
     for index, params in enumerate(results["params"]):
         row = {"C": float(params["model__C"]), "l1_ratio": float(params["model__l1_ratio"])}
         for measure in MEASURES:
             row[measure] = {
-                "mean": round(float(results[f"mean_test_{measure}"][index]), DECIMALS),
-                "std": round(float(results[f"std_test_{measure}"][index]), DECIMALS),
-                "folds": [
-                    round(float(results[f"split{fold}_test_{measure}"][index]), DECIMALS) for fold in range(FOLDS)
-                ],
+                "mean": float(results[f"mean_test_{measure}"][index]),
+                "std": float(results[f"std_test_{measure}"][index]),
+                "folds": [float(results[f"split{fold}_test_{measure}"][index]) for fold in range(FOLDS)],
             }
         rows.append(row)
     return rows
+
+
+def rounded(rows: list[dict]) -> list[dict]:
+    """A copy of the combinations with every score rounded to DECIMALS places, for the saved file."""
+    return [
+        {
+            key: (
+                {
+                    "mean": round(v["mean"], DECIMALS),
+                    "std": round(v["std"], DECIMALS),
+                    "folds": [round(f, DECIMALS) for f in v["folds"]],
+                }
+                if isinstance(v, dict)
+                else v
+            )
+            for key, v in row.items()
+        }
+        for row in rows
+    ]
 
 
 def choose(rows: list[dict]) -> dict:
@@ -174,6 +195,10 @@ def report(results: dict) -> str:
             "",
             f"Mean F2 changed by {change:+.3f}. On an exact tie the smaller C wins, because it is the simpler model.",
             "",
+            "The before row uses the model comparison's settings (C = 1, l2), scored again here with the liblinear "
+            "solver on the same folds. The comparison used the default lbfgs solver, which cannot do l1, so its "
+            "numbers differ slightly.",
+            "",
             "## Every combination",
             "",
             *every,
@@ -210,7 +235,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "fixed": {"solver": "liblinear", "class_weight": "balanced", "max_iter": 1000},
         "before": dict(BEFORE),
         "chosen": {"C": chosen["C"], "l1_ratio": chosen["l1_ratio"]},
-        "combinations": rows,
+        "combinations": rounded(rows),
     }
     args.results.parent.mkdir(parents=True, exist_ok=True)
     args.results.write_text(json.dumps(results, indent=2) + "\n")

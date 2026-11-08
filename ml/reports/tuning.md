@@ -20,6 +20,8 @@
 
 Mean F2 changed by +0.002. On an exact tie the smaller C wins, because it is the simpler model.
 
+The before row uses the model comparison's settings (C = 1, l2), scored again here with the liblinear solver on the same folds. The comparison used the default lbfgs solver, which cannot do l1, so its numbers differ slightly.
+
 ## Every combination
 
 | C | Penalty | F2 | Phishing recall | Precision |
