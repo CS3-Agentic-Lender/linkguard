@@ -354,6 +354,8 @@ How the model is chosen:
 3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
 4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
 
+This was the Sprint 2 rule. At Sprint 3 planning the team changed it to the highest ROC-AUC, because the risk-level cut-offs set our own flag lines. That picks gradient boosting (0.836). See "Tuning the chosen model" below.
+
 A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
 
 The run stops and saves nothing if the results file:
@@ -370,22 +372,35 @@ These are in-dataset cross-validation results, not real-world accuracy. The test
 
 ## Tuning the chosen model
 
-`ml/training/tuning.py` tunes the chosen model, logistic regression with balanced class weights. It tries every combination of these settings:
+`ml/training/tuning.py` tunes the chosen model, gradient boosting (`HistGradientBoostingClassifier`). Sprint 3 planning picked it by ROC-AUC (0.836 in the model comparison), because the risk-level cut-offs set our own flag lines. It tries every combination of these settings:
 
 | Setting | Values | Why |
 |---|---|---|
-| `C` | 0.001, 0.01, 0.1, 1, 10, 100, 1000 | How closely the model may fit the training rows. A small C keeps it simple. The default is 1. |
-| `l1_ratio` | 0 (l2) or 1 (l1) | l1 can switch a weak feature off. l2 shrinks every weight a little. scikit-learn 1.8 renamed the old `penalty` setting to this. |
-| `solver` | `liblinear`, fixed | It supports both penalties, so they are compared fairly. |
-| `class_weight` | `balanced`, fixed | Not searched. If the search could change how much gets flagged, F2 would reward flagging every link. The risk-level cut-offs decide that. |
+| `learning_rate` | 0.05, 0.1, 0.2 | How big a step each new tree takes. The default is 0.1. |
+| `max_iter` | 100, 300 | The most trees allowed. Early stopping can stop sooner. The default is 100. |
+| `max_leaf_nodes` | 15, 31, 63 | How detailed each tree may be. The default is 31. |
+| `min_samples_leaf` | 20, 100 | The fewest rows a leaf may hold. A larger value stops a tree learning from a few odd rows. The default is 20. |
+| Early stopping, seed, class weight | on, 0, none (fixed) | These match the model comparison, so its settings are the "before" row. |
 
-Each combination is scored with the same host-grouped, stratified 5-fold cross-validation as the model comparison (same folds, seed 0). The scaler and the model sit in one Pipeline per fold. The scoring measure is **F2**, which counts phishing recall more than precision. It was chosen before the search ran. The highest mean F2 wins. On an exact tie the smaller C wins, because it is the simpler model. The test split is never loaded. Run it from `ml/` (about 20 seconds):
+Each combination is scored with the same host-grouped, stratified 5-fold cross-validation as the model comparison (same folds, seed 0). The scaler and the model sit in one Pipeline per fold. The scoring measure is **ROC-AUC**, chosen before the search ran. Combinations within 0.001 of the best mean ROC-AUC count as a tie, and the simplest wins: fewer leaves, then fewer trees, then larger leaves, then a smaller learning rate. The test split is never loaded. Run it from `ml/` (about 30 seconds on 10 cores):
 
 ```bash
 uv run python -m training.tuning
 ```
 
-It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination). "Before" uses the comparison's settings (C = 1, l2), scored again with liblinear on the same folds. The comparison itself used the default lbfgs solver, which can't do l1, so its numbers differ slightly from this row.
+**Known limitation:** on the real data early stopping is on, so gradient boosting holds back 10% of each fold's training rows to decide when to stop. That hold-out is not grouped by host, so a host can be on both sides of it. The outer held-out fold and the test split are never touched, so the scores stay honest, but early stopping may stop a little late.
+
+It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination).
+
+### Seed check
+
+The search uses one seed. `ml/training/seed_check.py` scores the before and after settings again with seeds 0 to 4. Each seed makes its own host-grouped fold split and sets the model's own randomness. It reports whether after beats before on every seed, and by how much. It only measures stability. It never picks a seed, because picking the luckiest seed would be fitting to noise. Run it after the tuning (about 1.5 minutes):
+
+```bash
+uv run python -m training.seed_check
+```
+
+It writes `ml/reports/seed_check.json` and `ml/reports/seed_check.md`.
 
 ## The final model
 

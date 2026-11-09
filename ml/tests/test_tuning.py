@@ -1,7 +1,7 @@
 """Tests for the tuning search (ml/training/tuning.py).
 
-They run on small made-up rows, because CI has no dataset. Their numbers say nothing about
-the real model.
+They run on small made-up rows and a small grid, because CI has no dataset and the real grid
+takes minutes. Their numbers say nothing about the real model.
 """
 
 import json
@@ -9,7 +9,7 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -18,10 +18,11 @@ from ranking.final_list import FINAL_FEATURES
 from training import tuning
 from training.classifiers import FOLDS, SEED, fold_positions
 from training.tuning import (
+    ALL_COMBINATIONS,
     BEFORE,
-    C_VALUES,
-    L1_RATIOS,
+    CLOSE,
     MEASURES,
+    SEARCH_SPACE,
     base_model,
     choose,
     combinations,
@@ -31,6 +32,9 @@ from training.tuning import (
 )
 
 ROWS = 400
+# A two-combination grid with every searched setting, so the tests stay fast.
+SMALL_SPACE = {"learning_rate": (0.1, 0.3), "max_iter": (20,), "max_leaf_nodes": (7,), "min_samples_leaf": (5,)}
+SMALL_BEFORE = {"learning_rate": 0.1, "max_iter": 20, "max_leaf_nodes": 7, "min_samples_leaf": 5}
 
 
 def made_up_rows(rows: int = ROWS):
@@ -46,28 +50,42 @@ def made_up_rows(rows: int = ROWS):
     return features, labels, hosts
 
 
+def small_search(features, labels, hosts, n_jobs=-1):
+    return run_search(features, labels, hosts, n_jobs=1, space=SMALL_SPACE)
+
+
 # Criterion 1: the settings searched are the ones in the search space note.
 
 
 def test_the_search_tries_the_settings_in_the_note():
-    space = tuning.search_space()
+    assert SEARCH_SPACE == {
+        "learning_rate": (0.05, 0.1, 0.2),
+        "max_iter": (100, 300),
+        "max_leaf_nodes": (15, 31, 63),
+        "min_samples_leaf": (20, 100),
+    }
+    assert len(ALL_COMBINATIONS) == 36
+    assert tuning.search_space() == {f"model__{name}": list(values) for name, values in SEARCH_SPACE.items()}
 
-    assert space["model__C"] == [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
-    assert space["model__l1_ratio"] == [0.0, 1.0]
-    assert set(space) == {"model__C", "model__l1_ratio"}  # class weight and solver are not searched
 
-
-def test_class_weight_and_solver_stay_fixed():
+def test_the_model_is_gradient_boosting_with_the_comparisons_fixed_settings():
     model = base_model()
 
-    assert isinstance(model, LogisticRegression)
-    assert model.class_weight == "balanced"
-    assert model.solver == "liblinear"
+    assert isinstance(model, HistGradientBoostingClassifier)
     assert model.random_state == SEED
+    assert model.early_stopping == "auto"
+    assert model.class_weight is None
 
 
-def test_the_before_settings_are_in_the_grid():
-    assert BEFORE["C"] in C_VALUES and BEFORE["l1_ratio"] in L1_RATIOS
+def test_the_before_settings_are_scikit_learns_defaults_and_in_the_grid():
+    defaults = HistGradientBoostingClassifier().get_params()
+
+    assert all(defaults[name] == value for name, value in BEFORE.items())
+    assert BEFORE in ALL_COMBINATIONS
+
+
+def test_the_scoring_measure_is_roc_auc():
+    assert tuning.SCORING_MEASURE == "roc_auc"
 
 
 # Criterion 2: training set only, stratified 5-fold, fixed seed, no held-out row in a fit.
@@ -76,11 +94,9 @@ def test_the_before_settings_are_in_the_grid():
 def test_the_search_uses_the_model_comparisons_folds():
     features, labels, hosts = made_up_rows()
 
-    search = run_search(features, labels, hosts, n_jobs=1)
+    search = small_search(features, labels, hosts)
 
-    expected = fold_positions(labels, hosts)
-    assert len(search.cv) == FOLDS
-    for (learn, held_out), (want_learn, want_out) in zip(search.cv, expected):
+    for (learn, held_out), (want_learn, want_out) in zip(search.cv, fold_positions(labels, hosts)):
         assert list(learn) == list(want_learn) and list(held_out) == list(want_out)
 
 
@@ -100,11 +116,10 @@ def test_held_out_rows_never_reach_a_fit_and_every_scaler_sees_only_its_fold(mon
     monkeypatch.setattr(Pipeline, "fit", recording_pipeline_fit)
     monkeypatch.setattr(StandardScaler, "fit", recording_scaler_fit)
 
-    run_search(features, labels, hosts, n_jobs=1)
+    small_search(features, labels, hosts)
 
     learning_sets = [set(features.index[learn]) for learn, _ in fold_positions(labels, hosts)]
-    combinations_tried = len(C_VALUES) * len(L1_RATIOS)
-    assert len(fitted_rows) == combinations_tried * FOLDS  # refit=False: no fit on every row
+    assert len(fitted_rows) == 2 * FOLDS  # refit=False: no fit on every row
     assert all(rows in learning_sets for rows in fitted_rows)
     assert all(rows in learning_sets for rows in scaler_rows)
 
@@ -112,19 +127,18 @@ def test_held_out_rows_never_reach_a_fit_and_every_scaler_sees_only_its_fold(mon
 def test_main_passes_only_training_rows_to_the_search(tmp_path, monkeypatch):
     paths, split = write_inputs(tmp_path)
     seen = {}
-    real_search = tuning.run_search
 
     def watching_search(features, labels, hosts, n_jobs=-1):
         seen["rows"] = set(features.index)
         seen["columns"] = list(features.columns)
-        return real_search(features, labels, hosts, n_jobs=1)
+        return small_search(features, labels, hosts)
 
     monkeypatch.setattr(tuning, "run_search", watching_search)
+    monkeypatch.setattr(tuning, "BEFORE", SMALL_BEFORE)
 
     assert main(arguments(paths)) == 0
 
-    training_rows = set(split.loc[split["set"] == "train", "row"])
-    assert seen["rows"] == training_rows
+    assert seen["rows"] == set(split.loc[split["set"] == "train", "row"])
     assert seen["rows"].isdisjoint(set(split.loc[split["set"] == "test", "row"]))
     assert seen["columns"] == list(FINAL_FEATURES)
 
@@ -132,78 +146,115 @@ def test_main_passes_only_training_rows_to_the_search(tmp_path, monkeypatch):
 def test_a_second_run_gives_the_same_scores():
     features, labels, hosts = made_up_rows()
 
-    first = combinations(run_search(features, labels, hosts, n_jobs=1))
-    second = combinations(run_search(features, labels, hosts, n_jobs=1))
-
-    assert first == second
+    assert combinations(small_search(features, labels, hosts)) == combinations(small_search(features, labels, hosts))
 
 
 # Criterion 3: before and after scores in one table, in the comparison's layout.
 
 
-def scored(c, l1_ratio, f2):
-    row = {"C": c, "l1_ratio": l1_ratio}
+def scored(roc_auc, learning_rate=0.1, max_iter=100, max_leaf_nodes=31, min_samples_leaf=20):
+    row = {
+        "learning_rate": learning_rate,
+        "max_iter": max_iter,
+        "max_leaf_nodes": max_leaf_nodes,
+        "min_samples_leaf": min_samples_leaf,
+    }
     for measure in MEASURES:
-        row[measure] = {"mean": f2 if measure == "f2" else 0.5, "std": 0.01, "folds": [0.5] * FOLDS}
+        row[measure] = {"mean": roc_auc if measure == "roc_auc" else 0.5, "std": 0.01, "folds": [0.5] * FOLDS}
     return row
 
 
-def test_the_highest_mean_f2_is_chosen():
-    rows = [scored(1.0, 0.0, 0.60), scored(10.0, 1.0, 0.70), scored(0.1, 0.0, 0.65)]
+def test_the_highest_mean_roc_auc_is_chosen_when_it_is_clearly_best():
+    rows = [scored(0.80), scored(0.85, max_leaf_nodes=63), scored(0.82, max_leaf_nodes=15)]
 
-    assert choose(rows)["C"] == 10.0
-
-
-def test_on_a_tie_the_smaller_c_wins():
-    rows = [scored(10.0, 0.0, 0.70), scored(0.1, 0.0, 0.70), scored(1.0, 0.0, 0.70)]
-
-    assert choose(rows)["C"] == 0.1
+    assert choose(rows)["max_leaf_nodes"] == 63
 
 
-def test_a_tiny_f2_difference_still_decides_and_is_not_rounded_away():
-    rows = [scored(0.1, 0.0, 0.7000001), scored(10.0, 0.0, 0.7000004)]
+def test_within_close_of_the_best_the_simplest_wins():
+    rows = [
+        scored(0.8400, max_leaf_nodes=63, max_iter=300),
+        scored(0.8400 - CLOSE / 2, max_leaf_nodes=15, max_iter=300),
+        scored(0.8400 - CLOSE / 2, max_leaf_nodes=15, max_iter=100),
+        scored(0.8400 - 2 * CLOSE, max_leaf_nodes=15, max_iter=100, min_samples_leaf=100),
+    ]
 
-    assert choose(rows)["C"] == 10.0
+    chosen = choose(rows)
+
+    assert (chosen["max_leaf_nodes"], chosen["max_iter"], chosen["min_samples_leaf"]) == (15, 100, 20)
+
+
+def test_on_equal_leaves_and_trees_the_larger_min_leaf_then_the_smaller_learning_rate_wins():
+    rows = [
+        scored(0.8400, min_samples_leaf=20, learning_rate=0.05),
+        scored(0.8400, min_samples_leaf=100, learning_rate=0.2),
+        scored(0.8400, min_samples_leaf=100, learning_rate=0.1),
+    ]
+
+    chosen = choose(rows)
+
+    assert (chosen["min_samples_leaf"], chosen["learning_rate"]) == (100, 0.1)
+
+
+def test_a_gap_of_exactly_close_still_counts_as_a_tie():
+    rows = [scored(0.8400, max_leaf_nodes=63), scored(0.8400 - CLOSE, max_leaf_nodes=15)]
+
+    assert choose(rows)["max_leaf_nodes"] == 15
+
+
+def test_a_second_search_is_the_same_with_early_stopping_switched_on(monkeypatch):
+    # The real data is big enough to switch early stopping on; the made-up rows are not, so force it.
+    monkeypatch.setattr(
+        tuning, "base_model", lambda: HistGradientBoostingClassifier(random_state=SEED, early_stopping=True)
+    )
+    features, labels, hosts = made_up_rows()
+
+    assert combinations(small_search(features, labels, hosts)) == combinations(small_search(features, labels, hosts))
+
+
+def test_a_gap_just_over_close_is_not_a_tie():
+    rows = [scored(0.8400, max_leaf_nodes=63), scored(0.8400 - CLOSE - 0.0001, max_leaf_nodes=15)]
+
+    assert choose(rows)["max_leaf_nodes"] == 63
 
 
 def test_the_saved_scores_are_rounded_to_six_places():
-    rows = tuning.rounded([scored(1.0, 0.0, 0.123456789)])
+    rows = tuning.rounded([scored(0.123456789)])
 
-    assert rows[0]["f2"]["mean"] == 0.123457
-    assert rows[0]["C"] == 1.0
+    assert rows[0]["roc_auc"]["mean"] == 0.123457
+    assert rows[0]["max_leaf_nodes"] == 31
 
 
-def test_every_combination_has_every_measure():
+def test_every_combination_has_every_measure_and_its_settings():
     features, labels, hosts = made_up_rows()
 
-    rows = combinations(run_search(features, labels, hosts, n_jobs=1))
+    rows = combinations(small_search(features, labels, hosts))
 
-    assert len(rows) == len(C_VALUES) * len(L1_RATIOS)
+    assert len(rows) == 2
     for row in rows:
-        assert set(MEASURES) <= set(row)
+        assert set(SEARCH_SPACE) <= set(row)
         for measure in MEASURES:
             assert len(row[measure]["folds"]) == FOLDS
             assert 0 <= row[measure]["mean"] <= 1
 
 
 def test_the_report_has_the_before_and_after_table_in_the_comparison_layout():
-    rows = [scored(c, r, 0.6) for c in C_VALUES for r in L1_RATIOS]
-    rows[3] = scored(0.01, 1.0, 0.8)
+    rows = [scored(0.80), scored(0.84, max_leaf_nodes=15)]
     results = {
         "features": list(FINAL_FEATURES),
         "folds": FOLDS,
         "seed": SEED,
         "training_rows": 100,
         "before": dict(BEFORE),
-        "chosen": {"C": 0.01, "l1_ratio": 1.0},
+        "chosen": {"learning_rate": 0.1, "max_iter": 100, "max_leaf_nodes": 15, "min_samples_leaf": 20},
         "combinations": rows,
     }
 
     text = report(results)
 
     assert "| Model | Phishing recall | Precision | F1 | ROC-AUC | Accuracy | F2 |" in text
-    assert "| Before tuning (C = 1, l2) |" in text
-    assert "| After tuning (C = 0.01, l1) |" in text
+    assert "| Before tuning (learning rate 0.1, up to 100 trees, 31 leaves, min leaf 20) |" in text
+    assert "| After tuning (learning rate 0.1, up to 100 trees, 15 leaves, min leaf 20) |" in text
+    assert "Mean ROC-AUC changed by +0.040" in text
     assert "not real-world accuracy" in text
 
 
@@ -240,19 +291,19 @@ def arguments(paths):
 
 def test_main_writes_the_results_and_the_report(tmp_path, monkeypatch, capsys):
     paths, split = write_inputs(tmp_path)
-    monkeypatch.setattr(
-        tuning, "run_search", lambda features, labels, hosts, n_jobs=-1: run_search(features, labels, hosts, n_jobs=1)
-    )
+    monkeypatch.setattr(tuning, "run_search", small_search)
+    monkeypatch.setattr(tuning, "BEFORE", SMALL_BEFORE)
 
     assert main(arguments(paths)) == 0
 
     saved = json.loads(paths["results"].read_text())
-    assert saved["scoring"] == "f2"
+    assert saved["model"] == "HistGradientBoostingClassifier"
+    assert saved["scoring"] == "roc_auc"
     assert saved["seed"] == SEED and saved["folds"] == FOLDS
-    assert saved["fixed"]["class_weight"] == "balanced"
     assert saved["training_rows"] == int((split["set"] == "train").sum())
-    assert saved["before"] == BEFORE
-    assert len(saved["combinations"]) == len(C_VALUES) * len(L1_RATIOS)
+    assert saved["before"] == SMALL_BEFORE
+    assert set(saved["chosen"]) == set(SEARCH_SPACE)
+    assert len(saved["combinations"]) == 2
     assert paths["report"].read_text().startswith("# Tuning the chosen model")
     assert "Saved" in capsys.readouterr().out
 
