@@ -1,36 +1,38 @@
 """Tune the chosen model's settings with a grid search on the training split only.
 
-The chosen model is logistic regression with balanced class weights (see
-ml/reports/model_comparison.md). The search space and the scoring measure were written down
-before the search ran, in the search space note in the Sprint 3 Confluence folder:
+The chosen model is gradient boosting (scikit-learn's HistGradientBoostingClassifier). Sprint 3
+planning changed the choosing rule to ROC-AUC, because the risk-level cut-offs story sets our
+own flag lines, and gradient boosting had the best ROC-AUC in the model comparison (0.836).
+The search space and the scoring measure were written down before the search ran, in the
+search space note in the Sprint 3 Confluence folder:
 
-- C: 0.001, 0.01, 0.1, 1, 10, 100, 1000. How closely the model may fit the training rows.
-- l1_ratio: 0 (l2) or 1 (l1). scikit-learn 1.8 renamed the old `penalty` setting to this.
-  l1 can switch a weak feature off. l2 shrinks every weight a little.
-- solver liblinear (fixed): it supports both penalties, so they are compared fairly.
-- class_weight balanced (fixed): if the search could change how much gets flagged, F2 would
-  reward flagging every link. Where to draw that line is the risk-level cut-off story's job.
+- learning_rate: 0.05, 0.1, 0.2. How big a step each new tree takes.
+- max_iter: 100, 300. The most trees allowed. Early stopping can stop sooner.
+- max_leaf_nodes: 15, 31, 63. How detailed each tree may be.
+- min_samples_leaf: 20, 100. A larger value stops a tree learning from a few odd rows.
+- Fixed: early stopping on (the default), seed 0, no class weight. These match the model
+  comparison, so its settings are the "before" row.
 
 Each combination is scored with the same hostname-grouped, stratified 5-fold cross-validation
 as the model comparison (same folds, seed 0). The scaler and the model sit in one Pipeline,
-so each fold fits the scaler on its own training rows only. The scoring measure is F2, which
-counts phishing recall more than precision. The test split is never loaded: the rows come
-from the training pipeline, which only reads the rows the saved split puts in training.
+so each fold fits the scaler on its own training rows only. The scoring measure is ROC-AUC,
+which does not depend on where the flag line is drawn. The test split is never loaded: the
+rows come from the training pipeline, which only reads the rows the saved split puts in training.
 
-The "before" row is the current model (C = 1, l2), scored in the same search. Writes
-ml/reports/tuning_results.json and ml/reports/tuning.md.
+Writes ml/reports/tuning_results.json and ml/reports/tuning.md.
 
 Run from ml/:  uv run python -m training.tuning
 """
 
 import argparse
+import itertools
 import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import f1_score, fbeta_score, make_scorer, precision_score, recall_score
 from sklearn.model_selection import GridSearchCV
 
@@ -39,11 +41,21 @@ from ranking.final_list import FINAL_FEATURES
 from training.classifiers import DECIMALS, FOLDS, SEED, fold_positions, model_pipeline
 from training.pipeline import FEATURES_PATH, ML_DIR, SCALER_PATH, SPLIT_PATH, PipelineError, load_training_set
 
-C_VALUES = (0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0)
-L1_RATIOS = (0.0, 1.0)  # 0 = l2, 1 = l1
-PENALTY_NAMES = {0.0: "l2", 1.0: "l1"}
-BEFORE = {"C": 1.0, "l1_ratio": 0.0}  # the settings the model comparison scored
-SCORING_MEASURE = "f2"
+# The settings searched, in the order they are shown.
+SEARCH_SPACE: dict[str, tuple] = {
+    "learning_rate": (0.05, 0.1, 0.2),
+    "max_iter": (100, 300),
+    "max_leaf_nodes": (15, 31, 63),
+    "min_samples_leaf": (20, 100),
+}
+SETTINGS = tuple(SEARCH_SPACE)
+# scikit-learn's defaults, which the model comparison scored.
+BEFORE = {"learning_rate": 0.1, "max_iter": 100, "max_leaf_nodes": 31, "min_samples_leaf": 20}
+# Every combination the grid holds.
+ALL_COMBINATIONS = [dict(zip(SETTINGS, values)) for values in itertools.product(*SEARCH_SPACE.values())]
+SCORING_MEASURE = "roc_auc"
+# Combinations this close to the best mean ROC-AUC count as a tie, and the simplest of them wins.
+CLOSE = 0.001
 BETA = 2
 # The table's columns, in the model comparison's order, with F2 added at the end.
 MEASURES = ("recall", "precision", "f1", "roc_auc", "accuracy", "f2")
@@ -60,17 +72,17 @@ REPORT_PATH = ML_DIR / "reports" / "tuning.md"
 LABEL = "In-dataset cross-validation results, not real-world accuracy."
 
 
-def base_model() -> LogisticRegression:
+def base_model() -> HistGradientBoostingClassifier:
     """The chosen model with the settings the search does not change."""
-    return LogisticRegression(solver="liblinear", class_weight="balanced", max_iter=1000, random_state=SEED)
+    return HistGradientBoostingClassifier(random_state=SEED)
 
 
-def search_space() -> dict[str, list[float]]:
-    return {"model__C": list(C_VALUES), "model__l1_ratio": list(L1_RATIOS)}
+def search_space(space: dict[str, tuple] | None = None) -> dict[str, list]:
+    return {f"model__{name}": list(values) for name, values in (space or SEARCH_SPACE).items()}
 
 
 def scorers() -> dict:
-    """Every measure in the table, phishing as the positive class. F2 is the one that chooses."""
+    """Every measure in the table, phishing as the positive class. ROC-AUC is the one that chooses."""
     return {
         "recall": make_scorer(recall_score, pos_label=PHISHING, zero_division=0),
         "precision": make_scorer(precision_score, pos_label=PHISHING, zero_division=0),
@@ -81,14 +93,17 @@ def scorers() -> dict:
     }
 
 
-def run_search(features: pd.DataFrame, labels: pd.Series, hosts: pd.Series, n_jobs: int = -1) -> GridSearchCV:
+def run_search(
+    features: pd.DataFrame, labels: pd.Series, hosts: pd.Series, n_jobs: int = -1, space: dict[str, tuple] | None = None
+) -> GridSearchCV:
     """Score every combination on the comparison's folds. Nothing is refitted on all rows here.
 
-    n_jobs=-1 uses every core. Tests pass 1, so every fit runs in this process and can be watched.
+    n_jobs=-1 uses every core. Tests pass 1, so every fit runs in this process and can be watched,
+    and a smaller `space` so they stay fast. The real run always uses SEARCH_SPACE.
     """
     search = GridSearchCV(
         model_pipeline(base_model()),
-        search_space(),
+        search_space(space),
         scoring=scorers(),
         refit=False,
         cv=fold_positions(labels, hosts),
@@ -96,6 +111,10 @@ def run_search(features: pd.DataFrame, labels: pd.Series, hosts: pd.Series, n_jo
         error_score="raise",
     )
     return search.fit(features, labels)
+
+
+def _setting(name: str, value):
+    return float(value) if name == "learning_rate" else int(value)
 
 
 def combinations(search: GridSearchCV) -> list[dict]:
@@ -107,7 +126,7 @@ def combinations(search: GridSearchCV) -> list[dict]:
     results = search.cv_results_
     rows = []
     for index, params in enumerate(results["params"]):
-        row = {"C": float(params["model__C"]), "l1_ratio": float(params["model__l1_ratio"])}
+        row = {name: _setting(name, params[f"model__{name}"]) for name in SETTINGS}
         for measure in MEASURES:
             row[measure] = {
                 "mean": float(results[f"mean_test_{measure}"][index]),
@@ -137,17 +156,31 @@ def rounded(rows: list[dict]) -> list[dict]:
     ]
 
 
+def simplicity(row: dict) -> tuple:
+    """Smaller sorts first = simpler: fewer leaves, then fewer trees, then larger leaves, then smaller steps."""
+    return (row["max_leaf_nodes"], row["max_iter"], -row["min_samples_leaf"], row["learning_rate"])
+
+
 def choose(rows: list[dict]) -> dict:
-    """The highest mean F2. On an exact tie the smaller C wins, because it is the simpler model."""
-    return max(rows, key=lambda row: (row[SCORING_MEASURE]["mean"], -row["C"], -row["l1_ratio"]))
+    """The simplest combination within CLOSE of the best mean ROC-AUC."""
+    best = max(row[SCORING_MEASURE]["mean"] for row in rows)
+    close = [row for row in rows if row[SCORING_MEASURE]["mean"] >= best - CLOSE - 1e-12]
+    return min(close, key=simplicity)
+
+
+def settings_of(row: dict) -> dict:
+    return {name: row[name] for name in SETTINGS}
 
 
 def find(rows: list[dict], settings: dict) -> dict:
-    return next(row for row in rows if row["C"] == settings["C"] and row["l1_ratio"] == settings["l1_ratio"])
+    return next(row for row in rows if settings_of(row) == settings)
 
 
 def settings_text(row: dict) -> str:
-    return f"C = {row['C']:g}, {PENALTY_NAMES[row['l1_ratio']]}"
+    return (
+        f"learning rate {row['learning_rate']:g}, up to {row['max_iter']} trees, "
+        f"{row['max_leaf_nodes']} leaves, min leaf {row['min_samples_leaf']}"
+    )
 
 
 def _cell(row: dict, measure: str) -> str:
@@ -166,14 +199,15 @@ def report(results: dict) -> str:
         f"| After tuning ({settings_text(after)}) | " + " | ".join(_cell(after, m) for m in MEASURES) + " |",
     ]
     every = [
-        "| C | Penalty | F2 | Phishing recall | Precision |",
-        "|---|---|---|---|---|",
+        "| Learning rate | Max trees | Leaves | Min leaf | ROC-AUC | Phishing recall | Precision |",
+        "|---|---|---|---|---|---|---|",
         *(
-            f"| {row['C']:g} | {PENALTY_NAMES[row['l1_ratio']]} | {_cell(row, 'f2')} | {_cell(row, 'recall')} | {_cell(row, 'precision')} |"
-            for row in sorted(rows, key=lambda r: (r["l1_ratio"], r["C"]))
+            f"| {row['learning_rate']:g} | {row['max_iter']} | {row['max_leaf_nodes']} | {row['min_samples_leaf']} | "
+            f"{_cell(row, 'roc_auc')} | {_cell(row, 'recall')} | {_cell(row, 'precision')} |"
+            for row in sorted(rows, key=lambda r: -r[SCORING_MEASURE]["mean"])
         ),
     ]
-    change = after["f2"]["mean"] - before["f2"]["mean"]
+    change = after["roc_auc"]["mean"] - before["roc_auc"]["mean"]
     return "\n".join(
         [
             "# Tuning the chosen model",
@@ -183,23 +217,21 @@ def report(results: dict) -> str:
             "## How it was made",
             "",
             f"- {results['training_rows']:,} training rows. They are the training part of the shared host-grouped split. The test rows were not used.",
-            f"- The model is logistic regression with balanced class weights and the liblinear solver, on the {len(results['features'])} final features.",
+            f"- The model is gradient boosting (HistGradientBoostingClassifier), on the {len(results['features'])} final features.",
             f"- Stratified {results['folds']}-fold cross-validation, grouped by host, with seed {results['seed']}. These are the same folds as the model comparison.",
             "- Inside each fold the scaler and the model are fitted together on the fold's training rows only.",
-            "- Every combination below was tried. The scoring measure is F2, chosen before the search ran.",
-            "- Phishing (label 1) is the positive class. Each score is the mean over the folds ± the standard deviation.",
+            "- Every combination below was tried. The scoring measure is ROC-AUC, chosen before the search ran.",
+            f"- Combinations within {CLOSE} of the best mean ROC-AUC count as a tie, and the simplest wins: fewer leaves, then fewer trees, then larger leaves, then a smaller learning rate.",
+            "- Phishing (label 1) is the positive class. Each score is the mean over the folds ± the standard deviation. "
+            "Recall, precision, F1, F2 and accuracy use the default 0.5 flag line. The risk-level cut-offs set the real ones.",
             "",
             "## Before and after",
             "",
             *table,
             "",
-            f"Mean F2 changed by {change:+.3f}. On an exact tie the smaller C wins, because it is the simpler model.",
+            f"Mean ROC-AUC changed by {change:+.3f}. The before row is scikit-learn's default settings, which the model comparison scored.",
             "",
-            "The before row uses the model comparison's settings (C = 1, l2), scored again here with the liblinear "
-            "solver on the same folds. The comparison used the default lbfgs solver, which cannot do l1, so its "
-            "numbers differ slightly.",
-            "",
-            "## Every combination",
+            "## Every combination, best ROC-AUC first",
             "",
             *every,
             "",
@@ -227,22 +259,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     rows = combinations(run_search(features, training.labels, training.hostnames))
     chosen = choose(rows)
     results = {
+        "model": "HistGradientBoostingClassifier",
         "features": list(FINAL_FEATURES),
         "folds": FOLDS,
         "seed": SEED,
         "training_rows": len(training.rows),
         "scoring": SCORING_MEASURE,
-        "fixed": {"solver": "liblinear", "class_weight": "balanced", "max_iter": 1000},
+        "close": CLOSE,
+        "fixed": {"random_state": SEED, "early_stopping": "auto", "class_weight": None},
         "before": dict(BEFORE),
-        "chosen": {"C": chosen["C"], "l1_ratio": chosen["l1_ratio"]},
+        "chosen": settings_of(chosen),
         "combinations": rounded(rows),
     }
     args.results.parent.mkdir(parents=True, exist_ok=True)
     args.results.write_text(json.dumps(results, indent=2) + "\n")
     args.report.write_text(report(results))
     before = find(rows, BEFORE)
-    print(f"Before ({settings_text(before)}): mean F2 {before['f2']['mean']:.3f}")
-    print(f"Chosen ({settings_text(chosen)}): mean F2 {chosen['f2']['mean']:.3f}")
+    print(f"Before ({settings_text(before)}): mean ROC-AUC {before['roc_auc']['mean']:.3f}")
+    print(f"Chosen ({settings_text(chosen)}): mean ROC-AUC {chosen['roc_auc']['mean']:.3f}")
     print(f"Saved {args.results} and {args.report}")
     return 0
 
