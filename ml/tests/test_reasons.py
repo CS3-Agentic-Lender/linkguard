@@ -15,7 +15,7 @@ REASONS_TABLE = Path(__file__).resolve().parents[2] / "docs" / "reason-sentences
 # comes from the dataset's legitimate links being big sites' front pages.
 WATCH_FEATURES = ("TLDLength", "NoOfSubDomain")
 
-# Words a user should never see in a reason (ALG-33 criterion 3), plus two more
+# Words a user should never see in a reason (the reasons story, criterion 3), plus two more
 # that are jargon to most people.
 TECHNICAL_WORDS = ("feature", "shap", "probability", "model", "hostname", "ratio")
 
