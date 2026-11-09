@@ -48,7 +48,7 @@ Reasons are only worked out for Suspicious and High risk results. A Safe result 
    | `DigitRatioInHostname` | a larger share of digits |
    | `NoOfSpecialCharsInHostname` | more dots or hyphens |
 
-4. If both digit features qualify, keep only the larger. Their two sentences say nearly the same thing ("a lot of numbers", "numbers make up a large part"), and showing both would use up two of the three reasons on one sign.
+4. Of the three **number features** (`NoOfDigitsInHostname`, `DigitRatioInHostname` and `LetterRatioInHostname`), keep only the one that pushed most. On a tie, keep the first in that order. Their sentences all say the website name is mostly numbers ("a lot of numbers", "numbers make up a large part", "numbers or symbols, not letters"), so showing two would use up two of the three reasons on one sign. The hand check on five made-up links (`ml/reports/explanation_check.md`) first used this step for the two digit features only, and an IP-address link then got both "numbers or symbols, not letters" and "a lot of numbers". Dunmi and Nikoloz agreed on 9 November 2026 to widen it to all three.
 5. Sort what is left by contribution, largest first, and keep at most three.
 
 ### Features that are never shown
@@ -74,7 +74,8 @@ The plain sentence for each feature, and every never-shown feature with its reas
 - Reasons explain **what the model did**, not whether the link is truly dangerous. They are hostname-based signals only, as `0002-hostname-features-for-template-bias.md` says.
 - A hidden feature can be the biggest push on a link's score. The user then sees the next largest shown features instead, or none.
 - **A risky link can get no reasons**, when only hidden features raised its score, or none passes step 3. The reasons story asks for one to three reasons on a Suspicious or High risk result, so this case needs a decision before the result page is built (see Open questions).
-- Correlated features (website name length, digit count and digit share) share the push between them, so each one's contribution can look smaller than the sign it stands for. Step 4 stops two near-duplicate sentences.
+- Correlated features (website name length, digit count and digit share) share the push between them, so each one's contribution can look smaller than the sign it stands for. Step 4 stops near-duplicate number sentences.
+- The reasons are picked in one place, `ml/features/explain.py`. The scan turns the picked names into sentences and does no filtering of its own, so two pickers can never disagree.
 - If gradient boosting is final, `shap` becomes a backend dependency, loaded once with the model, not on every scan.
 - The hand check on five sample links compares the picked reasons with the full list of contributions for each link.
 

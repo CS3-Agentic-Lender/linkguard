@@ -11,9 +11,9 @@ Host measured: `192.0.2.44`. Phishing score: 0.997.
 | Feature | Scaled value | Coefficient | Push on the score | Shown? |
 |---|---|---|---|---|
 | `LetterRatioInHostname` | -7.656 | -0.512 | +3.923 | **Reason 1** |
-| `NoOfDigitsInHostname` | +2.174 | +1.617 | +3.514 | **Reason 2** |
-| `NoOfSpecialCharsInHostname` | +1.111 | +0.806 | +0.895 | **Reason 3** |
-| `IsDomainIP` | +19.189 | +0.012 | +0.231 | not in the top 3 |
+| `NoOfDigitsInHostname` | +2.174 | +1.617 | +3.514 | another number reason pushed more |
+| `NoOfSpecialCharsInHostname` | +1.111 | +0.806 | +0.895 | **Reason 2** |
+| `IsDomainIP` | +19.189 | +0.012 | +0.231 | **Reason 3** |
 | `NoOfSubDomain` | -0.613 | +0.235 | -0.144 | never shown |
 | `HostnameLength` | -0.867 | +0.490 | -0.424 | lowered the score |
 | `DigitRatioInHostname` | +6.758 | -0.157 | -1.063 | lowered the score |
@@ -22,8 +22,8 @@ Host measured: `192.0.2.44`. Phishing score: 0.997.
 Reasons picked:
 
 1. Much of the website name is numbers or symbols, not letters. (`LetterRatioInHostname`)
-2. The website name contains a lot of numbers. (`NoOfDigitsInHostname`)
-3. The website name has a lot of dots or hyphens. (`NoOfSpecialCharsInHostname`)
+2. The website name has a lot of dots or hyphens. (`NoOfSpecialCharsInHostname`)
+3. This link uses a string of numbers instead of a website name. (`IsDomainIP`)
 
 ### `https://secure-login-account-update-verification.example.com/`
 
@@ -52,9 +52,9 @@ Host measured: `pay8812-34ref77.example.net`. Phishing score: 0.999.
 | Feature | Scaled value | Coefficient | Push on the score | Shown? |
 |---|---|---|---|---|
 | `NoOfDigitsInHostname` | +2.529 | +1.617 | +4.089 | **Reason 1** |
-| `LetterRatioInHostname` | -2.446 | -0.512 | +1.253 | **Reason 2** |
-| `NoOfSpecialCharsInHostname` | +1.111 | +0.806 | +0.895 | **Reason 3** |
-| `HostnameLength` | +0.865 | +0.490 | +0.424 | not in the top 3 |
+| `LetterRatioInHostname` | -2.446 | -0.512 | +1.253 | another number reason pushed more |
+| `NoOfSpecialCharsInHostname` | +1.111 | +0.806 | +0.895 | **Reason 2** |
+| `HostnameLength` | +0.865 | +0.490 | +0.424 | **Reason 3** |
 | `NoOfSubDomain` | +0.867 | +0.235 | +0.203 | never shown |
 | `TLDLength` | +0.388 | +0.337 | +0.131 | never shown |
 | `IsDomainIP` | -0.052 | +0.012 | -0.001 | lowered the score |
@@ -63,8 +63,8 @@ Host measured: `pay8812-34ref77.example.net`. Phishing score: 0.999.
 Reasons picked:
 
 1. The website name contains a lot of numbers. (`NoOfDigitsInHostname`)
-2. Much of the website name is numbers or symbols, not letters. (`LetterRatioInHostname`)
-3. The website name has a lot of dots or hyphens. (`NoOfSpecialCharsInHostname`)
+2. The website name has a lot of dots or hyphens. (`NoOfSpecialCharsInHostname`)
+3. The website name in this link is unusually long. (`HostnameLength`)
 
 ### `https://www.example.com/`
 
@@ -107,6 +107,6 @@ Reasons picked:
 
 ## Timing
 
-The slowest of 200 scans of each link (features, scaling, score and reasons): **1.1 ms**, under the 2 s limit. Loading the model and scaler happens once at start-up and is not included.
+The slowest of 200 scans of each link (features, scaling, score and reasons): **1.0 ms**, under the 2 s limit. Loading the model and scaler happens once at start-up and is not included.
 
 Made by `uv run python -m training.explanation_check`.

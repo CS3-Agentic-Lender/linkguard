@@ -9,7 +9,13 @@ import math
 
 import pytest
 
-from features.explain import MAX_REASONS, RAISING_SIDE, pick_reasons
+from features.explain import (
+    MAX_REASONS,
+    NUMBER_GROUP,
+    RAISING_SIDE,
+    kept_number_reason,
+    pick_reasons,
+)
 from features.reasons import NOT_SHOWN, REASON_SENTENCES
 
 # A link on the phishing side of every shown feature: long name, an IP address,
@@ -124,22 +130,47 @@ def test_a_value_exactly_at_the_average_is_not_on_either_side():
     assert pick_reasons(_contributions(HostnameLength=0.6), at_average) == ()
 
 
-# The two digit sentences say nearly the same thing
+# The three number sentences say nearly the same thing: digit count, digit share and letter share
+
+
+def test_the_number_group_is_the_digit_count_digit_share_and_letter_share():
+    assert NUMBER_GROUP == ("NoOfDigitsInHostname", "DigitRatioInHostname", "LetterRatioInHostname")
 
 
 @pytest.mark.parametrize(
-    ("count", "share", "kept"),
-    [(0.9, 0.4, "NoOfDigitsInHostname"), (0.4, 0.9, "DigitRatioInHostname")],
+    ("count", "share", "letters", "kept"),
+    [
+        (0.9, 0.4, 0.2, "NoOfDigitsInHostname"),
+        (0.4, 0.9, 0.2, "DigitRatioInHostname"),
+        (0.4, 0.2, 0.9, "LetterRatioInHostname"),
+    ],
 )
-def test_only_the_larger_digit_reason_is_kept(count, share, kept):
-    contributions = _contributions(NoOfDigitsInHostname=count, DigitRatioInHostname=share)
+def test_only_the_largest_number_reason_is_kept(count, share, letters, kept):
+    contributions = _contributions(
+        NoOfDigitsInHostname=count, DigitRatioInHostname=share, LetterRatioInHostname=letters
+    )
 
     assert pick_reasons(contributions, PHISHING_SIDE) == (kept,)
 
 
-def test_dropping_a_digit_reason_lets_the_next_feature_in():
+def test_an_ip_address_link_gets_one_number_reason_not_two():
+    # The hand check's IP link: letter share and digit count both raised the score.
     contributions = _contributions(
-        NoOfDigitsInHostname=0.9, DigitRatioInHostname=0.8, HostnameLength=0.5, NoOfSpecialCharsInHostname=0.3
+        LetterRatioInHostname=3.9, NoOfDigitsInHostname=3.5, NoOfSpecialCharsInHostname=0.9, IsDomainIP=0.2
+    )
+
+    reasons = pick_reasons(contributions, PHISHING_SIDE)
+
+    assert reasons == ("LetterRatioInHostname", "NoOfSpecialCharsInHostname", "IsDomainIP")
+
+
+def test_dropping_a_number_reason_lets_the_next_feature_in():
+    contributions = _contributions(
+        NoOfDigitsInHostname=0.9,
+        DigitRatioInHostname=0.8,
+        LetterRatioInHostname=0.7,
+        HostnameLength=0.5,
+        NoOfSpecialCharsInHostname=0.3,
     )
 
     reasons = pick_reasons(contributions, PHISHING_SIDE)
@@ -147,17 +178,27 @@ def test_dropping_a_digit_reason_lets_the_next_feature_in():
     assert reasons == ("NoOfDigitsInHostname", "HostnameLength", "NoOfSpecialCharsInHostname")
 
 
-def test_equal_digit_reasons_keep_the_count():
-    contributions = _contributions(NoOfDigitsInHostname=0.5, DigitRatioInHostname=0.5)
+@pytest.mark.parametrize(
+    ("tied", "kept"),
+    [
+        ({"NoOfDigitsInHostname": 0.5, "DigitRatioInHostname": 0.5}, "NoOfDigitsInHostname"),
+        ({"DigitRatioInHostname": 0.5, "LetterRatioInHostname": 0.5}, "DigitRatioInHostname"),
+        ({"NoOfDigitsInHostname": 0.5, "LetterRatioInHostname": 0.5}, "NoOfDigitsInHostname"),
+    ],
+)
+def test_equal_number_reasons_keep_the_first_in_the_group(tied, kept):
+    assert pick_reasons(_contributions(**tied), PHISHING_SIDE) == (kept,)
 
-    assert pick_reasons(contributions, PHISHING_SIDE) == ("NoOfDigitsInHostname",)
 
-
-def test_a_digit_reason_that_fails_its_side_does_not_knock_out_the_other():
+def test_a_number_reason_that_fails_its_side_does_not_knock_out_the_others():
     scaled = {**PHISHING_SIDE, "NoOfDigitsInHostname": -1.0}
-    contributions = _contributions(NoOfDigitsInHostname=0.9, DigitRatioInHostname=0.4)
+    contributions = _contributions(NoOfDigitsInHostname=0.9, DigitRatioInHostname=0.4, LetterRatioInHostname=0.3)
 
     assert pick_reasons(contributions, scaled) == ("DigitRatioInHostname",)
+
+
+def test_kept_number_reason_names_none_when_no_number_feature_qualifies():
+    assert kept_number_reason(("HostnameLength",), _contributions(HostnameLength=0.5)) is None
 
 
 # Same answer every time

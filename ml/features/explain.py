@@ -13,7 +13,7 @@ scikit-learn, so the shared package keeps no dependencies.
 """
 
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
 
@@ -43,9 +43,9 @@ RAISING_SIDE: Mapping[str, int] = MappingProxyType(
     }
 )
 
-# Their sentences say nearly the same thing, so at most one of them is shown.
-# On a tie the first (the count) is kept.
-DIGIT_PAIR = ("NoOfDigitsInHostname", "DigitRatioInHostname")
+# Their sentences all say the website name is mostly numbers, so at most one of them is
+# shown: the one that pushed most. On a tie the first in this order is kept.
+NUMBER_GROUP = ("NoOfDigitsInHostname", "DigitRatioInHostname", "LetterRatioInHostname")
 
 
 def reasons_for_link(model: Any, scaled: Mapping[str, float]) -> tuple[str, ...]:
@@ -103,7 +103,8 @@ def pick_reasons(contributions: Mapping[str, float], scaled: Mapping[str, float]
     """
     _check(contributions, scaled)
     raised = [name for name in FEATURE_NAMES if name in contributions and can_be_reason(name, contributions, scaled)]
-    raised = _drop_smaller_digit_reason(raised, contributions)
+    kept = kept_number_reason(raised, contributions)
+    raised = [name for name in raised if name not in NUMBER_GROUP or name == kept]
     largest_first = sorted(raised, key=lambda name: -contributions[name])
     return tuple(largest_first[:MAX_REASONS])
 
@@ -114,12 +115,13 @@ def can_be_reason(name: str, contributions: Mapping[str, float], scaled: Mapping
     return side is not None and contributions[name] > 0 and side * scaled[name] > 0
 
 
-def _drop_smaller_digit_reason(raised: list[str], contributions: Mapping[str, float]) -> list[str]:
-    count, share = DIGIT_PAIR
-    if count not in raised or share not in raised:
-        return raised
-    smaller = share if contributions[count] >= contributions[share] else count
-    return [name for name in raised if name != smaller]
+def kept_number_reason(candidates: Sequence[str], contributions: Mapping[str, float]) -> str | None:
+    """The one number feature among candidates that may be shown, or None if there is none.
+
+    It is the one that pushed most. On a tie the first in NUMBER_GROUP is kept.
+    """
+    numbers = [name for name in NUMBER_GROUP if name in candidates]
+    return max(numbers, key=lambda name: contributions[name], default=None)
 
 
 def _check(contributions: Mapping[str, float], scaled: Mapping[str, float]) -> None:

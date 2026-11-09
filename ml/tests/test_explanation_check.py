@@ -98,18 +98,18 @@ def test_each_feature_left_out_says_why():
         "NoOfDigitsInHostname": 1.0,
         "DigitRatioInHostname": 1.0,
         "NoOfSpecialCharsInHostname": 1.0,
-        "HostnameLength": -1.0,
-        "LetterRatioInHostname": -1.0,  # its sentence is about a smaller share of letters
+        "HostnameLength": 1.0,
+        "LetterRatioInHostname": 1.0,  # more letters than average, but its sentence is about fewer
         "TLDLength": 1.0,
         "NoOfSubDomain": 1.0,
     }
     contributions = {
         "IsDomainIP": 3.0,
         "NoOfDigitsInHostname": 2.5,
-        "DigitRatioInHostname": 2.0,  # smaller of the two digit features
+        "DigitRatioInHostname": 2.0,  # a smaller number reason than the digit count
         "NoOfSpecialCharsInHostname": 1.5,
-        "HostnameLength": 1.2,  # pushed up, but the name is shorter than average
-        "LetterRatioInHostname": 1.1,  # pushed up and true, but fourth
+        "LetterRatioInHostname": 1.2,  # pushed up, but its sentence is untrue for this link
+        "HostnameLength": 1.1,  # pushed up and true, but fourth
         "TLDLength": 5.0,
         "NoOfSubDomain": -1.0,
     }
@@ -122,9 +122,9 @@ def test_each_feature_left_out_says_why():
         "IsDomainIP": "**Reason 1**",
         "NoOfDigitsInHostname": "**Reason 2**",
         "NoOfSpecialCharsInHostname": "**Reason 3**",
-        "DigitRatioInHostname": "the other digit reason pushed more",
-        "HostnameLength": "its sentence is not true for this link",
-        "LetterRatioInHostname": "not in the top 3",
+        "DigitRatioInHostname": "another number reason pushed more",
+        "LetterRatioInHostname": "its sentence is not true for this link",
+        "HostnameLength": "not in the top 3",
         "TLDLength": "never shown",
         "NoOfSubDomain": "never shown",
     }

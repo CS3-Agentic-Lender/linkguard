@@ -25,9 +25,10 @@ import numpy as np
 import pandas as pd
 
 from features.explain import (
-    DIGIT_PAIR,
     MAX_REASONS,
+    NUMBER_GROUP,
     can_be_reason,
+    kept_number_reason,
     linear_contributions,
     model_coefficients,
     reasons_for_link,
@@ -109,12 +110,10 @@ def why_shown_or_not(name: str, entry: dict) -> str:
         return "lowered the score"
     if not can_be_reason(name, contributions, scaled):
         return "its sentence is not true for this link"
-    if name in DIGIT_PAIR:
-        count, share = DIGIT_PAIR
-        other = share if name == count else count
-        smaller = share if contributions[count] >= contributions[share] else count
-        if name == smaller and can_be_reason(other, contributions, scaled):
-            return "the other digit reason pushed more"
+    if name in NUMBER_GROUP:
+        candidates = [other for other in NUMBER_GROUP if can_be_reason(other, contributions, scaled)]
+        if kept_number_reason(candidates, contributions) != name:
+            return "another number reason pushed more"
     return f"not in the top {MAX_REASONS}"
 
 
