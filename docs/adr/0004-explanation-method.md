@@ -74,7 +74,7 @@ The plain sentence for each feature, and every never-shown feature with its reas
 
 - Reasons explain **what the model did**, not whether the link is truly dangerous. They are hostname-based signals only, as `0002-hostname-features-for-template-bias.md` says.
 - A hidden feature can be the biggest push on a link's score. The user then sees the next largest shown features instead, or none.
-- **A risky link can get no reasons**, when only hidden features raised its score, or none passes step 3. The reasons story asks for one to three reasons on a Suspicious or High risk result, so this case needs a decision before the result page is built (see Open questions).
+- **A risky link can get no reasons**, when only hidden features raised its score, or none passes step 3. The reasons list is then empty. On 9 November 2026 Nic, the Product Owner, decided that the result then shows **a general sentence instead of nothing**, something like "No single sign stood out, but the link looks risky overall.", because a blank space looks broken.
 - Correlated features (website name length, digit count and digit share) share the push between them, so each one's contribution can look smaller than the sign it stands for. Step 4 stops near-duplicate number sentences.
 - The reasons are picked in one place, `ml/features/explain.py`. The scan turns the picked names into sentences and does no filtering of its own, so two pickers can never disagree.
 - `shap` becomes a dependency of `ml/` and `backend/`. The backend builds the tree explainer once, when it loads the model at start-up, not on every scan.
@@ -86,8 +86,4 @@ The plain sentence for each feature, and every never-shown feature with its reas
 - **Which features raised each link's score**: works out the contributions and picks the reasons by the steps above, with tests for a link with several raising features and a link with none.
 - **Plain sentence for each feature**: `docs/reason-sentences.md` points to this record for the never-shown features.
 - **Reasons in the scan response**: returns the picked sentences, zero to three.
-- **Reasons on the result page**: shows them, and handles a risky link with no reasons.
-
-## Open questions
-
-- **A Suspicious or High risk link with no reasons**: show a general sentence instead (for example "Several small signs together make this link look risky"), or accept an empty list. A product decision for the Product Owner.
+- **Reasons on the result page**: shows them, and shows the general sentence when a risky link has no reasons.
