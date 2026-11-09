@@ -190,9 +190,12 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+/* An h3 for screen reader navigation, sized like body text so it reads as a label, not a title. */
 .result-card__reasons-heading {
   margin: 0;
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
 }
 
 .result-card__reasons ul {

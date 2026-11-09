@@ -111,6 +111,13 @@ describe("reasons on the result card", () => {
     expect(reasonItems()).toEqual(REASONS);
   });
 
+  it("names the reasons with a heading one level below the risk level, so screen readers can jump to it", () => {
+    render(<ResultCard reply={reply({ risk_level: "High risk", reasons: REASONS })} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "High risk" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: REASONS_HEADING })).toBeInTheDocument();
+  });
+
   it("shows a single reason", () => {
     render(<ResultCard reply={reply({ risk_level: "Suspicious", reasons: [REASONS[1]] })} />);
 

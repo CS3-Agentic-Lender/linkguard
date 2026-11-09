@@ -85,16 +85,17 @@ function readableReasons(reasons) {
 }
 
 /**
- * Up to three reasons as a list, named by its heading. The card sits in the
- * form's live region, so screen readers read the reasons with the result.
+ * Up to three reasons as a list, named by its heading. The heading sits one
+ * level below the risk level, so screen reader users can jump to it. The card
+ * sits in the form's live region, so screen readers read the reasons with the result.
  */
 function Reasons({ reasons }) {
   const headingId = useId();
   return (
     <div className="result-card__reasons">
-      <p id={headingId} className="result-card__reasons-heading">
+      <h3 id={headingId} className="result-card__reasons-heading">
         {REASONS_HEADING}
-      </p>
+      </h3>
       <ul aria-labelledby={headingId}>
         {reasons.map((reason, index) => (
           // Two reasons can be the same sentence, so the position keeps each key unique.
