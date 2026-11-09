@@ -368,6 +368,28 @@ The report also names a known limitation. The split keeps each host in one set b
 
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
 
+## Reasons for a link
+
+`features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it, and it does not import scikit-learn.
+
+```python
+from features.explain import reasons_for_link
+from features.reasons import reason_for
+
+reasons = reasons_for_link(model, scaled)   # model: ml/models/model.joblib; scaled: the ten scaled values by name
+sentences = [reason_for(name) for name in reasons]
+```
+
+For the saved logistic regression model, each feature's push on the score is its coefficient times its scaled value. Up to three features that pushed the score up, and whose sentence is true for the link, are returned, largest first. Features that are never shown are left out. The result can be empty.
+
+`training/explanation_check.py` checks the reasons by hand on five made-up links. It needs the saved scaler and model, and writes `ml/reports/explanation_check.md`: each link's full explanation next to the reasons picked from it, and the time a scan with reasons takes. From `ml/`:
+
+```bash
+uv run python -m training.explanation_check
+```
+
+The links are made up (documentation-only addresses) and are only handled as text.
+
 ## Source and licence
 
 | | |
