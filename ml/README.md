@@ -404,14 +404,14 @@ It writes `ml/reports/seed_check.json` and `ml/reports/seed_check.md`.
 
 ## The final model
 
-`ml/training/final_model.py` fits the tuned model on every training row and saves it to **`ml/models/model.joblib`**. It reads the chosen settings from `ml/reports/tuning_results.json`, so run the tuning first. From `ml/`:
+`ml/training/final_model.py` fits the tuned gradient boosting model on every training row and saves it to **`ml/models/model.joblib`**. It reads the chosen settings from `ml/reports/tuning_results.json`, so run the tuning first. From `ml/`:
 
 ```bash
 uv run python -m training.tuning        # if tuning_results.json is not there yet
 uv run python -m training.final_model
 ```
 
-The test split is never loaded. Like the scaler, the model file is gitignored and shared outside git. Anyone can rebuild it with the two commands above.
+Gradient boosting does not need scaled inputs, because each tree only compares a feature with a split value. The model still sits after the saved scaler, so the backend has one fixed chain whatever model we use. The test split is never loaded. Like the scaler, the model file is gitignored and shared outside git. Anyone can rebuild it with the two commands above.
 
 How to use the two files for one link:
 

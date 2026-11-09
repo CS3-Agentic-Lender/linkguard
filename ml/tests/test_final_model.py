@@ -11,7 +11,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -32,7 +32,7 @@ from training.final_model import (
 from training.pipeline import ML_DIR
 
 ROWS = 200
-SETTINGS = {"C": 0.01, "l1_ratio": 0.0}
+SETTINGS = {"learning_rate": 0.1, "max_iter": 20, "max_leaf_nodes": 7, "min_samples_leaf": 5}
 
 
 def made_up_frame():
@@ -101,14 +101,18 @@ def test_main_saves_one_model_file(tmp_path, capsys):
 # The saved model: tuned settings, the 8 final features out of the ten scaled ones.
 
 
-def test_the_model_uses_the_tuned_settings_and_fixed_class_weight():
-    model = build_model({"C": 10.0, "l1_ratio": 1.0})
+def test_the_model_is_gradient_boosting_with_the_tuned_settings():
+    model = build_model({"learning_rate": 0.2, "max_iter": 300, "max_leaf_nodes": 63, "min_samples_leaf": 100})
 
     estimator = model.named_steps["model"]
-    assert isinstance(estimator, LogisticRegression)
-    assert estimator.C == 10.0 and estimator.l1_ratio == 1.0
-    assert estimator.class_weight == "balanced"
-    assert estimator.solver == "liblinear"
+    assert isinstance(estimator, HistGradientBoostingClassifier)
+    assert (estimator.learning_rate, estimator.max_iter, estimator.max_leaf_nodes, estimator.min_samples_leaf) == (
+        0.2,
+        300,
+        63,
+        100,
+    )
+    assert estimator.random_state == 0 and estimator.early_stopping == "auto"
 
 
 def test_the_model_takes_ten_scaled_features_and_keeps_only_the_final_eight():
@@ -159,7 +163,7 @@ def test_load_check_passes_for_a_saved_model(tmp_path):
 def test_load_check_catches_a_file_that_predicts_differently(tmp_path):
     frame = made_up_frame()
     model, scaled = fitted(frame)
-    other = build_model({"C": 0.001, "l1_ratio": 1.0}).fit(scaled, 1 - frame["label"].to_numpy())
+    other = build_model({"learning_rate": 0.3, "max_iter": 5, "max_leaf_nodes": 3, "min_samples_leaf": 5}).fit(scaled, 1 - frame["label"].to_numpy())
     path = save_model(other, tmp_path / "model.joblib")
 
     with pytest.raises(FinalModelError, match="different"):
@@ -231,7 +235,11 @@ def test_main_stops_cleanly_when_the_results_file_is_broken(tmp_path, capsys):
     assert "could not be read" in capsys.readouterr().err
 
 
-def test_chosen_settings_reads_c_and_l1_ratio(tmp_path):
-    paths, _, _ = write_inputs(tmp_path, chosen={"C": 100, "l1_ratio": 1})
+def test_chosen_settings_reads_the_four_searched_settings(tmp_path):
+    chosen = {"learning_rate": "0.05", "max_iter": 300.0, "max_leaf_nodes": 15, "min_samples_leaf": 100}
+    paths, _, _ = write_inputs(tmp_path, chosen=chosen)
 
-    assert chosen_settings(paths["results"]) == {"C": 100.0, "l1_ratio": 1.0}
+    settings = chosen_settings(paths["results"])
+
+    assert settings == {"learning_rate": 0.05, "max_iter": 300, "max_leaf_nodes": 15, "min_samples_leaf": 100}
+    assert isinstance(settings["max_iter"], int)

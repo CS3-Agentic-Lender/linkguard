@@ -40,7 +40,7 @@ from cleaning.labels import PHISHING
 from features.hostname import FEATURE_NAMES
 from ranking.final_list import FINAL_FEATURES
 from training.pipeline import FEATURES_PATH, ML_DIR, SCALER_PATH, SPLIT_PATH, PipelineError, load_training_set
-from training.tuning import RESULTS_PATH, base_model
+from training.tuning import RESULTS_PATH, SETTINGS, base_model, settings_text
 
 MODEL_PATH = ML_DIR / "models" / "model.joblib"
 CHECK_ROWS = 10  # training rows the load check predicts, spread evenly over the training set
@@ -51,8 +51,8 @@ class FinalModelError(Exception):
     """The tuning results are missing or the saved model does not behave like the fitted one."""
 
 
-def chosen_settings(results_path: Path) -> dict[str, float]:
-    """The C and l1_ratio the tuning search chose."""
+def chosen_settings(results_path: Path) -> dict:
+    """The settings the tuning search chose (learning rate, max trees, leaves, min leaf)."""
     if not results_path.is_file():
         raise FinalModelError(
             f"The tuning results were not found at {results_path}. Run `uv run python -m training.tuning` first."
@@ -60,7 +60,7 @@ def chosen_settings(results_path: Path) -> dict[str, float]:
     try:
         results = json.loads(results_path.read_text())
         features, chosen = results.get("features"), results["chosen"]
-        settings = {"C": float(chosen["C"]), "l1_ratio": float(chosen["l1_ratio"])}
+        settings = {name: (float if name == "learning_rate" else int)(chosen[name]) for name in SETTINGS}
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         raise FinalModelError(
             f"The tuning results at {results_path} could not be read ({error!r}). Run the tuning again."
@@ -70,14 +70,14 @@ def chosen_settings(results_path: Path) -> dict[str, float]:
     return settings
 
 
-def build_model(settings: dict[str, float]) -> Pipeline:
-    """Keep the 8 final features out of the ten scaled ones, then the tuned logistic regression."""
+def build_model(settings: dict) -> Pipeline:
+    """Keep the 8 final features out of the ten scaled ones, then the tuned gradient boosting."""
     keep = [FEATURE_NAMES.index(name) for name in FINAL_FEATURES]
     return Pipeline(
         [
             ("keep_final_features", ColumnTransformer([("final", "passthrough", keep)], remainder="drop")),
-            # The same fixed settings as the search (base_model), with the chosen C and l1_ratio.
-            ("model", base_model().set_params(C=settings["C"], l1_ratio=settings["l1_ratio"])),
+            # The same fixed settings as the search (base_model), with the chosen ones on top.
+            ("model", base_model().set_params(**settings)),
         ]
     )
 
@@ -161,7 +161,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Saving the final model stopped: {error}", file=sys.stderr)
         return 1
     print(
-        f"Fitted on {len(training.rows):,} training rows with C = {settings['C']:g}, l1_ratio = {settings['l1_ratio']:g}"
+        f"Fitted on {len(training.rows):,} training rows with {settings_text(settings)}"
     )
     print(f"Saved {args.model}")
     print(f"Load check passed: a fresh Python session gave the same predictions on {CHECK_ROWS} training rows.")
