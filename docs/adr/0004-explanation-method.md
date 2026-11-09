@@ -9,7 +9,7 @@ When a link is Suspicious or High risk, the result shows up to three plain reaso
 Proposed by Ibrahima on 9 November 2026 (Sprint 3). It stays **proposed** until two things are settled:
 
 - **Which model is final.** The model comparison chose logistic regression (balanced) by phishing recall, and the tuning work tunes it. A later discussion leaned towards gradient boosting by ROC-AUC. This record covers both, so it can be accepted as soon as the Product Owner confirms one.
-- **The team agrees the "never shown" rule** for the two watched features (see below).
+- **The team agrees the "never shown" rule** for the two watched features (see below). Dunmi proposed it, and Ibrahima and Nikoloz agreed on 9 November 2026. Nic still to confirm.
 
 ## Why we need it
 
@@ -89,5 +89,5 @@ The plain sentence for each feature, and every never-shown feature with its reas
 ## Open questions
 
 - **Final model**: logistic regression (balanced) or gradient boosting. This decides whether `shap` is added.
-- **The never-shown rule** for `TLDLength` and `NoOfSubDomain` needs the team's agreement.
+- **The never-shown rule** for `TLDLength` and `NoOfSubDomain`: Dunmi, Ibrahima and Nikoloz agreed on 9 November 2026. Nic still to confirm.
 - **A Suspicious or High risk link with no reasons**: show a general sentence instead (for example "Several small signs together make this link look risky"), or accept an empty list. A product decision for the Product Owner.
