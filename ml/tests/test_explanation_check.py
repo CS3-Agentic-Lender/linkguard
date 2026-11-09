@@ -9,16 +9,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from features.explain import (
-    KEEP_STEP,
-    MODEL_STEP,
-    linear_contributions,
-    model_coefficients,
-)
+from features.explain import KEEP_STEP, MODEL_STEP, tree_contributions
 from features.hostname import FEATURE_NAMES, extract_features
 from ranking.final_list import FINAL_FEATURES
 from training import explanation_check
@@ -28,6 +23,7 @@ from training.explanation_check import (
     main,
     report,
     slowest_scan_seconds,
+    tree_explainer,
 )
 
 # Made-up hosts, only handled as text: half look like plain names, half are long and full of digits.
@@ -45,15 +41,15 @@ def scaler_and_model():
     model = Pipeline(
         [
             (KEEP_STEP, ColumnTransformer([("final", "passthrough", keep)], remainder="drop")),
-            (MODEL_STEP, LogisticRegression(solver="liblinear", class_weight="balanced", C=0.01)),
+            (MODEL_STEP, HistGradientBoostingClassifier(max_iter=30, random_state=0)),
         ]
     ).fit(scaler.transform(frame), labels)
-    return scaler, model
+    return scaler, model, tree_explainer(model)
 
 
 @pytest.fixture()
 def saved(tmp_path, scaler_and_model):
-    scaler, model = scaler_and_model
+    scaler, model, _ = scaler_and_model
     paths = {"scaler": tmp_path / "scaler.joblib", "model": tmp_path / "model.joblib", "report": tmp_path / "check.md"}
     joblib.dump(scaler, paths["scaler"])
     joblib.dump(model, paths["model"])
@@ -70,12 +66,12 @@ def test_the_sample_links_are_five_made_up_ones():
 
 
 def test_the_explanation_shows_every_model_feature_and_the_picked_reasons(scaler_and_model):
-    scaler, model = scaler_and_model
+    scaler, model, explainer = scaler_and_model
 
-    entry = explain(SAMPLE_LINKS[1], scaler, model)
+    entry = explain(SAMPLE_LINKS[1], scaler, model, explainer)
 
     assert list(entry["contributions"]) == list(FINAL_FEATURES)
-    assert entry["contributions"] == linear_contributions(model_coefficients(model), entry["scaled"])
+    assert entry["contributions"] == tree_contributions(model, explainer, entry["scaled"])
     assert all(entry["contributions"][name] > 0 for name in entry["reasons"])
     assert 0 <= entry["score"] <= 1
 
@@ -164,3 +160,13 @@ def test_main_stops_with_a_message_when_the_model_is_missing(saved, capsys):
 
     assert not saved["report"].exists()
     assert "training.final_model" in capsys.readouterr().err
+
+
+def test_main_stops_with_a_message_when_the_model_is_not_the_saved_shape(saved, capsys):
+    plain = HistGradientBoostingClassifier(max_iter=5).fit([[0.0], [1.0]] * 5, [0, 1] * 5)
+    joblib.dump(plain, saved["model"])
+
+    assert main(arguments(saved)) == 1
+
+    assert not saved["report"].exists()
+    assert "shape" in capsys.readouterr().err

@@ -7,13 +7,16 @@ The method is in docs/adr/0004-explanation-method.md: "The measure" and "Picking
 - scaled: the link's feature values after the saved scaler. The scaler is fitted on the
   training rows, so 0 is an average training link.
 
-For the saved logistic regression model, a feature's contribution is its coefficient times
-its scaled value. This module reads the model's fitted attributes and never imports
-scikit-learn, so the shared package keeps no dependencies.
+The final model is gradient boosting, so the contributions come from SHAP's tree explainer
+for the model's last step. Whoever loads the model builds it once and passes it in as
+`explainer`: a function that takes one link's kept feature values, in the model's order, and
+returns one push per value. This module only calls that function and reads the model's
+fitted attributes. It never imports SHAP, numpy or scikit-learn, so the shared package keeps
+no dependencies.
 """
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
 
@@ -21,8 +24,11 @@ from features.hostname import FEATURE_NAMES
 
 MAX_REASONS = 3
 
-# The saved model's shape (ml/training/final_model.py): a step that keeps the final features
-# out of the ten scaled ones, by position in FEATURE_NAMES, then logistic regression.
+# One link's kept feature values in, in the model's order; one push per value out.
+Explainer = Callable[[list[float]], Sequence[float]]
+
+# The saved model's shape: a step that keeps the final features out of the ten scaled
+# ones, by position in FEATURE_NAMES, then the classifier.
 KEEP_STEP = "keep_final_features"
 KEPT_COLUMNS = "final"
 MODEL_STEP = "model"
@@ -48,47 +54,51 @@ RAISING_SIDE: Mapping[str, int] = MappingProxyType(
 NUMBER_GROUP = ("NoOfDigitsInHostname", "DigitRatioInHostname", "LetterRatioInHostname")
 
 
-def reasons_for_link(model: Any, scaled: Mapping[str, float]) -> tuple[str, ...]:
+def reasons_for_link(model: Any, explainer: Explainer, scaled: Mapping[str, float]) -> tuple[str, ...]:
     """Up to MAX_REASONS feature names that raised this link's score, largest first.
 
-    model is the saved model. scaled holds the link's ten scaled feature values by name.
-    Can return an empty tuple.
+    model is the saved model. explainer gives each kept feature's push (see Explainer).
+    scaled holds the link's ten scaled feature values by name. Can return an empty tuple.
     """
-    return pick_reasons(linear_contributions(model_coefficients(model), scaled), scaled)
+    return pick_reasons(tree_contributions(model, explainer, scaled), scaled)
 
 
-def model_coefficients(model: Any) -> dict[str, float]:
-    """The saved model's coefficient for each feature it keeps, by name, in the model's order.
+def kept_features(model: Any) -> tuple[str, ...]:
+    """The names of the features the saved model keeps, in the order its last step sees them.
 
     Raises ValueError when the model is not the saved shape, or its second class (the one
-    its coefficients point towards) is not phishing.
+    its log-odds point towards) is not phishing.
     """
     try:
         kept = {name: columns for name, _, columns in model.named_steps[KEEP_STEP].transformers_}[KEPT_COLUMNS]
-        estimator = model.named_steps[MODEL_STEP]
-        weights = [float(weight) for weight in estimator.coef_[0]]
-        classes = list(estimator.classes_)
-    except (AttributeError, KeyError, TypeError, IndexError) as error:
+        classes = list(model.named_steps[MODEL_STEP].classes_)
+    except (AttributeError, KeyError, TypeError) as error:
         raise ValueError(
             f"The model is not the saved model's shape ({KEEP_STEP}, then {MODEL_STEP}): {error!r}"
         ) from error
     if len(classes) != 2 or classes[1] != PHISHING_LABEL:
         raise ValueError(f"The model's second class must be phishing ({PHISHING_LABEL}), not {classes}.")
-    if len(kept) != len(weights):
-        raise ValueError(f"The model keeps {len(kept)} features but has {len(weights)} coefficients.")
-    return {FEATURE_NAMES[position]: weight for position, weight in zip(kept, weights)}
+    return tuple(FEATURE_NAMES[position] for position in kept)
 
 
-def linear_contributions(coefficients: Mapping[str, float], scaled: Mapping[str, float]) -> dict[str, float]:
-    """Each model feature's push on the log-odds: its coefficient times its scaled value.
+def tree_contributions(model: Any, explainer: Explainer, scaled: Mapping[str, float]) -> dict[str, float]:
+    """Each kept feature's push on this link's log-odds, from the explainer, by name.
 
-    Features the model does not use get no entry. Raises ValueError when a model feature
-    has no scaled value.
+    Features the model does not use get no entry. Raises ValueError when a kept feature
+    has no scaled value, or the explainer does not give one push per kept feature.
     """
-    missing = [name for name in coefficients if name not in scaled]
+    names = kept_features(model)
+    missing = [name for name in names if name not in scaled]
     if missing:
         raise ValueError(f"No scaled value for {', '.join(missing)}.")
-    return {name: weight * scaled[name] for name, weight in coefficients.items()}
+    answer = explainer([scaled[name] for name in names])
+    try:
+        pushes = [float(push) for push in answer]
+    except (TypeError, IndexError) as error:
+        raise ValueError(f"The explainer did not give one push per feature for the link: {error!r}") from error
+    if len(pushes) != len(names):
+        raise ValueError(f"The model keeps {len(names)} features but the explainer gave {len(pushes)} pushes.")
+    return dict(zip(names, pushes))
 
 
 def pick_reasons(contributions: Mapping[str, float], scaled: Mapping[str, float]) -> tuple[str, ...]:
