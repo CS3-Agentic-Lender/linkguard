@@ -116,9 +116,9 @@ def report(result: dict) -> str:
             f"(smallest {totals['smallest_difference']:+.4f}, largest {totals['largest_difference']:+.4f})."
         )
         if abs(totals["mean_difference"]) <= totals["std_difference"]:
-            verdict += " That is within the seed-to-seed noise, so the two settings score the same."
+            verdict += " That is within the seed-to-seed noise: no consistent improvement across these five seeds."
         else:
-            verdict += " That is larger than the seed-to-seed noise."
+            verdict += " That is larger than the seed-to-seed noise across these five seeds."
     return "\n".join(
         [
             "# Seed check for the tuned model",

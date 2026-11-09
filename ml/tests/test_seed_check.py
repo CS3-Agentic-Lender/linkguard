@@ -93,6 +93,20 @@ def test_a_second_run_gives_the_same_numbers():
     )
 
 
+def test_a_second_run_is_the_same_with_early_stopping_switched_on(monkeypatch):
+    # The real data is big enough to switch early stopping on; the made-up rows are not, so force it.
+    import training.seed_check as seed_check
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    monkeypatch.setattr(seed_check, "base_model", lambda: HistGradientBoostingClassifier(early_stopping=True))
+    features, labels, hosts = made_up_rows()
+
+    first = check(features, labels, hosts, BEFORE, AFTER, seeds=(3,))
+    second = check(features, labels, hosts, BEFORE, AFTER, seeds=(3,))
+
+    assert first == second
+
+
 def test_summary_counts_wins_and_spread():
     rows = [{"difference": d} for d in (0.002, 0.001, -0.001, 0.003, 0.0)]
 
@@ -121,7 +135,7 @@ def test_the_report_says_when_the_gain_is_within_the_noise():
     ]
     result = {"seeds": rows, "summary": summary(rows), "before": BEFORE, "after": AFTER, "training_rows": 100}
 
-    assert "within the seed-to-seed noise" in report(result)
+    assert "no consistent improvement across these five seeds" in report(result)
 
 
 def test_the_report_says_so_when_tuning_kept_the_defaults():

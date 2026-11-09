@@ -183,6 +183,34 @@ def test_within_close_of_the_best_the_simplest_wins():
     assert (chosen["max_leaf_nodes"], chosen["max_iter"], chosen["min_samples_leaf"]) == (15, 100, 20)
 
 
+def test_on_equal_leaves_and_trees_the_larger_min_leaf_then_the_smaller_learning_rate_wins():
+    rows = [
+        scored(0.8400, min_samples_leaf=20, learning_rate=0.05),
+        scored(0.8400, min_samples_leaf=100, learning_rate=0.2),
+        scored(0.8400, min_samples_leaf=100, learning_rate=0.1),
+    ]
+
+    chosen = choose(rows)
+
+    assert (chosen["min_samples_leaf"], chosen["learning_rate"]) == (100, 0.1)
+
+
+def test_a_gap_of_exactly_close_still_counts_as_a_tie():
+    rows = [scored(0.8400, max_leaf_nodes=63), scored(0.8400 - CLOSE, max_leaf_nodes=15)]
+
+    assert choose(rows)["max_leaf_nodes"] == 15
+
+
+def test_a_second_search_is_the_same_with_early_stopping_switched_on(monkeypatch):
+    # The real data is big enough to switch early stopping on; the made-up rows are not, so force it.
+    monkeypatch.setattr(
+        tuning, "base_model", lambda: HistGradientBoostingClassifier(random_state=SEED, early_stopping=True)
+    )
+    features, labels, hosts = made_up_rows()
+
+    assert combinations(small_search(features, labels, hosts)) == combinations(small_search(features, labels, hosts))
+
+
 def test_a_gap_just_over_close_is_not_a_tie():
     rows = [scored(0.8400, max_leaf_nodes=63), scored(0.8400 - CLOSE - 0.0001, max_leaf_nodes=15)]
 

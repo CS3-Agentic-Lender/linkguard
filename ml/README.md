@@ -354,6 +354,8 @@ How the model is chosen:
 3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
 4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
 
+This was the Sprint 2 rule. At Sprint 3 planning the team changed it to the highest ROC-AUC, because the risk-level cut-offs set our own flag lines. That picks gradient boosting (0.836). See "Tuning the chosen model" below.
+
 A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
 
 The run stops and saves nothing if the results file:
@@ -385,6 +387,8 @@ Each combination is scored with the same host-grouped, stratified 5-fold cross-v
 ```bash
 uv run python -m training.tuning
 ```
+
+**Known limitation:** on the real data early stopping is on, so gradient boosting holds back 10% of each fold's training rows to decide when to stop. That hold-out is not grouped by host, so a host can be on both sides of it. The outer held-out fold and the test split are never touched, so the scores stay honest, but early stopping may stop a little late.
 
 It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination).
 

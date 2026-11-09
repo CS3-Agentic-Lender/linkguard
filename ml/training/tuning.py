@@ -19,6 +19,11 @@ so each fold fits the scaler on its own training rows only. The scoring measure 
 which does not depend on where the flag line is drawn. The test split is never loaded: the
 rows come from the training pipeline, which only reads the rows the saved split puts in training.
 
+Known limitation: on the real data early stopping is on, so gradient boosting holds back 10% of
+each fold's training rows to decide when to stop. That hold-out is stratified by label but not
+grouped by host, so a host can be on both sides of it. The outer held-out fold and the test
+split are never touched, so the scores stay honest, but early stopping may stop a little late.
+
 Writes ml/reports/tuning_results.json and ml/reports/tuning.md.
 
 Run from ml/:  uv run python -m training.tuning

@@ -15,6 +15,6 @@
 | 3 | 0.8357 | 0.8358 | +0.0001 |
 | 4 | 0.8358 | 0.8353 | -0.0005 |
 
-After beats before on 3 of 5 seeds. The mean gain is +0.0000 ± 0.0004 (smallest -0.0005, largest +0.0004). That is within the seed-to-seed noise, so the two settings score the same.
+After beats before on 3 of 5 seeds. The mean gain is +0.0000 ± 0.0004 (smallest -0.0005, largest +0.0004). That is within the seed-to-seed noise: no consistent improvement across these five seeds.
 
 Made by `uv run python -m training.seed_check`.
