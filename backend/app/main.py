@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI
@@ -5,8 +6,18 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.links import clean_link
+from app.model import load_model, model_dir
 
-app = FastAPI(title="LinkGuard")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load the scaler and the model once, before the first /scan call, and keep
+    # them for every call after. A missing file stops start-up and names the file.
+    app.state.model = load_model(model_dir())
+    yield
+
+
+app = FastAPI(title="LinkGuard", lifespan=lifespan)
 
 RiskLevel = Literal["Safe", "Suspicious", "High risk"]
 

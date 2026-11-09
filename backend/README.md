@@ -13,6 +13,19 @@ uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
 
 `uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
 
+### The model files
+
+At start-up the backend loads the scaler and the model once and keeps them for every `/scan` call:
+
+| File | Made by |
+|---|---|
+| `ml/models/scaler.joblib` | the train/test split (see `ml/README.md`) |
+| `ml/models/model.joblib` | the final model training (see `ml/README.md`) |
+
+Like the dataset, they're shared outside git. If either file is missing, start-up stops with a message naming it, for example `Can't start: ...\ml\models\model.joblib is missing.` Set `LINKGUARD_MODEL_DIR` to load them from another folder.
+
+The tests build a small scaler and model of their own in a temporary folder, so they never need the real files.
+
 The interactive API docs are at http://127.0.0.1:8000/docs while it runs.
 
 ## Test it
