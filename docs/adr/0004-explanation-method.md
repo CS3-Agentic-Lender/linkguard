@@ -1,15 +1,15 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Explain each link by how much each feature pushed its score
 
-When a link is Suspicious or High risk, the result shows up to three plain reasons: the features that raised that link's score most. We measure **how much each feature pushed this link's score towards phishing, compared with an average training link**. For logistic regression that comes straight from the model's coefficients. For gradient boosting it comes from SHAP's tree explainer. Both give the same kind of number, so the code that picks the reasons does not depend on the model. Two features marked "watch" in the final feature list, `TLDLength` and `NoOfSubDomain`, are never shown as reasons.
+When a link is Suspicious or High risk, the result shows up to three plain reasons: the features that raised that link's score most. We measure **how much each feature pushed this link's score towards phishing, compared with an average training link**. The final model is gradient boosting, so this comes from SHAP's tree explainer. The code that picks the reasons only sees these numbers, so it does not depend on the model. Two features marked "watch" in the final feature list, `TLDLength` and `NoOfSubDomain`, are never shown as reasons.
 
-Proposed by Ibrahima on 9 November 2026 (Sprint 3). It stays **proposed** until two things are settled:
+Proposed by Ibrahima on 9 November 2026 (Sprint 3), and accepted the same day once two things were settled:
 
-- **Which model is final.** The model comparison chose logistic regression (balanced) by phishing recall, and the tuning work tunes it. A later discussion leaned towards gradient boosting by ROC-AUC. This record covers both, so it can be accepted as soon as the Product Owner confirms one.
-- **The team agrees the "never shown" rule** for the two watched features (see below). Dunmi proposed it, and Ibrahima and Nikoloz agreed on 9 November 2026. Nic still to confirm.
+- **Which model is final.** The model comparison chose logistic regression (balanced) by phishing recall, and the first tuning work used it. On 9 November 2026 Nic, the Product Owner, confirmed **gradient boosting, picked by ROC-AUC**, as agreed at sprint planning, and the tuning and saving work moves to it.
+- **The "never shown" rule** for the two watched features (see below). Dunmi proposed it, and Ibrahima, Nikoloz and Nic agreed on 9 November 2026.
 
 ## Why we need it
 
@@ -26,8 +26,9 @@ The reasons story asks for reasons that are about _this_ link, ordered by how mu
 
 For each of the 8 model features, work out its **contribution**: how much it moved this link's phishing log-odds (the model's score before it is turned into a probability) away from an average training link's. The contributions add up to the difference between this link's log-odds and the average link's, so they split the score between the features with nothing left over.
 
-- **Logistic regression.** The model's log-odds is the intercept plus each coefficient times its scaled feature value. The scaler is fitted on the training rows, so an average training link has every scaled value at 0. So each feature's contribution is simply **its coefficient times its scaled value**. This is exact, needs no new library, and gives the same numbers SHAP would for this model.
-- **Gradient boosting** (scikit-learn's `HistGradientBoostingClassifier`). There is no single coefficient per feature, so we use **SHAP's tree explainer** on the fitted model, in log-odds. It is exact for tree models and gives the same additive split. This adds the `shap` library to `ml/` and `backend/`, pinned to one version, and only if gradient boosting is the final model.
+The final model is gradient boosting (scikit-learn's `HistGradientBoostingClassifier`). It has no single coefficient per feature, so we use **SHAP's tree explainer** on the fitted model, in log-odds. It is exact for tree models: for each link it gives one contribution per feature, and they add up to the link's log-odds minus the explainer's expected log-odds over the training links. This adds the `shap` library to `ml/` and `backend/`, pinned to the same version in both.
+
+If the model were ever logistic regression again, the same numbers would come straight from the model: each feature's coefficient times its scaled value, because the scaler puts an average training link at 0. That needs no SHAP.
 
 The contributions are worked out on the scaled values the model actually saw, in the backend's scan, for the one link being checked. Nothing is fetched or opened.
 
@@ -62,8 +63,8 @@ The plain sentence for each feature, and every never-shown feature with its reas
 
 ## Considered options
 
-- **Per-feature contributions in log-odds: coefficients for logistic regression, SHAP's tree explainer for gradient boosting** (chosen): exact, repeatable, per link, fast, and the same kind of number for both models. It needs a new library only if gradient boosting is final.
-- **SHAP for every model, including logistic regression** (turned down): gives the same numbers for logistic regression, but adds a library we would not otherwise need.
+- **Per-feature contributions in log-odds from SHAP's tree explainer** (chosen): exact for the gradient boosting model, repeatable, per link and fast. It adds the `shap` library.
+- **Coefficient times scaled value** (only for logistic regression): exact and needs no library, but the final model has no coefficients.
 - **Contributions in probability instead of log-odds** (turned down): easier to read, but they do not add up neatly, and the model's own sum is in log-odds. Users never see the numbers, only the order.
 - **One feature importance for the whole model** (permutation importance, or the forest's importances; turned down): every link would get the same reasons, which breaks "about this link".
 - **LIME** (turned down): it fits a small model on random samples around each link, so the same link can get different reasons on different runs. It is also slower, and the hand check needs a stable answer.
@@ -76,7 +77,8 @@ The plain sentence for each feature, and every never-shown feature with its reas
 - **A risky link can get no reasons**, when only hidden features raised its score, or none passes step 3. The reasons story asks for one to three reasons on a Suspicious or High risk result, so this case needs a decision before the result page is built (see Open questions).
 - Correlated features (website name length, digit count and digit share) share the push between them, so each one's contribution can look smaller than the sign it stands for. Step 4 stops near-duplicate number sentences.
 - The reasons are picked in one place, `ml/features/explain.py`. The scan turns the picked names into sentences and does no filtering of its own, so two pickers can never disagree.
-- If gradient boosting is final, `shap` becomes a backend dependency, loaded once with the model, not on every scan.
+- `shap` becomes a dependency of `ml/` and `backend/`. The backend builds the tree explainer once, when it loads the model at start-up, not on every scan.
+- The scan time with reasons has to be measured again on the gradient boosting model, against the 2 second limit.
 - The hand check on five sample links compares the picked reasons with the full list of contributions for each link.
 
 ### Work this decision affects
@@ -88,6 +90,4 @@ The plain sentence for each feature, and every never-shown feature with its reas
 
 ## Open questions
 
-- **Final model**: logistic regression (balanced) or gradient boosting. This decides whether `shap` is added.
-- **The never-shown rule** for `TLDLength` and `NoOfSubDomain`: Dunmi, Ibrahima and Nikoloz agreed on 9 November 2026. Nic still to confirm.
 - **A Suspicious or High risk link with no reasons**: show a general sentence instead (for example "Several small signs together make this link look risky"), or accept an empty list. A product decision for the Product Owner.
