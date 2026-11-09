@@ -10,6 +10,10 @@ export const SAFE_CAVEAT =
 export const REASONS_HEADING = "Why this link looks risky";
 export const MAX_REASONS = 3;
 
+// Shown instead of a list when a Suspicious or High risk reply has no reasons to show.
+// A Product Owner decision (9 Nov): a blank space under the heading would look broken.
+export const NO_SINGLE_REASON = "No single sign stood out, but the link looks risky overall.";
+
 // Icon paths from the Lucide set, as named in tokens.css for each risk level.
 const ICONS = {
   "shield-check": (
@@ -85,9 +89,10 @@ function readableReasons(reasons) {
 }
 
 /**
- * Up to three reasons as a list, named by its heading. The heading sits one
- * level below the risk level, so screen reader users can jump to it. The card
- * sits in the form's live region, so screen readers read the reasons with the result.
+ * Up to three reasons as a list, named by its heading, or the general sentence
+ * when there are none. The heading sits one level below the risk level, so
+ * screen reader users can jump to it. The card sits in the form's live region,
+ * so screen readers read the reasons with the result.
  */
 function Reasons({ reasons }) {
   const headingId = useId();
@@ -96,12 +101,16 @@ function Reasons({ reasons }) {
       <h3 id={headingId} className="result-card__reasons-heading">
         {REASONS_HEADING}
       </h3>
-      <ul aria-labelledby={headingId}>
-        {reasons.map((reason, index) => (
-          // Two reasons can be the same sentence, so the position keeps each key unique.
-          <li key={`${index}-${reason}`}>{reason}</li>
-        ))}
-      </ul>
+      {reasons.length === 0 ? (
+        <p>{NO_SINGLE_REASON}</p>
+      ) : (
+        <ul aria-labelledby={headingId}>
+          {reasons.map((reason, index) => (
+            // Two reasons can be the same sentence, so the position keeps each key unique.
+            <li key={`${index}-${reason}`}>{reason}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -111,8 +120,8 @@ function Reasons({ reasons }) {
  * colour alone. A placeholder reply shows the placeholder message and no level.
  * Anything else, including no reply, shows the failure message rather than a
  * guess. The checked link is shown as plain text only, never as a link.
- * Suspicious and High risk results show the reply's reasons under the level.
- * A Safe result never shows reasons.
+ * Suspicious and High risk results show the reply's reasons under the level,
+ * or the general sentence when there are none. A Safe result never shows reasons.
  */
 export default function ResultCard({ reply }) {
   if (reply?.placeholder === true) {
@@ -138,7 +147,7 @@ export default function ResultCard({ reply }) {
     );
   }
 
-  const reasons = match.level === "safe" ? [] : readableReasons(reply.reasons);
+  const isRisky = match.level !== "safe";
 
   return (
     <div className="result-card" data-level={match.level}>
@@ -146,7 +155,7 @@ export default function ResultCard({ reply }) {
         <Icon name={match.icon} />
         <span>{reply.risk_level}</span>
       </h2>
-      {reasons.length > 0 && <Reasons reasons={reasons} />}
+      {isRisky && <Reasons reasons={readableReasons(reply.reasons)} />}
       {reply.url && (
         <p className="result-card__link">
           Link checked: <span>{reply.url}</span>

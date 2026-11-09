@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import ResultCard, { MAX_REASONS, REASONS_HEADING, SAFE_CAVEAT } from "./ResultCard.jsx";
+import ResultCard, { MAX_REASONS, NO_SINGLE_REASON, REASONS_HEADING, SAFE_CAVEAT } from "./ResultCard.jsx";
 import { CANT_CHECK, PLACEHOLDER } from "./scan.js";
 
 // A made-up link, only ever handled as text.
@@ -124,16 +124,38 @@ describe("reasons on the result card", () => {
     expect(reasonItems()).toEqual([REASONS[1]]);
   });
 
-  it.each([[[]], [undefined], [null], ["not a list"]])(
-    "shows no reasons list and no heading for it when the reasons are %j",
-    (reasons) => {
-      render(<ResultCard reply={reply({ risk_level: "High risk", reasons })} />);
+  // PO decision, 9 Nov: a risky link with no reasons shows a general sentence, because a blank space looks broken.
+  it.each([
+    ["Suspicious", []],
+    ["High risk", []],
+    ["High risk", undefined],
+    ["High risk", null],
+    ["High risk", "not a list"],
+    ["High risk", ["", "   ", 42]],
+  ])("shows the general sentence under the heading with %s when the reasons are %j", (word, reasons) => {
+    render(<ResultCard reply={reply({ risk_level: word, reasons })} />);
 
-      expect(screen.queryByRole("list")).not.toBeInTheDocument();
-      expect(screen.queryByText(REASONS_HEADING)).not.toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "High risk" })).toBeInTheDocument();
-    },
-  );
+    expect(screen.getByRole("heading", { level: 3, name: REASONS_HEADING })).toBeInTheDocument();
+    expect(screen.getByText(NO_SINGLE_REASON)).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+
+  it("does not show the general sentence when there are reasons", () => {
+    render(<ResultCard reply={reply({ risk_level: "High risk", reasons: REASONS })} />);
+
+    expect(screen.queryByText(NO_SINGLE_REASON)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["Safe", { risk_level: "Safe" }],
+    ["the placeholder", { placeholder: true }],
+    ["the failure message", { risk_level: "Unknown" }],
+  ])("never shows the general sentence with %s", (_, fields) => {
+    render(<ResultCard reply={reply(fields)} />);
+
+    expect(screen.queryByText(NO_SINGLE_REASON)).not.toBeInTheDocument();
+    expect(screen.queryByText(REASONS_HEADING)).not.toBeInTheDocument();
+  });
 
   it("never shows reasons with Safe, even if the reply has some", () => {
     render(<ResultCard reply={reply({ risk_level: "Safe", reasons: REASONS })} />);
