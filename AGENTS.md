@@ -235,7 +235,7 @@ Git use is about 10% of the project mark, and the final report needs terminal sc
 
 #### Screenshots to collect
 
-Take each one in the terminal with the command and its output visible, and save it into your sprint folder in Confluence (see Sprint documentation). Name the file `git-<command>-<ALG key or topic>.png`. Collect them all the time, not just once per command: the more we store now, the more options we have when the final report is written.
+Take each one in the terminal with the command and its output visible, and save it in your own folder under [`docs/git-screenshots/`](docs/git-screenshots/README.md) (`Nic`, `Nikoloz`, `Ibrahima` or `Dunmi`). Name the file `sprint<n>-git-<command>-<ALG key or topic>.png`. The repo is public and betterleaks cannot read images, so check each screenshot for secrets before committing it. Collect them all the time, not just once per command: the more we store now, the more options we have when the final report is written.
 
 | Topic | Commands to show |
 |---|---|
