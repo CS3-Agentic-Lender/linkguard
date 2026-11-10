@@ -45,7 +45,11 @@ Label every item with its subsystem. Once triaged it also gets one state label (
 
 ### Refining a ticket
 
-A ticket may be **refined**: acceptance criteria sharpened, detail added, or a story split into smaller ones, as long as the Product Owner agrees. A ticket is never deleted, emptied or rewritten into different work. Refinement is recorded as a comment on the ticket saying what changed and why.
+A ticket may be **refined**: acceptance criteria sharpened, detail added, or a story split into smaller ones, as long as the Product Owner agrees. A ticket is never emptied or rewritten into different work. Refinement is recorded as a comment on the ticket saying what changed and why.
+
+### Deleting a ticket
+
+The Product Owner may delete a backlog ticket that cannot be finished before the project ends, for example because it needs a part we never built. Only tickets in the backlog are deleted, never one in an active sprint or one that is Done. Deleting also deletes its subtasks, and it cannot be undone, so check the list before deleting. Agents never delete tickets themselves.
 
 ## Sprints
 
