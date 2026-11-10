@@ -25,6 +25,6 @@ testpaths = ["tests"]
 # runs from ml/ or from the repo root (`pytest ml/tests`).
 pythonpath = ["."]
 # Coverage prints on every run. `cleaning`, `leakage`, `features`, `featureset`, `splitting`, `charts`,
-# `ranking`, `comparison` and `training` are named as packages rather than folders, so they resolve the
+# `ranking`, `comparison`, `training` and `evaluation` are named as packages rather than folders, so they resolve the
 # same way from either directory.
-addopts = "--cov=cleaning --cov=leakage --cov=features --cov=featureset --cov=splitting --cov=charts --cov=ranking --cov=comparison --cov=training --cov-report=term-missing"
+addopts = "--cov=cleaning --cov=leakage --cov=features --cov=featureset --cov=splitting --cov=charts --cov=ranking --cov=comparison --cov=training --cov=evaluation --cov-report=term-missing"
