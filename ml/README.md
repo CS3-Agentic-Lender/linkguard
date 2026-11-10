@@ -421,7 +421,6 @@ How to use the two files for one link:
 
 The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
 
-<<<<<<< HEAD
 ## The precision/recall curve
 
 `ml/training/precision_recall.py` draws the precision/recall curve for the phishing class. The risk-level cut-offs are chosen from it. From `ml/`:
@@ -439,7 +438,7 @@ It writes two files:
 - `ml/reports/precision_recall.json`: recall, precision and the share of all links flagged at every cut-off from 0.00 to 1.00, in steps of 0.01. Use it to read off the values for a cut-off (rounded to six decimals).
 
 A link counts as flagged when its phishing score is at or above the cut-off. Lowering the cut-off catches more phishing but flags more safe links too.
-=======
+
 ## Reasons for a link
 
 `features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it. Importing it loads no SHAP, numpy or scikit-learn.
@@ -467,7 +466,6 @@ uv run python -m training.explanation_check
 ```
 
 The links are made up (documentation-only addresses) and are only handled as text.
->>>>>>> origin/dev
 
 ## Source and licence
 
