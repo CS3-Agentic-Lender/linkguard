@@ -52,7 +52,7 @@ If `git status` lists the CSV, stop and tell the team. It means the ignore rules
 | Path | Holds | In git? |
 |---|---|---|
 | `ml/data/` | The downloaded dataset and any cleaned copies | No, the whole folder is ignored |
-| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`) | No, those file types are ignored |
+| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`). The final model is `ml/models/model.joblib` (see "The final model" below). | No, those file types are ignored |
 
 Training code saves the model and scaler to `ml/models/`, and the backend loads them from there. Like the dataset, they are shared outside git.
 
@@ -401,6 +401,25 @@ uv run python -m training.seed_check
 ```
 
 It writes `ml/reports/seed_check.json` and `ml/reports/seed_check.md`.
+
+## The final model
+
+`ml/training/final_model.py` fits the tuned gradient boosting model on every training row and saves it to **`ml/models/model.joblib`**. It reads the chosen settings from `ml/reports/tuning_results.json`, so run the tuning first. From `ml/`:
+
+```bash
+uv run python -m training.tuning        # if tuning_results.json is not there yet
+uv run python -m training.final_model
+```
+
+Gradient boosting does not need scaled inputs, because each tree only compares a feature with a split value. The model still sits after the saved scaler, so the backend has one fixed chain whatever model we use. The test split is never loaded. Like the scaler, the model file is gitignored and shared outside git. Anyone can rebuild it with the two commands above.
+
+How to use the two files for one link:
+
+1. Work out the ten hostname features with `extract_features`, in the order of `FEATURE_NAMES`.
+2. Transform them with the saved scaler, `ml/models/scaler.joblib` (transform only).
+3. Pass all ten scaled values to the model. Its first step keeps only the 8 in the final feature list, so the backend never picks columns itself. `predict_proba(...)[:, 1]` is the phishing score.
+
+The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
 
 ## Source and licence
 
