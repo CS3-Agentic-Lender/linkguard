@@ -59,6 +59,11 @@ def test_watch_features_are_not_shown_and_point_to_the_final_feature_list(name):
     assert "ml/reports/final_feature_list.md" in NOT_SHOWN[name]
 
 
+def test_never_shown_section_points_to_the_template_bias_record():
+    section = REASONS_TABLE.read_text(encoding="utf-8").split("## Never shown\n", 1)[1]
+    assert "docs/adr/0002-hostname-features-for-template-bias.md" in section
+
+
 # Plain words
 
 
