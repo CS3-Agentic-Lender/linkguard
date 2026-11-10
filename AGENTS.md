@@ -237,20 +237,24 @@ Git use is about 10% of the project mark, and the final report needs terminal sc
 
 Take each one in the terminal with the command and its output visible, and save it in your own folder under [`docs/git-screenshots/`](docs/git-screenshots/README.md) (`Nic`, `Nikoloz`, `Ibrahima` or `Dunmi`). Name the file `sprint<n>-git-<command>-<ALG key or topic>.png`. The repo is public and betterleaks cannot read images, so check each screenshot for secrets before committing it. Collect them all the time, not just once per command: the more we store now, the more options we have when the final report is written.
 
-| Topic | Commands to show |
+The list follows the steps in the "Git and branches" lecture, with `dev` in place of `main`, because every feature branch starts from `dev` here. Merge conflicts and orphan commits are added on top.
+
+| Lecture step | Commands to show |
 |---|---|
-| Working tree | `git status` before and after staging |
-| History | `git log --oneline --graph --all --decorate` |
-| Changes | `git diff`, `git diff --staged` |
-| Branches | `git switch -c feature/ALG-<n>-...`, `git branch -a`, deleting a merged branch |
-| Merge conflict | a real conflict, the conflict markers, the fix, then `git add` and the merge commit |
-| Orphan (dangling) commits | a commit no branch points to, found with `git reflog` or `git fsck --lost-found`, then recovered with a branch |
+| 1. Start from an up-to-date branch | `git switch dev`, `git pull origin dev` |
+| 2. One branch per story or task | `git switch -c feature/ALG-<n>-short-description`, `git branch -a` |
+| 3. Commit small and often | `git status` before and after `git add`, `git diff`, `git diff --staged`, `git commit -m "ALG-<n> ..."` (a few small commits, not one big one) |
+| 4. Push the branch | `git push -u origin feature/ALG-<n>-...` |
+| 5. Keep the branch up to date | `git fetch origin`, then `git rebase origin/dev` (only before your first push, so no force-push is needed) or `git merge origin/dev` |
+| 6. and 7. PR and code review | the PR with its evidence and at least one approval, `gh pr checks` showing the checks green |
+| 8. Merge | the merged PR, then `git log --oneline --graph --decorate` showing it on `dev` |
+| 9. Delete the branch after merge | `git branch -d feature/ALG-<n>-...`, then `git fetch --prune` and `git branch -a` showing the remote branch gone (GitHub deletes it on merge) |
+| History | `git log --oneline --graph --all --decorate`, `git show <commit>` |
+| Merge conflict | a real conflict, the conflict markers in the file, the fix, then `git add` and finishing the merge or rebase |
+| Orphan (dangling) commits | a commit no branch points to, found with `git reflog` or `git fsck --lost-found`, then recovered with `git branch <name> <commit>` |
 | Undoing | `git revert`, `git restore`, `git stash` and `git stash pop` |
-| Remote | `git fetch`, `git pull`, `git push -u origin <branch>` |
 
 Conflicts and orphan commits are practised on your own feature branch or a throwaway branch, never on `dev`, `main` or a teammate's branch, and never with a force-push.
-
-The full list follows the Git lecture notes. Update this table when they name a command that is missing.
 
 ### One person, one ticket, one commit
 
