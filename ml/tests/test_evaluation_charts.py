@@ -7,7 +7,7 @@ import pytest
 from evaluation.charts import ChartError, confusion_chart, load_results, main, roc_chart
 
 RESULTS = {
-    "test": {"recall": 0.75, "roc_auc": 0.958333},
+    "test": {"recall": 0.75, "roc_auc": 0.958333, "false_alarm_rate": 0.166667},
     "confusion_matrix": {
         "rows": "actual",
         "columns": "predicted",
@@ -56,6 +56,11 @@ def test_roc_chart_has_the_auc_written_on_it():
     line = figure.axes[0].lines[0]
     assert list(line.get_xdata()) == RESULTS["roc_curve"]["false_alarm_rate"]
     assert list(line.get_ydata()) == RESULTS["roc_curve"]["recall"]
+
+
+def test_roc_chart_marks_the_models_own_cut_off():
+    point = roc_chart(RESULTS).axes[0].lines[2]
+    assert (list(point.get_xdata()), list(point.get_ydata())) == ([0.166667], [0.75])
 
 
 def test_main_saves_both_charts(results_file, tmp_path, capsys):

@@ -53,6 +53,7 @@ def load_results(path: Path) -> dict:
             results["roc_curve"]["recall"],
             results["test"]["roc_auc"],
             results["test"]["recall"],
+            results["test"]["false_alarm_rate"],
         )
     except (ValueError, KeyError, TypeError) as error:
         raise ChartError(f"The evaluation results at {path} could not be read ({error!r}). Run the evaluation again.")
@@ -82,7 +83,12 @@ def roc_chart(results: dict) -> Figure:
     axis = figure.subplots()
     axis.plot(curve["false_alarm_rate"], curve["recall"], color=CURVE_COLOUR, linewidth=2, label=f"Chosen model (ROC-AUC = {auc:.4f})")
     axis.plot([0, 1], [0, 1], color=CHANCE_COLOUR, linestyle="--", linewidth=1, label="Guessing (ROC-AUC = 0.5)")
-    axis.text(0.55, 0.12, f"ROC-AUC = {auc:.4f}", fontsize="large", transform=axis.transAxes)
+    test = results["test"]
+    axis.plot(
+        [test["false_alarm_rate"]], [test["recall"]], marker="o", color=CURVE_COLOUR, linestyle="none",
+        label=f"At the model's 0.5 cut-off (false alarms {test['false_alarm_rate']:.3f}, recall {test['recall']:.3f})",
+    )
+    axis.text(0.45, 0.42, f"ROC-AUC = {auc:.4f}", fontsize="large", transform=axis.transAxes)
     axis.set_xlim(0, 1)
     axis.set_ylim(0, 1.01)
     axis.set_xlabel("False alarm rate (legitimate links flagged as phishing)")
