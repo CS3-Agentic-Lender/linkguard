@@ -421,6 +421,34 @@ How to use the two files for one link:
 
 The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
 
+## Reasons for a link
+
+`features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it. Importing it loads no SHAP, numpy or scikit-learn.
+
+The final model is gradient boosting, so each feature's push on the score comes from SHAP's tree explainer. Build the explainer once, when the model is loaded, and pass it in:
+
+```python
+from features.explain import reasons_for_link
+from features.reasons import reason_for
+from features.explain import tree_explainer
+
+explainer = tree_explainer(model)                     # once, after loading ml/models/model.joblib
+reasons = reasons_for_link(model, explainer, scaled)  # scaled: the ten scaled values by name
+sentences = [reason_for(name) for name in reasons]
+```
+
+`explainer` is a function that takes one link's kept feature values, in the model's order, and returns one push per value. `tree_explainer` wraps `shap.TreeExplainer` on the model's last step that way. It lives in `features`, so the hand check and the backend use the same code. It imports `shap` and `numpy` only when it is called, so importing `features.explain` needs neither. Whoever calls it needs `shap` pinned to the version in `ml/uv.lock`.
+
+Up to three features that pushed the score up, and whose sentence is true for the link, are returned, largest first. Features that are never shown are left out. The result can be empty.
+
+`training/explanation_check.py` checks the reasons by hand on five made-up links. It needs the saved scaler and model, and writes `ml/reports/explanation_check.md`: each link's full explanation next to the reasons picked from it, and the time a scan with reasons takes. From `ml/`:
+
+```bash
+uv run python -m training.explanation_check
+```
+
+The links are made up (documentation-only addresses) and are only handled as text.
+
 ## Source and licence
 
 | | |

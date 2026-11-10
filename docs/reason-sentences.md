@@ -6,6 +6,8 @@ The sentences live in one place in the code, `ml/features/reasons.py`. The resul
 
 Each sentence describes the side of a feature that points to phishing: a long website name, many numbers, many dots or hyphens, few letters. The code that picks the reasons should only show a sentence when the link really is on that side.
 
+"Unusually", "a lot" and "a large part" are measured against an average link in the training data, because the saved scaler puts that link at 0. So "unusually long" means longer than the average training link's website name. The picking rules are in `docs/adr/0004-explanation-method.md`.
+
 ## Shown to users
 
 | Feature | Sentence |
