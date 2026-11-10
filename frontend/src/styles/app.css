@@ -182,6 +182,36 @@ h1 {
   height: 2.5rem;
 }
 
+/* Reasons: body-colour text on the card's light surface (checked in scripts/check-contrast.mjs).
+   Long words wrap, so the list fits at 320px wide and at 200% text size. */
+.result-card__reasons {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+/* An h3 for screen reader navigation, sized like body text so it reads as a label, not a title. */
+.result-card__reasons-heading {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+}
+
+.result-card__reasons ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-6);
+}
+
+/* The general sentence for a risky link with no reasons. */
+.result-card__reasons p {
+  margin: var(--space-2) 0 0;
+}
+
+.result-card__reasons li + li {
+  margin-top: var(--space-2);
+}
+
 /* The checked link is plain text. Long links wrap rather than push the card wider. */
 .result-card__link {
   margin: var(--space-4) 0 0;
