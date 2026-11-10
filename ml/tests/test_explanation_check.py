@@ -13,7 +13,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from features.explain import KEEP_STEP, MODEL_STEP, tree_contributions
+from features.explain import KEEP_STEP, MODEL_STEP, tree_contributions, tree_explainer
 from features.hostname import FEATURE_NAMES, extract_features
 from ranking.final_list import FINAL_FEATURES
 from training import explanation_check
@@ -23,7 +23,6 @@ from training.explanation_check import (
     main,
     report,
     slowest_scan_seconds,
-    tree_explainer,
 )
 
 # Made-up hosts, only handled as text: half look like plain names, half are long and full of digits.

@@ -23,18 +23,16 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-import shap
 
 from features.explain import (
     MAX_REASONS,
-    MODEL_STEP,
     NUMBER_GROUP,
     Explainer,
     can_be_reason,
-    kept_features,
     kept_number_reason,
     reasons_for_link,
     tree_contributions,
+    tree_explainer,
 )
 from features.hostname import FEATURE_NAMES, cleaned_host, extract_features
 from features.reasons import NOT_SHOWN, reason_for
@@ -66,21 +64,6 @@ def load_model(model_path: Path):
             f"The saved model was not found at {model_path}. Run `uv run python -m training.final_model` first."
         )
     return joblib.load(model_path)
-
-
-def tree_explainer(model) -> Explainer:
-    """SHAP's tree explainer for the saved model's last step, as features.explain expects it.
-
-    Build it once, when the model is loaded. Raises ValueError when the model is not the
-    saved shape.
-    """
-    kept_features(model)  # checks the shape and that the second class is phishing
-    tree = shap.TreeExplainer(model.named_steps[MODEL_STEP])
-
-    def pushes(values: list[float]) -> list[float]:
-        return tree.shap_values(np.array([values]))[0].tolist()
-
-    return pushes
 
 
 def scaled_features(link: str, scaler) -> dict[str, float]:

@@ -423,21 +423,21 @@ The script first saves to a temporary file. A fresh Python session loads it and 
 
 ## Reasons for a link
 
-`features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it, and it does not import SHAP, numpy or scikit-learn.
+`features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it. Importing it loads no SHAP, numpy or scikit-learn.
 
 The final model is gradient boosting, so each feature's push on the score comes from SHAP's tree explainer. Build the explainer once, when the model is loaded, and pass it in:
 
 ```python
 from features.explain import reasons_for_link
 from features.reasons import reason_for
-from training.explanation_check import tree_explainer
+from features.explain import tree_explainer
 
 explainer = tree_explainer(model)                     # once, after loading ml/models/model.joblib
 reasons = reasons_for_link(model, explainer, scaled)  # scaled: the ten scaled values by name
 sentences = [reason_for(name) for name in reasons]
 ```
 
-`explainer` is a function that takes one link's kept feature values, in the model's order, and returns one push per value. `tree_explainer` wraps `shap.TreeExplainer` on the model's last step that way. The backend can't import `training`, so it builds the same few lines itself, with `shap` pinned to the version in `ml/uv.lock`.
+`explainer` is a function that takes one link's kept feature values, in the model's order, and returns one push per value. `tree_explainer` wraps `shap.TreeExplainer` on the model's last step that way. It lives in `features`, so the hand check and the backend use the same code. It imports `shap` and `numpy` only when it is called, so importing `features.explain` needs neither. Whoever calls it needs `shap` pinned to the version in `ml/uv.lock`.
 
 Up to three features that pushed the score up, and whose sentence is true for the link, are returned, largest first. Features that are never shown are left out. The result can be empty.
 

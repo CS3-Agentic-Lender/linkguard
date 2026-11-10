@@ -8,11 +8,11 @@ The method is in docs/adr/0004-explanation-method.md: "The measure" and "Picking
   training rows, so 0 is an average training link.
 
 The final model is gradient boosting, so the contributions come from SHAP's tree explainer
-for the model's last step. Whoever loads the model builds it once and passes it in as
-`explainer`: a function that takes one link's kept feature values, in the model's order, and
-returns one push per value. This module only calls that function and reads the model's
-fitted attributes. It never imports SHAP, numpy or scikit-learn, so the shared package keeps
-no dependencies.
+for the model's last step. Whoever loads the model builds it once with tree_explainer and
+passes it in as `explainer`: a function that takes one link's kept feature values, in the
+model's order, and returns one push per value. The training checks and the backend use the
+same tree_explainer, so the two can't drift apart. Only tree_explainer imports SHAP and
+numpy, inside the function, so importing this module needs no dependencies.
 """
 
 import math
@@ -79,6 +79,26 @@ def kept_features(model: Any) -> tuple[str, ...]:
     if len(classes) != 2 or classes[1] != PHISHING_LABEL:
         raise ValueError(f"The model's second class must be phishing ({PHISHING_LABEL}), not {classes}.")
     return tuple(FEATURE_NAMES[position] for position in kept)
+
+
+def tree_explainer(model: Any) -> Explainer:
+    """SHAP's tree explainer for the saved model's last step, as reasons_for_link expects it.
+
+    Build it once, when the model is loaded, not on every scan. SHAP and numpy are imported
+    here rather than at the top, so importing this module needs neither. Whoever calls this
+    needs `shap` at the version in ml/uv.lock. Raises ValueError when the model is not the
+    saved shape.
+    """
+    kept_features(model)  # checks the shape and that the second class is phishing
+    import numpy as np
+    import shap
+
+    tree = shap.TreeExplainer(model.named_steps[MODEL_STEP])
+
+    def pushes(values: list[float]) -> list[float]:
+        return tree.shap_values(np.array([values]))[0].tolist()
+
+    return pushes
 
 
 def tree_contributions(model: Any, explainer: Explainer, scaled: Mapping[str, float]) -> dict[str, float]:

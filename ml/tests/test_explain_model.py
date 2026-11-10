@@ -2,11 +2,13 @@
 
 The model has the saved model's shape: a first step that keeps the 8 final features out of
 the ten scaled ones, then gradient boosting. The pushes come from SHAP's tree explainer for
-that last step, wrapped the way explanation_check does it. These tests build the same shape on small made-up rows, so their numbers
+that last step, from features.explain.tree_explainer. These tests build the same shape on small made-up rows, so their numbers
 say nothing about the real model.
 """
 
 import math
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -23,10 +25,10 @@ from features.explain import (
     kept_features,
     reasons_for_link,
     tree_contributions,
+    tree_explainer,
 )
 from features.hostname import FEATURE_NAMES
 from ranking.final_list import FINAL_FEATURES
-from training.explanation_check import tree_explainer
 
 ROWS = 300
 
@@ -95,6 +97,25 @@ def test_a_model_of_another_shape_is_refused():
 
     with pytest.raises(ValueError, match="shape"):
         kept_features(plain)
+
+
+def test_a_model_of_another_shape_gets_no_explainer():
+    plain = HistGradientBoostingClassifier(max_iter=5).fit(*made_up_scaled_rows())
+
+    with pytest.raises(ValueError, match="shape"):
+        tree_explainer(plain)
+
+
+def test_importing_the_reasons_code_loads_no_shap_numpy_or_scikit_learn():
+    # The backend imports features.explain, so it must stay free of heavy imports until
+    # tree_explainer is called. A fresh interpreter, because this one has them loaded.
+    code = (
+        "import sys, features.explain; "
+        "print(sorted(m for m in ('shap', 'numpy', 'sklearn') if m in sys.modules))"
+    )
+    loaded = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+
+    assert loaded.stdout.strip() == "[]"
 
 
 # Each feature's push, from the tree explainer
