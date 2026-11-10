@@ -435,7 +435,7 @@ The scores come from cross-validation on the training rows, never from the test 
 It writes two files:
 
 - `ml/reports/precision_recall.png`: the chart. Recall (the share of phishing links caught) is along the bottom, precision (the share of flagged links that really are phishing) up the side. The dashed line is what guessing would give.
-- `ml/reports/precision_recall.json`: recall, precision and the share of all links flagged at every cut-off from 0.00 to 1.00, in steps of 0.01. Use it to read off exact values for a cut-off.
+- `ml/reports/precision_recall.json`: recall, precision and the share of all links flagged at every cut-off from 0.00 to 1.00, in steps of 0.01. Use it to read off the values for a cut-off (rounded to six decimals).
 
 A link counts as flagged when its phishing score is at or above the cut-off. Lowering the cut-off catches more phishing but flags more safe links too.
 

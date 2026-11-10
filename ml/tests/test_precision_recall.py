@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 
 from features.hostname import FEATURE_NAMES
 from ranking.final_list import FINAL_FEATURES
-from training.classifiers import FOLDS, fold_positions
+from training.classifiers import FOLDS
 from training.precision_recall import (
     CUTOFF_STEPS,
     TITLE,
@@ -87,22 +87,29 @@ def arguments(paths):
 
 def test_every_row_gets_one_score_from_a_model_that_never_saw_its_host(monkeypatch):
     features, labels, hosts = training_parts()
-    fitted = []
-    real_fit = Pipeline.fit
+    fitted, scored = [], []
+    real_fit, real_predict = Pipeline.fit, Pipeline.predict_proba
 
     def recording_fit(self, x, y=None, **kwargs):
         fitted.append(set(x.index))
         return real_fit(self, x, y, **kwargs)
 
+    def recording_predict(self, x):
+        scored.append(list(x.index))
+        return real_predict(self, x)
+
     monkeypatch.setattr(Pipeline, "fit", recording_fit)
+    monkeypatch.setattr(Pipeline, "predict_proba", recording_predict)
 
     scores = out_of_fold_scores(features, labels, hosts, SETTINGS)
 
-    assert len(fitted) == FOLDS
+    assert len(fitted) == len(scored) == FOLDS
     assert not np.isnan(scores).any() and ((scores >= 0) & (scores <= 1)).all()
-    for (learn, held_out), learned_rows in zip(fold_positions(labels, hosts), fitted):
-        assert learned_rows == set(features.index[learn])
-        assert set(hosts.iloc[held_out]).isdisjoint(hosts.iloc[learn])
+    every_scored_row = [row for rows in scored for row in rows]
+    assert sorted(every_scored_row) == list(features.index)  # each row scored exactly once
+    for learned_rows, scored_rows in zip(fitted, scored):
+        assert learned_rows.isdisjoint(scored_rows)
+        assert set(hosts.loc[scored_rows]).isdisjoint(hosts.loc[list(learned_rows)])
 
 
 def test_the_folds_are_the_tuning_folds():
@@ -185,7 +192,7 @@ def test_the_table_covers_every_cutoff_from_0_to_1():
     labels = np.array([1, 0, 1, 0])
     table = curve_table(labels, np.array([0.8, 0.3, 0.6, 0.1]))
 
-    assert [row["cutoff"] for row in table] == list(CUTOFF_STEPS)
+    assert [row["cutoff"] for row in table] == [step / 100 for step in range(101)]
     assert table[0]["cutoff"] == 0.0 and table[-1]["cutoff"] == 1.0
     assert table[0]["recall"] == 1.0 and table[0]["flagged_share"] == 1.0
     recalls = [row["recall"] for row in table]
@@ -201,6 +208,11 @@ def test_nothing_flagged_gives_precision_one_and_recall_zero():
         "precision": 1.0,
         "flagged_share": 0.0,
     }
+
+
+def test_no_phishing_rows_stops_with_a_message():
+    with pytest.raises(ValueError, match="no phishing rows"):
+        at_cutoff(np.array([0, 0]), np.array([0.2, 0.1]), 0.5)
 
 
 # Criteria 1 and 3: one command saves a titled, labelled chart that can mark two cut-offs.

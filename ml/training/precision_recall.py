@@ -69,6 +69,8 @@ def at_cutoff(labels: np.ndarray, scores: np.ndarray, cutoff: float) -> dict:
     """Phishing recall and precision when every score at or above the cut-off counts as phishing."""
     flagged = scores >= cutoff
     phishing = labels == PHISHING
+    if not phishing.any():
+        raise ValueError("there are no phishing rows, so recall cannot be measured")
     caught = int((flagged & phishing).sum())
     return {
         "cutoff": float(cutoff),
