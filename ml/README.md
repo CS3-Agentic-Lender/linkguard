@@ -421,6 +421,24 @@ How to use the two files for one link:
 
 The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
 
+## The precision/recall curve
+
+`ml/training/precision_recall.py` draws the precision/recall curve for the phishing class. The risk-level cut-offs are chosen from it. From `ml/`:
+
+```bash
+uv run python -m training.precision_recall                      # the curve
+uv run python -m training.precision_recall --cutoffs 0.2 0.6    # the curve with two cut-offs marked
+```
+
+The scores come from cross-validation on the training rows, never from the test split, so the test results stay fair. The training rows are cut into the same 5 host-grouped folds as the model comparison and the tuning (seed 0). For each fold, the tuned gradient boosting model learns from the other 4 folds and scores the held-out one. Each row is scored once, by a model that never saw its host. The settings come from `ml/reports/tuning_results.json`, so run the tuning first.
+
+It writes two files:
+
+- `ml/reports/precision_recall.png`: the chart. Recall (the share of phishing links caught) is along the bottom, precision (the share of flagged links that really are phishing) up the side. The dashed line is what guessing would give.
+- `ml/reports/precision_recall.json`: recall, precision and the share of all links flagged at every cut-off from 0.00 to 1.00, in steps of 0.01. Use it to read off exact values for a cut-off.
+
+A link counts as flagged when its phishing score is at or above the cut-off. Lowering the cut-off catches more phishing but flags more safe links too.
+
 ## Source and licence
 
 | | |

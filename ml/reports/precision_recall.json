@@ -1,0 +1,616 @@
+{
+  "source": "out-of-fold scores, 5 host-grouped folds of the training rows, seed 0",
+  "model": "gradient boosting, learning rate 0.1, up to 100 trees, 15 leaves, min leaf 100",
+  "training_rows": 188295,
+  "phishing_rows": 80416,
+  "average_precision": 0.851482,
+  "marked_cutoffs": [],
+  "curve": [
+    {
+      "cutoff": 0.0,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.01,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.02,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.03,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.04,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.05,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.06,
+      "recall": 1.0,
+      "precision": 0.427075,
+      "flagged_share": 1.0
+    },
+    {
+      "cutoff": 0.07,
+      "recall": 0.999241,
+      "precision": 0.427123,
+      "flagged_share": 0.999129
+    },
+    {
+      "cutoff": 0.08,
+      "recall": 0.998707,
+      "precision": 0.428859,
+      "flagged_share": 0.994551
+    },
+    {
+      "cutoff": 0.09,
+      "recall": 0.997712,
+      "precision": 0.43142,
+      "flagged_share": 0.987663
+    },
+    {
+      "cutoff": 0.1,
+      "recall": 0.995399,
+      "precision": 0.435141,
+      "flagged_share": 0.976946
+    },
+    {
+      "cutoff": 0.11,
+      "recall": 0.994889,
+      "precision": 0.436173,
+      "flagged_share": 0.974136
+    },
+    {
+      "cutoff": 0.12,
+      "recall": 0.994839,
+      "precision": 0.436341,
+      "flagged_share": 0.973711
+    },
+    {
+      "cutoff": 0.13,
+      "recall": 0.993509,
+      "precision": 0.438532,
+      "flagged_share": 0.967551
+    },
+    {
+      "cutoff": 0.14,
+      "recall": 0.993285,
+      "precision": 0.438877,
+      "flagged_share": 0.966574
+    },
+    {
+      "cutoff": 0.15,
+      "recall": 0.992676,
+      "precision": 0.439825,
+      "flagged_share": 0.963897
+    },
+    {
+      "cutoff": 0.16,
+      "recall": 0.991569,
+      "precision": 0.440505,
+      "flagged_share": 0.961337
+    },
+    {
+      "cutoff": 0.17,
+      "recall": 0.988273,
+      "precision": 0.443357,
+      "flagged_share": 0.95198
+    },
+    {
+      "cutoff": 0.18,
+      "recall": 0.934777,
+      "precision": 0.485742,
+      "flagged_share": 0.821875
+    },
+    {
+      "cutoff": 0.19,
+      "recall": 0.902171,
+      "precision": 0.516304,
+      "flagged_share": 0.746255
+    },
+    {
+      "cutoff": 0.2,
+      "recall": 0.886963,
+      "precision": 0.528685,
+      "flagged_share": 0.716493
+    },
+    {
+      "cutoff": 0.21,
+      "recall": 0.85534,
+      "precision": 0.562859,
+      "flagged_share": 0.648998
+    },
+    {
+      "cutoff": 0.22,
+      "recall": 0.84135,
+      "precision": 0.576308,
+      "flagged_share": 0.623484
+    },
+    {
+      "cutoff": 0.23,
+      "recall": 0.803733,
+      "precision": 0.620266,
+      "flagged_share": 0.553398
+    },
+    {
+      "cutoff": 0.24,
+      "recall": 0.783787,
+      "precision": 0.642399,
+      "flagged_share": 0.521071
+    },
+    {
+      "cutoff": 0.25,
+      "recall": 0.77063,
+      "precision": 0.662267,
+      "flagged_share": 0.496954
+    },
+    {
+      "cutoff": 0.26,
+      "recall": 0.758083,
+      "precision": 0.682749,
+      "flagged_share": 0.474197
+    },
+    {
+      "cutoff": 0.27,
+      "recall": 0.742676,
+      "precision": 0.701897,
+      "flagged_share": 0.451887
+    },
+    {
+      "cutoff": 0.28,
+      "recall": 0.731969,
+      "precision": 0.720527,
+      "flagged_share": 0.433856
+    },
+    {
+      "cutoff": 0.29,
+      "recall": 0.724371,
+      "precision": 0.732349,
+      "flagged_share": 0.422422
+    },
+    {
+      "cutoff": 0.3,
+      "recall": 0.71972,
+      "precision": 0.738868,
+      "flagged_share": 0.416007
+    },
+    {
+      "cutoff": 0.31,
+      "recall": 0.712147,
+      "precision": 0.749071,
+      "flagged_share": 0.406022
+    },
+    {
+      "cutoff": 0.32,
+      "recall": 0.708876,
+      "precision": 0.756175,
+      "flagged_share": 0.400361
+    },
+    {
+      "cutoff": 0.33,
+      "recall": 0.707583,
+      "precision": 0.759439,
+      "flagged_share": 0.397913
+    },
+    {
+      "cutoff": 0.34,
+      "recall": 0.686567,
+      "precision": 0.790026,
+      "flagged_share": 0.371146
+    },
+    {
+      "cutoff": 0.35,
+      "recall": 0.677825,
+      "precision": 0.802485,
+      "flagged_share": 0.360732
+    },
+    {
+      "cutoff": 0.36,
+      "recall": 0.671533,
+      "precision": 0.813124,
+      "flagged_share": 0.352707
+    },
+    {
+      "cutoff": 0.37,
+      "recall": 0.662816,
+      "precision": 0.820078,
+      "flagged_share": 0.345176
+    },
+    {
+      "cutoff": 0.38,
+      "recall": 0.657195,
+      "precision": 0.829316,
+      "flagged_share": 0.338437
+    },
+    {
+      "cutoff": 0.39,
+      "recall": 0.646973,
+      "precision": 0.841534,
+      "flagged_share": 0.328336
+    },
+    {
+      "cutoff": 0.4,
+      "recall": 0.641962,
+      "precision": 0.850982,
+      "flagged_share": 0.322175
+    },
+    {
+      "cutoff": 0.41,
+      "recall": 0.63894,
+      "precision": 0.854627,
+      "flagged_share": 0.319292
+    },
+    {
+      "cutoff": 0.42,
+      "recall": 0.633319,
+      "precision": 0.861524,
+      "flagged_share": 0.313949
+    },
+    {
+      "cutoff": 0.43,
+      "recall": 0.630074,
+      "precision": 0.867039,
+      "flagged_share": 0.310353
+    },
+    {
+      "cutoff": 0.44,
+      "recall": 0.625274,
+      "precision": 0.875596,
+      "flagged_share": 0.304979
+    },
+    {
+      "cutoff": 0.45,
+      "recall": 0.623197,
+      "precision": 0.878502,
+      "flagged_share": 0.302961
+    },
+    {
+      "cutoff": 0.46,
+      "recall": 0.619864,
+      "precision": 0.883342,
+      "flagged_share": 0.299689
+    },
+    {
+      "cutoff": 0.47,
+      "recall": 0.614666,
+      "precision": 0.890276,
+      "flagged_share": 0.294862
+    },
+    {
+      "cutoff": 0.48,
+      "recall": 0.61152,
+      "precision": 0.894548,
+      "flagged_share": 0.291951
+    },
+    {
+      "cutoff": 0.49,
+      "recall": 0.607988,
+      "precision": 0.899047,
+      "flagged_share": 0.288813
+    },
+    {
+      "cutoff": 0.5,
+      "recall": 0.605116,
+      "precision": 0.903086,
+      "flagged_share": 0.286163
+    },
+    {
+      "cutoff": 0.51,
+      "recall": 0.601634,
+      "precision": 0.907541,
+      "flagged_share": 0.28312
+    },
+    {
+      "cutoff": 0.52,
+      "recall": 0.598799,
+      "precision": 0.911971,
+      "flagged_share": 0.280416
+    },
+    {
+      "cutoff": 0.53,
+      "recall": 0.595379,
+      "precision": 0.915659,
+      "flagged_share": 0.277692
+    },
+    {
+      "cutoff": 0.54,
+      "recall": 0.592917,
+      "precision": 0.918814,
+      "flagged_share": 0.275594
+    },
+    {
+      "cutoff": 0.55,
+      "recall": 0.589298,
+      "precision": 0.922809,
+      "flagged_share": 0.272726
+    },
+    {
+      "cutoff": 0.56,
+      "recall": 0.583242,
+      "precision": 0.930891,
+      "flagged_share": 0.26758
+    },
+    {
+      "cutoff": 0.57,
+      "recall": 0.579337,
+      "precision": 0.934995,
+      "flagged_share": 0.264622
+    },
+    {
+      "cutoff": 0.58,
+      "recall": 0.57588,
+      "precision": 0.939637,
+      "flagged_share": 0.261744
+    },
+    {
+      "cutoff": 0.59,
+      "recall": 0.572411,
+      "precision": 0.943355,
+      "flagged_share": 0.259141
+    },
+    {
+      "cutoff": 0.6,
+      "recall": 0.568929,
+      "precision": 0.946618,
+      "flagged_share": 0.256677
+    },
+    {
+      "cutoff": 0.61,
+      "recall": 0.563321,
+      "precision": 0.950762,
+      "flagged_share": 0.253039
+    },
+    {
+      "cutoff": 0.62,
+      "recall": 0.560349,
+      "precision": 0.953188,
+      "flagged_share": 0.251063
+    },
+    {
+      "cutoff": 0.63,
+      "recall": 0.557899,
+      "precision": 0.955265,
+      "flagged_share": 0.249422
+    },
+    {
+      "cutoff": 0.64,
+      "recall": 0.555897,
+      "precision": 0.956951,
+      "flagged_share": 0.248089
+    },
+    {
+      "cutoff": 0.65,
+      "recall": 0.554541,
+      "precision": 0.958331,
+      "flagged_share": 0.247128
+    },
+    {
+      "cutoff": 0.66,
+      "recall": 0.55382,
+      "precision": 0.958815,
+      "flagged_share": 0.246682
+    },
+    {
+      "cutoff": 0.67,
+      "recall": 0.545464,
+      "precision": 0.959993,
+      "flagged_share": 0.242662
+    },
+    {
+      "cutoff": 0.68,
+      "recall": 0.544842,
+      "precision": 0.960412,
+      "flagged_share": 0.242279
+    },
+    {
+      "cutoff": 0.69,
+      "recall": 0.543748,
+      "precision": 0.961117,
+      "flagged_share": 0.241616
+    },
+    {
+      "cutoff": 0.7,
+      "recall": 0.542902,
+      "precision": 0.961799,
+      "flagged_share": 0.241069
+    },
+    {
+      "cutoff": 0.71,
+      "recall": 0.539072,
+      "precision": 0.962927,
+      "flagged_share": 0.239088
+    },
+    {
+      "cutoff": 0.72,
+      "recall": 0.535851,
+      "precision": 0.964933,
+      "flagged_share": 0.237165
+    },
+    {
+      "cutoff": 0.73,
+      "recall": 0.533924,
+      "precision": 0.966026,
+      "flagged_share": 0.236045
+    },
+    {
+      "cutoff": 0.74,
+      "recall": 0.528589,
+      "precision": 0.967674,
+      "flagged_share": 0.233288
+    },
+    {
+      "cutoff": 0.75,
+      "recall": 0.526898,
+      "precision": 0.968746,
+      "flagged_share": 0.232284
+    },
+    {
+      "cutoff": 0.76,
+      "recall": 0.524162,
+      "precision": 0.970461,
+      "flagged_share": 0.23067
+    },
+    {
+      "cutoff": 0.77,
+      "recall": 0.519486,
+      "precision": 0.973209,
+      "flagged_share": 0.227967
+    },
+    {
+      "cutoff": 0.78,
+      "recall": 0.51593,
+      "precision": 0.975202,
+      "flagged_share": 0.225943
+    },
+    {
+      "cutoff": 0.79,
+      "recall": 0.514002,
+      "precision": 0.976448,
+      "flagged_share": 0.224812
+    },
+    {
+      "cutoff": 0.8,
+      "recall": 0.511702,
+      "precision": 0.977829,
+      "flagged_share": 0.22349
+    },
+    {
+      "cutoff": 0.81,
+      "recall": 0.510259,
+      "precision": 0.978374,
+      "flagged_share": 0.222736
+    },
+    {
+      "cutoff": 0.82,
+      "recall": 0.507063,
+      "precision": 0.980239,
+      "flagged_share": 0.220919
+    },
+    {
+      "cutoff": 0.83,
+      "recall": 0.5049,
+      "precision": 0.981128,
+      "flagged_share": 0.219777
+    },
+    {
+      "cutoff": 0.84,
+      "recall": 0.500025,
+      "precision": 0.981929,
+      "flagged_share": 0.217478
+    },
+    {
+      "cutoff": 0.85,
+      "recall": 0.496269,
+      "precision": 0.983707,
+      "flagged_share": 0.215454
+    },
+    {
+      "cutoff": 0.86,
+      "recall": 0.486247,
+      "precision": 0.986328,
+      "flagged_share": 0.210542
+    },
+    {
+      "cutoff": 0.87,
+      "recall": 0.484182,
+      "precision": 0.987221,
+      "flagged_share": 0.209459
+    },
+    {
+      "cutoff": 0.88,
+      "recall": 0.48167,
+      "precision": 0.987785,
+      "flagged_share": 0.208253
+    },
+    {
+      "cutoff": 0.89,
+      "recall": 0.476249,
+      "precision": 0.989433,
+      "flagged_share": 0.205566
+    },
+    {
+      "cutoff": 0.9,
+      "recall": 0.472195,
+      "precision": 0.990608,
+      "flagged_share": 0.203574
+    },
+    {
+      "cutoff": 0.91,
+      "recall": 0.464597,
+      "precision": 0.991323,
+      "flagged_share": 0.200154
+    },
+    {
+      "cutoff": 0.92,
+      "recall": 0.459113,
+      "precision": 0.991807,
+      "flagged_share": 0.197695
+    },
+    {
+      "cutoff": 0.93,
+      "recall": 0.450259,
+      "precision": 0.993034,
+      "flagged_share": 0.193643
+    },
+    {
+      "cutoff": 0.94,
+      "recall": 0.440335,
+      "precision": 0.994384,
+      "flagged_share": 0.189118
+    },
+    {
+      "cutoff": 0.95,
+      "recall": 0.4278,
+      "precision": 0.995342,
+      "flagged_share": 0.183558
+    },
+    {
+      "cutoff": 0.96,
+      "recall": 0.412194,
+      "precision": 0.995764,
+      "flagged_share": 0.176786
+    },
+    {
+      "cutoff": 0.97,
+      "recall": 0.387473,
+      "precision": 0.996801,
+      "flagged_share": 0.166011
+    },
+    {
+      "cutoff": 0.98,
+      "recall": 0.354755,
+      "precision": 0.998285,
+      "flagged_share": 0.151767
+    },
+    {
+      "cutoff": 0.99,
+      "recall": 0.317885,
+      "precision": 0.999296,
+      "flagged_share": 0.135856
+    },
+    {
+      "cutoff": 1.0,
+      "recall": 0.0,
+      "precision": 1.0,
+      "flagged_share": 0.0
+    }
+  ]
+}
