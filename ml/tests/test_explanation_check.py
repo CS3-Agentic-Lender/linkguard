@@ -131,6 +131,13 @@ def test_a_feature_that_lowered_the_score_says_so():
     assert explanation_check.why_shown_or_not("HostnameLength", entry) == "lowered the score"
 
 
+def test_a_feature_that_did_not_move_the_score_says_so():
+    # Gradient boosting gives a feature it never splits on a push of exactly 0.
+    entry = {"reasons": (), "scaled": {"IsDomainIP": 19.0}, "contributions": {"IsDomainIP": 0.0}}
+
+    assert explanation_check.why_shown_or_not("IsDomainIP", entry) == "did not move the score"
+
+
 def test_the_report_says_when_a_scan_is_over_the_limit(scaler_and_model):
     text = report([explain(SAMPLE_LINKS[0], *scaler_and_model)], slowest=2.5)
 

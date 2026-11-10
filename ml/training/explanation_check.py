@@ -105,8 +105,10 @@ def why_shown_or_not(name: str, entry: dict) -> str:
         return f"**Reason {entry['reasons'].index(name) + 1}**"
     if name in NOT_SHOWN:
         return "never shown"
-    if contributions[name] <= 0:
+    if contributions[name] < 0:
         return "lowered the score"
+    if contributions[name] == 0:
+        return "did not move the score"
     if not can_be_reason(name, contributions, scaled):
         return "its sentence is not true for this link"
     if name in NUMBER_GROUP:
