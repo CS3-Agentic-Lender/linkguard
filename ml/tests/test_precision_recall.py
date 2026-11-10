@@ -112,6 +112,17 @@ def test_every_row_gets_one_score_from_a_model_that_never_saw_its_host(monkeypat
         assert set(hosts.loc[scored_rows]).isdisjoint(hosts.loc[list(learned_rows)])
 
 
+def test_a_row_left_unscored_stops_with_a_message(monkeypatch):
+    from training import precision_recall
+
+    features, labels, hosts = training_parts()
+    real_folds = precision_recall.fold_positions
+    monkeypatch.setattr(precision_recall, "fold_positions", lambda y, g: list(real_folds(y, g))[1:])
+
+    with pytest.raises(RuntimeError, match="not scored"):
+        out_of_fold_scores(features, labels, hosts, SETTINGS)
+
+
 def test_the_folds_are_the_tuning_folds():
     from training import precision_recall, tuning
 

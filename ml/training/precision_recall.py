@@ -62,6 +62,9 @@ def out_of_fold_scores(features: pd.DataFrame, labels: pd.Series, hosts: pd.Seri
         pipe.fit(features.iloc[learn], labels.iloc[learn])
         phishing = list(pipe.classes_).index(PHISHING)
         scores[held_out] = pipe.predict_proba(features.iloc[held_out])[:, phishing]
+    # An unscored row would stay NaN and quietly count as "not flagged" at every cut-off.
+    if np.isnan(scores).any():
+        raise RuntimeError("some training rows were not scored by any fold")
     return scores
 
 
