@@ -195,7 +195,7 @@ A commit that fixes a review comment keeps the same key; never renumber mid-bran
 
 ### Opening the PR
 
-**The person opens the PR, not the agent.** Committing and pushing a feature branch is normal agent work. Opening the pull request is not: a PR asks a teammate to spend their time reviewing, and it puts the person's name on the work.
+**The person opens the PR, not the agent.** Git commands are run by the person too (see Git by hand below). Opening the pull request is the person's job as well: a PR asks a teammate to spend their time reviewing, and it puts the person's name on the work.
 
 An agent therefore **never** runs `gh pr create`, opens a PR through the API, marks a draft ready for review, merges, approves, or replies to or resolves someone's review comment, unless the user has asked for that in the current conversation. "Finish the ticket" is not that request.
 
@@ -223,6 +223,34 @@ Other rules:
 - One approval from a teammate before merge, and the `Secret scan` check green.
 - Never `git push` to `main` or `dev` directly, never force-push a shared branch, never `--no-verify`.
 - A teammate's review comments are answered by the person, with the agent's help. An agent never closes a discussion on their behalf.
+
+### Git by hand
+
+Git use is about 10% of the project mark, and the final report needs terminal screenshots of real git commands as evidence. The lecturer has asked for this, so it is not optional. From now on **the person runs every git command themselves, in a terminal**, and screenshots it. This applies to every team member and every agent.
+
+- The agent never runs a git command that changes anything: `add`, `commit`, `push`, `pull`, `fetch`, `switch`, `checkout`, `branch`, `merge`, `rebase`, `reset`, `revert`, `stash`, `tag`, `cherry-pick` or `restore`. It says which command to run next, explains in one plain sentence what it does, and waits for the person to run it.
+- The agent may run read-only commands (`status`, `log`, `diff`, `show`, `branch --list`) to check its own work. Screenshots for the report always come from the person's own terminal, never from agent output.
+- betterleaks still runs on every commit through the pre-commit hook. Never `--no-verify`.
+- The branch, commit and PR formats above still apply. Opening the PR stays the person's job.
+
+#### Screenshots to collect
+
+Take each one in the terminal with the command and its output visible, and save it into your sprint folder in Confluence (see Sprint documentation). Name the file `git-<command>-<ALG key or topic>.png`. Collect them all the time, not just once per command: the more we store now, the more options we have when the final report is written.
+
+| Topic | Commands to show |
+|---|---|
+| Working tree | `git status` before and after staging |
+| History | `git log --oneline --graph --all --decorate` |
+| Changes | `git diff`, `git diff --staged` |
+| Branches | `git switch -c feature/ALG-<n>-...`, `git branch -a`, deleting a merged branch |
+| Merge conflict | a real conflict, the conflict markers, the fix, then `git add` and the merge commit |
+| Orphan (dangling) commits | a commit no branch points to, found with `git reflog` or `git fsck --lost-found`, then recovered with a branch |
+| Undoing | `git revert`, `git restore`, `git stash` and `git stash pop` |
+| Remote | `git fetch`, `git pull`, `git push -u origin <branch>` |
+
+Conflicts and orphan commits are practised on your own feature branch or a throwaway branch, never on `dev`, `main` or a teammate's branch, and never with a force-push.
+
+The full list follows the Git lecture notes. Update this table when they name a command that is missing.
 
 ### One person, one ticket, one commit
 
