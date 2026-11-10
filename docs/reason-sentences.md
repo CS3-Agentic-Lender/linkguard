@@ -19,6 +19,8 @@ Each sentence describes the side of a feature that points to phishing: a long we
 
 ## Never shown
 
+The two watched features are never shown because of the template problem in the team's template-bias decision record, `docs/adr/0002-hostname-features-for-template-bias.md`: the dataset's legitimate links are mostly big sites' front pages, so some hostname signals may reflect how the dataset was built rather than phishing. That record set the ten features. The feature ranking then marked these two to watch.
+
 | Feature | Why |
 | --- | --- |
 | `TLDLength` | Marked to watch: common endings like .com are typical of the big sites' front pages that make up the dataset's legitimate links, so it may not be a real warning sign (see ml/reports/final_feature_list.md). |

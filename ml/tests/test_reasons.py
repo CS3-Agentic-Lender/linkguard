@@ -15,7 +15,7 @@ REASONS_TABLE = Path(__file__).resolve().parents[2] / "docs" / "reason-sentences
 # comes from the dataset's legitimate links being big sites' front pages.
 WATCH_FEATURES = ("TLDLength", "NoOfSubDomain")
 
-# Words a user should never see in a reason (ALG-33 criterion 3), plus two more
+# Words a user should never see in a reason (the reasons story, criterion 3), plus two more
 # that are jargon to most people.
 TECHNICAL_WORDS = ("feature", "shap", "probability", "model", "hostname", "ratio")
 
@@ -57,6 +57,11 @@ def test_features_the_model_does_not_use_are_not_shown():
 def test_watch_features_are_not_shown_and_point_to_the_final_feature_list(name):
     assert name in NOT_SHOWN
     assert "ml/reports/final_feature_list.md" in NOT_SHOWN[name]
+
+
+def test_never_shown_section_points_to_the_template_bias_record():
+    section = REASONS_TABLE.read_text(encoding="utf-8").split("## Never shown\n", 1)[1]
+    assert "docs/adr/0002-hostname-features-for-template-bias.md" in section
 
 
 # Plain words
