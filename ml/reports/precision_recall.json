@@ -4,7 +4,10 @@
   "training_rows": 188295,
   "phishing_rows": 80416,
   "average_precision": 0.851482,
-  "marked_cutoffs": [],
+  "marked_cutoffs": [
+    0.2,
+    0.6
+  ],
   "curve": [
     {
       "cutoff": 0.0,
