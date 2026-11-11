@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.links import clean_link
-from app.model import load_model, model_dir
+from app.model import load_model, model_dir, phishing_score
 
 
 @asynccontextmanager
@@ -44,8 +44,11 @@ def scan(request: ScanRequest) -> ScanResponse | JSONResponse:
         return JSONResponse(status_code=400, content={"error": str(error)})
 
     # The link is only ever handled as text: it is never opened or fetched.
-    # Until the trained model is served, reply with a placeholder and never
-    # a made-up risk level or score.
+    # Cleaned link, then the shared feature extractor, then the scaler, then the model.
+    phishing_score(app.state.model, cleaned.url)
+
+    # Turning the score into a risk level and sending both is the next scoring step.
+    # Until then, reply with the placeholder and never a made-up risk level or score.
     return ScanResponse(
         url=cleaned.url,
         risk_level=None,

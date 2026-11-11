@@ -1,8 +1,8 @@
 import joblib
 import pytest
 from fastapi.testclient import TestClient
-from features.hostname import FEATURE_NAMES, extract_features
-from sklearn.linear_model import LogisticRegression
+import numpy as np
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from app import model as model_module
@@ -13,36 +13,12 @@ from app.model import (
     MODEL_FILE,
     SCALER_FILE,
     ModelFileMissing,
+    ModelFileWrong,
     load_model,
 )
-
-# Made-up links on reserved names, only ever handled as text. Label 1 is phishing.
-SAMPLE_ROWS = [
-    ("https://example.com", 0),
-    ("https://www.example.org", 0),
-    ("https://shop.example.net/basket", 0),
-    ("https://login-verify-account.example.com.secure-check.example/pay", 1),
-    ("https://192.0.2.10/account", 1),
-    ("https://paypa1-support-2024.example/verify", 1),
-]
+from conftest import fixture_scaler_and_model
 
 LINK = "https://login.example/verify"
-
-
-@pytest.fixture
-def fixture_model_dir(tmp_path, monkeypatch):
-    """A small scaler and model fitted on the sample rows, saved like the real files.
-
-    Nothing here is committed: the files live in pytest's temporary folder.
-    """
-    rows = [[extract_features(link)[name] for name in FEATURE_NAMES] for link, _ in SAMPLE_ROWS]
-    labels = [label for _, label in SAMPLE_ROWS]
-    scaler = StandardScaler().fit(rows)
-    model = LogisticRegression().fit(scaler.transform(rows), labels)
-    joblib.dump(scaler, tmp_path / SCALER_FILE)
-    joblib.dump(model, tmp_path / MODEL_FILE)
-    monkeypatch.setenv(MODEL_DIR_VARIABLE, str(tmp_path))
-    return tmp_path
 
 
 @pytest.fixture
@@ -70,7 +46,7 @@ def test_loads_the_scaler_and_model_once_at_startup(fixture_model_dir, load_call
         # Several calls later, nothing has been loaded again.
         assert len(load_calls) == 2
         assert isinstance(app.state.model.scaler, StandardScaler)
-        assert isinstance(app.state.model.model, LogisticRegression)
+        assert isinstance(app.state.model.model, Pipeline)
 
 
 @pytest.mark.parametrize("missing", [SCALER_FILE, MODEL_FILE])
@@ -98,7 +74,23 @@ def test_load_model_reads_the_given_folder(fixture_model_dir):
     loaded = load_model(fixture_model_dir)
 
     assert isinstance(loaded.scaler, StandardScaler)
-    assert isinstance(loaded.model, LogisticRegression)
+    # The same shape as the saved model: keep the final features, then the model.
+    assert isinstance(loaded.model, Pipeline)
+    assert list(loaded.model.named_steps) == ["keep_final_features", "model"]
+
+
+def test_startup_stops_if_the_scaler_expects_another_feature_order(tmp_path, monkeypatch):
+    scaler, model = fixture_scaler_and_model()
+    scaler.feature_names_in_ = np.array(list(reversed(scaler.feature_names_in_)), dtype=object)
+    joblib.dump(scaler, tmp_path / SCALER_FILE)
+    joblib.dump(model, tmp_path / MODEL_FILE)
+    monkeypatch.setenv(MODEL_DIR_VARIABLE, str(tmp_path))
+
+    with pytest.raises(ModelFileWrong, match="different order") as stopped:
+        with TestClient(app):
+            pass
+
+    assert str(tmp_path / SCALER_FILE) in str(stopped.value)
 
 
 def test_default_folder_is_ml_models_as_the_ml_readme_says(monkeypatch):
