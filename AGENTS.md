@@ -45,7 +45,7 @@ Label every item with its subsystem. Once triaged it also gets one state label (
 
 ### Refining a ticket
 
-A ticket may be **refined**: acceptance criteria sharpened, detail added, or a story split into smaller ones, as long as the Product Owner agrees. A ticket is never emptied or rewritten into different work. Refinement is recorded as a comment on the ticket saying what changed and why.
+A ticket may be **refined**: acceptance criteria sharpened, detail added, or a story split into smaller ones, as long as the Product Owner agrees. A ticket is never deleted, emptied or rewritten into different work. Refinement is recorded as a comment on the ticket saying what changed and why.
 
 ## Sprints
 
@@ -228,10 +228,16 @@ Other rules:
 
 Git use is about 10% of the project mark, and the final report needs terminal screenshots of real git commands as evidence. The lecturer has asked for this, so it is not optional. From now on **the person runs every git command themselves, in a terminal**, and screenshots it. This applies to every team member and every agent.
 
-- The agent never runs a git command that changes anything: `add`, `commit`, `push`, `pull`, `fetch`, `switch`, `checkout`, `branch`, `merge`, `rebase`, `reset`, `revert`, `stash`, `tag`, `cherry-pick` or `restore`. It says which command to run next, explains in one plain sentence what it does, and waits for the person to run it.
-- The agent may run read-only commands (`status`, `log`, `diff`, `show`, `branch --list`) to check its own work. Screenshots for the report always come from the person's own terminal, never from agent output.
+- The agent never runs a git command that changes anything: `add`, `commit`, `push`, `pull`, `switch`, `checkout`, `branch`, `merge`, `rebase`, `reset`, `revert`, `stash`, `tag`, `cherry-pick` or `restore`. It says which command to run next, explains in one plain sentence what it does, and waits for the person to run it.
+- The agent may run read-only commands (`status`, `log`, `diff`, `show`, `branch --list`) to check its own work. It may also run `git fetch`: it only downloads, so it changes no files and no branches. It lets an agent check that a branch is up to date or look at a PR for a review. Screenshots for the report always come from the person's own terminal, never from agent output.
 - betterleaks still runs on every commit through the pre-commit hook. Never `--no-verify`.
 - The branch, commit and PR formats above still apply. Opening the PR stays the person's job.
+
+The team agreed three git rules at standup:
+
+- **Keep merge commits. Never squash.** Marks are read from the history, and a squash turns each person's commits into one. It also breaks stacked PRs.
+- **Rebase onto `dev` only before the first push.** Nobody else has the branch yet. After the first push, merge `dev` in instead, because a rebase would then need a force-push.
+- **`feature/` branches only.** Jira links the ticket from the key in the branch name.
 
 #### Screenshots to collect
 
