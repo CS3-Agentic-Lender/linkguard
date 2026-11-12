@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -101,6 +104,21 @@ describe("phishing charts page, from the real summary file", () => {
 
     expect(summary.dataset_note).toMatch(/every legitimate link .* homepage/i);
     expect(screen.getByText(summary.dataset_note)).toBeVisible();
+  });
+
+  // The note holds an example link that can't break between words. Without a wrap
+  // rule it pushes the page wider than a 320 px screen at 200% text (WCAG 1.4.10).
+  // jsdom has no layout, so this checks the rule; the width itself is checked by hand.
+  it("lets long words in the dataset note wrap, so the page fits a 320 px screen", () => {
+    // Read from disk: Vitest turns CSS imports into empty strings, even with ?raw.
+    const appCss = readFileSync(join(import.meta.dirname, "styles", "app.css"), "utf8");
+    const withoutComments = appCss.replace(/\/\*[\s\S]*?\*\//g, "");
+    const noteRules = [...withoutComments.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(",").some((s) => s.trim() === ".dataset-note"))
+      .map(([, , declarations]) => declarations);
+
+    expect(summary.dataset_note).toMatch(/\S{24,}/);
+    expect(noteRules.some((rule) => /overflow-wrap:\s*anywhere/.test(rule))).toBe(true);
   });
 
   // Criterion 4: groups told apart by text labels on the bars, not by colour alone.

@@ -266,10 +266,13 @@ h1 {
   margin: 0 0 var(--space-6);
 }
 
+/* The note's example link can't break between words. Letting it wrap keeps the page
+   inside a 320px screen at 200% text size, like the result card's link and reasons. */
 .dataset-note {
   padding: var(--space-3) var(--space-4);
   border-left: 4px solid var(--color-border);
   background: var(--color-surface);
+  overflow-wrap: anywhere;
 }
 
 .chart {
