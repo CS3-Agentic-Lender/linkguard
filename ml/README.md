@@ -467,6 +467,25 @@ uv run python -m training.explanation_check
 
 The links are made up (documentation-only addresses) and are only handled as text.
 
+## Evaluating the chosen model on the test split
+
+`ml/evaluation/evaluate.py` scores the one saved chosen model on the held-back test rows. It is the only code in `ml/` that scores a model on the test rows, and it fits and tunes nothing. (The split code and the conflicting-hosts audit also name the test set, but neither loads a model. `ml/tests/test_evaluate.py` lists every module that does and fails if a new one appears.) It needs the feature set, the shared split, the scaler and the saved model (`ml/models/model.joblib`). Run it from `ml/`:
+
+```bash
+uv run python -m evaluation.evaluate
+```
+
+It prints the scores and writes `ml/reports/evaluation_results.json`, which holds:
+
+- phishing recall (the main measure), precision, F1, ROC-AUC and accuracy on the test rows, plus the false alarm rate on legitimate links, read off the confusion matrix;
+- the confusion matrix counts, with rows (actual) and columns (predicted) named "phishing" and "legitimate";
+- the same model's training recall and F1, and a one-line note on over- or underfitting, using the same limits as the model comparison (a gap of more than 0.05, or a training F1 under 0.70);
+- the ROC curve's points, so the chart can be drawn without reading the test rows again.
+
+Phishing (label 1) is the positive class, and a link counts as phishing when the model's phishing score is above 0.5 (its own `predict()`). The split is read with `load_split`, so the run stops if the split was made from different cleaned data. Before scoring, the run also stops and saves nothing if any cleaned host has rows in both the training and the test set. That guard runs on the real split every time.
+
+Accuracy is not the headline number: a simple pattern rule with nothing learned scores over 99% on PhiUSIIL. These are in-dataset results, not real-world accuracy. The tests (`ml/tests/test_evaluate.py`) use a small made-up set with known answers.
+
 ## Source and licence
 
 | | |
