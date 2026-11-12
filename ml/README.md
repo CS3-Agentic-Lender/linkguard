@@ -52,7 +52,7 @@ If `git status` lists the CSV, stop and tell the team. It means the ignore rules
 | Path | Holds | In git? |
 |---|---|---|
 | `ml/data/` | The downloaded dataset and any cleaned copies | No, the whole folder is ignored |
-| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`) | No, those file types are ignored |
+| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`). The final model is `ml/models/model.joblib` (see "The final model" below). | No, those file types are ignored |
 
 Training code saves the model and scaler to `ml/models/`, and the backend loads them from there. Like the dataset, they are shared outside git.
 
@@ -354,6 +354,8 @@ How the model is chosen:
 3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
 4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
 
+This was the Sprint 2 rule. At Sprint 3 planning the team changed it to the highest ROC-AUC, because the risk-level cut-offs set our own flag lines. That picks gradient boosting (0.836). See "Tuning the chosen model" below.
+
 A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
 
 The run stops and saves nothing if the results file:
@@ -367,6 +369,103 @@ The run stops and saves nothing if the results file:
 The report also names a known limitation. The split keeps each host in one set but not each parent domain. On the shared split, 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
 
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
+
+## Tuning the chosen model
+
+`ml/training/tuning.py` tunes the chosen model, gradient boosting (`HistGradientBoostingClassifier`). Sprint 3 planning picked it by ROC-AUC (0.836 in the model comparison), because the risk-level cut-offs set our own flag lines. It tries every combination of these settings:
+
+| Setting | Values | Why |
+|---|---|---|
+| `learning_rate` | 0.05, 0.1, 0.2 | How big a step each new tree takes. The default is 0.1. |
+| `max_iter` | 100, 300 | The most trees allowed. Early stopping can stop sooner. The default is 100. |
+| `max_leaf_nodes` | 15, 31, 63 | How detailed each tree may be. The default is 31. |
+| `min_samples_leaf` | 20, 100 | The fewest rows a leaf may hold. A larger value stops a tree learning from a few odd rows. The default is 20. |
+| Early stopping, seed, class weight | on, 0, none (fixed) | These match the model comparison, so its settings are the "before" row. |
+
+Each combination is scored with the same host-grouped, stratified 5-fold cross-validation as the model comparison (same folds, seed 0). The scaler and the model sit in one Pipeline per fold. The scoring measure is **ROC-AUC**, chosen before the search ran. Combinations within 0.001 of the best mean ROC-AUC count as a tie, and the simplest wins: fewer leaves, then fewer trees, then larger leaves, then a smaller learning rate. The test split is never loaded. Run it from `ml/` (about 30 seconds on 10 cores):
+
+```bash
+uv run python -m training.tuning
+```
+
+**Known limitation:** on the real data early stopping is on, so gradient boosting holds back 10% of each fold's training rows to decide when to stop. That hold-out is not grouped by host, so a host can be on both sides of it. The outer held-out fold and the test split are never touched, so the scores stay honest, but early stopping may stop a little late.
+
+It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination).
+
+### Seed check
+
+The search uses one seed. `ml/training/seed_check.py` scores the before and after settings again with seeds 0 to 4. Each seed makes its own host-grouped fold split and sets the model's own randomness. It reports whether after beats before on every seed, and by how much. It only measures stability. It never picks a seed, because picking the luckiest seed would be fitting to noise. Run it after the tuning (about 1.5 minutes):
+
+```bash
+uv run python -m training.seed_check
+```
+
+It writes `ml/reports/seed_check.json` and `ml/reports/seed_check.md`.
+
+## The final model
+
+`ml/training/final_model.py` fits the tuned gradient boosting model on every training row and saves it to **`ml/models/model.joblib`**. It reads the chosen settings from `ml/reports/tuning_results.json`, so run the tuning first. From `ml/`:
+
+```bash
+uv run python -m training.tuning        # if tuning_results.json is not there yet
+uv run python -m training.final_model
+```
+
+Gradient boosting does not need scaled inputs, because each tree only compares a feature with a split value. The model still sits after the saved scaler, so the backend has one fixed chain whatever model we use. The test split is never loaded. Like the scaler, the model file is gitignored and shared outside git. Anyone can rebuild it with the two commands above.
+
+How to use the two files for one link:
+
+1. Work out the ten hostname features with `extract_features`, in the order of `FEATURE_NAMES`.
+2. Transform them with the saved scaler, `ml/models/scaler.joblib` (transform only).
+3. Pass all ten scaled values to the model. Its first step keeps only the 8 in the final feature list, so the backend never picks columns itself. `predict_proba(...)[:, 1]` is the phishing score.
+
+The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
+
+## The precision/recall curve
+
+`ml/training/precision_recall.py` draws the precision/recall curve for the phishing class. The risk-level cut-offs are chosen from it. From `ml/`:
+
+```bash
+uv run python -m training.precision_recall                      # the curve
+uv run python -m training.precision_recall --cutoffs 0.2 0.6    # the curve with two cut-offs marked
+```
+
+The scores come from cross-validation on the training rows, never from the test split, so the test results stay fair. The training rows are cut into the same 5 host-grouped folds as the model comparison and the tuning (seed 0). For each fold, the tuned gradient boosting model learns from the other 4 folds and scores the held-out one. Each row is scored once, by a model that never saw its host. The settings come from `ml/reports/tuning_results.json`, so run the tuning first.
+
+It writes two files:
+
+- `ml/reports/precision_recall.png`: the chart. Recall (the share of phishing links caught) is along the bottom, precision (the share of flagged links that really are phishing) up the side. The dashed line is what guessing would give.
+- `ml/reports/precision_recall.json`: recall, precision and the share of all links flagged at every cut-off from 0.00 to 1.00, in steps of 0.01. Use it to read off the values for a cut-off (rounded to six decimals).
+
+A link counts as flagged when its phishing score is at or above the cut-off. Lowering the cut-off catches more phishing but flags more safe links too.
+
+## Reasons for a link
+
+`features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it. Importing it loads no SHAP, numpy or scikit-learn.
+
+The final model is gradient boosting, so each feature's push on the score comes from SHAP's tree explainer. Build the explainer once, when the model is loaded, and pass it in:
+
+```python
+from features.explain import reasons_for_link
+from features.reasons import reason_for
+from features.explain import tree_explainer
+
+explainer = tree_explainer(model)                     # once, after loading ml/models/model.joblib
+reasons = reasons_for_link(model, explainer, scaled)  # scaled: the ten scaled values by name
+sentences = [reason_for(name) for name in reasons]
+```
+
+`explainer` is a function that takes one link's kept feature values, in the model's order, and returns one push per value. `tree_explainer` wraps `shap.TreeExplainer` on the model's last step that way. It lives in `features`, so the hand check and the backend use the same code. It imports `shap` and `numpy` only when it is called, so importing `features.explain` needs neither. Whoever calls it needs `shap` pinned to the version in `ml/uv.lock`.
+
+Up to three features that pushed the score up, and whose sentence is true for the link, are returned, largest first. Features that are never shown are left out. The result can be empty.
+
+`training/explanation_check.py` checks the reasons by hand on five made-up links. It needs the saved scaler and model, and writes `ml/reports/explanation_check.md`: each link's full explanation next to the reasons picked from it, and the time a scan with reasons takes. From `ml/`:
+
+```bash
+uv run python -m training.explanation_check
+```
+
+The links are made up (documentation-only addresses) and are only handled as text.
 
 ## Evaluating the chosen model on the test split
 

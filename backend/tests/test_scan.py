@@ -2,53 +2,15 @@ import re
 import socket
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app
 from app.links import EMPTY_LINK, INVALID_LINK, LONG_LINK, clean_link
 
-client = TestClient(app)
 
 # Made-up link on a reserved name. It is only ever handled as text.
 LINK = "https://login.example/verify?account=1"
 
 
-LOOPBACK = {"127.0.0.1", "::1", "localhost"}
-
-
-@pytest.fixture
-def no_network(monkeypatch):
-    """Fail the test if anything tries to open an outgoing connection.
-
-    Loopback is still allowed: on Windows the event loop that runs the test
-    client connects a socket to itself on 127.0.0.1 when it starts.
-    """
-    real_connect = socket.socket.connect
-    real_connect_ex = socket.socket.connect_ex
-    real_getaddrinfo = socket.getaddrinfo
-
-    def check(host):
-        if host not in LOOPBACK:
-            raise AssertionError(f"a network connection was attempted to {host}")
-
-    def connect(sock, address):
-        check(address[0])
-        return real_connect(sock, address)
-
-    def connect_ex(sock, address):
-        check(address[0])
-        return real_connect_ex(sock, address)
-
-    def getaddrinfo(host, *args, **kwargs):
-        check(host)
-        return real_getaddrinfo(host, *args, **kwargs)
-
-    monkeypatch.setattr(socket.socket, "connect", connect)
-    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
-    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
-
-
-def test_replies_with_the_placeholder_shape():
+def test_replies_with_the_placeholder_shape(client):
     response = client.post("/scan", json={"url": LINK})
 
     assert response.status_code == 200
@@ -61,7 +23,7 @@ def test_replies_with_the_placeholder_shape():
     }
 
 
-def test_never_fetches_the_link(no_network):
+def test_never_fetches_the_link(client, no_network):
     response = client.post("/scan", json={"url": LINK})
 
     assert response.status_code == 200
@@ -74,7 +36,7 @@ def test_network_block_catches_a_fetch(no_network):
         socket.create_connection(("login.example", 443))
 
 
-def test_missing_url_gets_a_clear_422():
+def test_missing_url_gets_a_clear_422(client):
     response = client.post("/scan", json={})
 
     assert response.status_code == 422
@@ -84,7 +46,7 @@ def test_missing_url_gets_a_clear_422():
 
 
 @pytest.mark.parametrize("pasted_text", ["", "   ", " \t\r\n "])
-def test_empty_input_gets_the_paste_link_error(pasted_text, no_network):
+def test_empty_input_gets_the_paste_link_error(client, pasted_text, no_network):
     response = client.post("/scan", json={"url": pasted_text})
 
     assert response.status_code == 400
@@ -106,7 +68,7 @@ def test_empty_input_gets_the_paste_link_error(pasted_text, no_network):
         ("example.com:8080/path", "https://example.com:8080/path", True),
     ],
 )
-def test_clean_link_examples(pasted, expected, added_https, no_network):
+def test_clean_link_examples(client, pasted, expected, added_https, no_network):
     cleaned = clean_link(pasted)
 
     assert cleaned.url == expected
@@ -137,7 +99,7 @@ def test_clean_link_examples(pasted, expected, added_https, no_network):
         ("ftp://example.com/" + "x" * 2000, LONG_LINK),
     ],
 )
-def test_invalid_links_return_only_the_agreed_error(pasted, message, no_network):
+def test_invalid_links_return_only_the_agreed_error(client, pasted, message, no_network):
     with pytest.raises(ValueError, match=re.escape(message)):
         clean_link(pasted)
 
@@ -146,7 +108,7 @@ def test_invalid_links_return_only_the_agreed_error(pasted, message, no_network)
     assert response.json() == {"error": message}
 
 
-def test_length_limit_uses_the_cleaned_link(no_network):
+def test_length_limit_uses_the_cleaned_link(client, no_network):
     prefix = "https://example.com/"
     exactly_2000 = prefix + "x" * (2000 - len(prefix))
 
