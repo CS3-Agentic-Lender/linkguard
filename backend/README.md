@@ -13,6 +13,21 @@ uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
 
 `uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
 
+### The model files
+
+At start-up the backend loads the scaler and the model once and keeps them for every `/scan` call:
+
+| File | Made by |
+|---|---|
+| `ml/models/scaler.joblib` | the train/test split (see `ml/README.md`) |
+| `ml/models/model.joblib` | the final model training (see `ml/README.md`) |
+
+Like the dataset, they're shared outside git. If either file is missing, start-up stops with a message naming it, for example `Can't start: ...\ml\models\model.joblib is missing.` Start-up also stops if the scaler expects the ten features in a different order from the extractor's. Set `LINKGUARD_MODEL_DIR` to load them from another folder.
+
+Each `/scan` call cleans the link, works out its ten hostname features with the shared extractor from `ml/features` (the same function the training code uses, never a copy), scales them, then asks the model for a phishing score. The features come from the link's text alone: the link is never opened or looked up. The reply stays the placeholder until the score is turned into a risk level.
+
+The tests build a small scaler and model of their own in a temporary folder, shaped like the real ones (a Pipeline that keeps the final features, then gradient boosting), so they never need the real files.
+
 The interactive API docs are at http://127.0.0.1:8000/docs while it runs.
 
 ## Test it

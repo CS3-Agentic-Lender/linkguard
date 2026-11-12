@@ -5,7 +5,11 @@ description = "FastAPI service that checks pasted links for LinkGuard."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "joblib>=1.6",
     "linkguard-features",
+    # The model and scaler are saved by ml/ with joblib. Loading them needs the
+    # same scikit-learn version that saved them, so this matches ml/uv.lock.
+    "scikit-learn==1.9.1",
     "uvicorn>=0.32",
 ]
 

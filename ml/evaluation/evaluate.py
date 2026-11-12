@@ -88,7 +88,7 @@ def load_test_rows(features_path: Path, split_path: Path) -> np.ndarray:
     try:
         sets = load_split(split_path, hosts)
     except SplitMismatchError as error:
-        raise EvaluationError(str(error))
+        raise EvaluationError(str(error)) from error
     rows = np.sort(sets.index[sets == TEST].to_numpy())
     if rows.size == 0:
         raise EvaluationError("The split file has no test rows.")
@@ -102,7 +102,7 @@ def load_test_set(features_path: Path, split_path: Path, scaler) -> tuple[pd.Dat
         check_values(frame)
     except PipelineError as error:
         # The shared loader words its messages for training rows; these are the test rows.
-        raise EvaluationError(f"While reading the test rows: {error}")
+        raise EvaluationError(f"While reading the test rows: {error}") from error
     scaled = np.asarray(scaler.transform(frame.loc[:, list(FEATURE_NAMES)]), dtype=float)
     return frame, scaled
 
