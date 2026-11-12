@@ -240,6 +240,7 @@ SPLIT_NAMES = {"TEST", "TEST_SET", "SETS", "load_split"}
 # it is added here with its reason.
 KNOWN_SPLIT_READERS = {
     "evaluation/evaluate.py": "scores the one saved chosen model on the test rows",
+    "evaluation/charts.py": "reads the saved test scores from the results file; never reads rows or loads a model",
     "splitting/split.py": "makes, saves and checks the split",
     "training/pipeline.py": "names the test set only to refuse unknown set names; reads training rows only",
     "ranking/training_split.py": "names the test set only to refuse unknown set names; keeps training rows only",

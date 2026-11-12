@@ -486,6 +486,17 @@ Phishing (label 1) is the positive class, and a link counts as phishing when the
 
 Accuracy is not the headline number: a simple pattern rule with nothing learned scores over 99% on PhiUSIIL. These are in-dataset results, not real-world accuracy. The tests (`ml/tests/test_evaluate.py`) use a small made-up set with known answers.
 
+Then draw the two charts from the results file. This does not read the test rows again:
+
+```bash
+uv run python -m evaluation.charts
+```
+
+| File | Shows |
+|---|---|
+| `ml/reports/evaluation_confusion_matrix.png` | The test confusion matrix: actual class down the side, predicted along the top, both named "phishing" and "legitimate", a count in each cell and the phishing recall in the title. |
+| `ml/reports/evaluation_roc_curve.png` | The test ROC curve (phishing recall against false alarm rate), with the ROC-AUC written on it. |
+
 ## Source and licence
 
 | | |
