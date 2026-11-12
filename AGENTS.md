@@ -195,7 +195,7 @@ A commit that fixes a review comment keeps the same key; never renumber mid-bran
 
 ### Opening the PR
 
-**The person opens the PR, not the agent.** Committing and pushing a feature branch is normal agent work. Opening the pull request is not: a PR asks a teammate to spend their time reviewing, and it puts the person's name on the work.
+**The person opens the PR, not the agent.** Git commands are run by the person too (see Git by hand below). Opening the pull request is the person's job as well: a PR asks a teammate to spend their time reviewing, and it puts the person's name on the work.
 
 An agent therefore **never** runs `gh pr create`, opens a PR through the API, marks a draft ready for review, merges, approves, or replies to or resolves someone's review comment, unless the user has asked for that in the current conversation. "Finish the ticket" is not that request.
 
@@ -223,6 +223,44 @@ Other rules:
 - One approval from a teammate before merge, and the `Secret scan` check green.
 - Never `git push` to `main` or `dev` directly, never force-push a shared branch, never `--no-verify`.
 - A teammate's review comments are answered by the person, with the agent's help. An agent never closes a discussion on their behalf.
+
+### Git by hand
+
+Git use is about 10% of the project mark, and the final report needs terminal screenshots of real git commands as evidence. The lecturer has asked for this, so it is not optional. From now on **the person runs every git command themselves, in a terminal**, and screenshots it. This applies to every team member and every agent.
+
+- The agent never runs a git command that changes anything: `add`, `commit`, `push`, `pull`, `switch`, `checkout`, `branch`, `merge`, `rebase`, `reset`, `revert`, `stash`, `tag`, `cherry-pick` or `restore`. It says which command to run next, explains in one plain sentence what it does, and waits for the person to run it.
+- The agent may run read-only commands (`status`, `log`, `diff`, `show`, `branch --list`) to check its own work. It may also run `git fetch`: it only downloads, so it changes no files and no branches. It lets an agent check that a branch is up to date or look at a PR for a review. Screenshots for the report always come from the person's own terminal, never from agent output.
+- betterleaks still runs on every commit through the pre-commit hook. Never `--no-verify`.
+- The branch, commit and PR formats above still apply. Opening the PR stays the person's job.
+
+The team agreed three git rules at standup:
+
+- **Keep merge commits. Never squash.** Marks are read from the history, and a squash turns each person's commits into one. It also breaks stacked PRs.
+- **Rebase onto `dev` only before the first push.** Nobody else has the branch yet. After the first push, merge `dev` in instead, because a rebase would then need a force-push.
+- **`feature/` branches only.** Jira links the ticket from the key in the branch name.
+
+#### Screenshots to collect
+
+Take each one in the terminal with the command and its output visible, and save it in your own folder under [`docs/git-screenshots/`](docs/git-screenshots/README.md) (`Nic`, `Nikoloz`, `Ibrahima` or `Dunmi`). Name the file `sprint<n>-git-<command>-<ALG key or topic>.png`. The repo is public and betterleaks cannot read images, so check each screenshot for secrets before committing it. Collect them all the time, not just once per command: the more we store now, the more options we have when the final report is written.
+
+The list follows the steps in the "Git and branches" lecture, with `dev` in place of `main`, because every feature branch starts from `dev` here. Merge conflicts and orphan commits are added on top.
+
+| Lecture step | Commands to show |
+|---|---|
+| 1. Start from an up-to-date branch | `git switch dev`, `git pull origin dev` |
+| 2. One branch per story or task | `git switch -c feature/ALG-<n>-short-description`, `git branch -a` |
+| 3. Commit small and often | `git status` before and after `git add`, `git diff`, `git diff --staged`, `git commit -m "ALG-<n> ..."` (a few small commits, not one big one) |
+| 4. Push the branch | `git push -u origin feature/ALG-<n>-...` |
+| 5. Keep the branch up to date | `git fetch origin`, then `git rebase origin/dev` (only before your first push, so no force-push is needed) or `git merge origin/dev` |
+| 6. and 7. PR and code review | the PR with its evidence and at least one approval, `gh pr checks` showing the checks green |
+| 8. Merge | the merged PR, then `git log --oneline --graph --decorate` showing it on `dev` |
+| 9. Delete the branch after merge | `git branch -d feature/ALG-<n>-...`, then `git fetch --prune` and `git branch -a` showing the remote branch gone (GitHub deletes it on merge) |
+| History | `git log --oneline --graph --all --decorate`, `git show <commit>` |
+| Merge conflict | a real conflict, the conflict markers in the file, the fix, then `git add` and finishing the merge or rebase |
+| Orphan (dangling) commits | a commit no branch points to, found with `git reflog` or `git fsck --lost-found`, then recovered with `git branch <name> <commit>` |
+| Undoing | `git revert`, `git restore`, `git stash` and `git stash pop` |
+
+Conflicts and orphan commits are practised on your own feature branch or a throwaway branch, never on `dev`, `main` or a teammate's branch, and never with a force-push.
 
 ### One person, one ticket, one commit
 
