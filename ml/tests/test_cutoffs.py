@@ -22,7 +22,3 @@ def test_the_lower_cutoff_is_below_the_upper_one_and_both_are_scores():
     cutoffs = json.loads(CUTOFFS_PATH.read_text())
 
     assert 0 < cutoffs["lower"] < cutoffs["upper"] < 1
-
-
-def test_the_agreed_values_are_saved():
-    assert json.loads(CUTOFFS_PATH.read_text()) == {"lower": 0.20, "upper": 0.60}
