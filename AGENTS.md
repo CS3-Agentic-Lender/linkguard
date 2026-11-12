@@ -47,10 +47,6 @@ Label every item with its subsystem. Once triaged it also gets one state label (
 
 A ticket may be **refined**: acceptance criteria sharpened, detail added, or a story split into smaller ones, as long as the Product Owner agrees. A ticket is never emptied or rewritten into different work. Refinement is recorded as a comment on the ticket saying what changed and why.
 
-### Deleting a ticket
-
-The Product Owner may delete a backlog ticket that cannot be finished before the project ends, for example because it needs a part we never built. Only tickets in the backlog are deleted, never one in an active sprint or one that is Done. Deleting also deletes its subtasks, and it cannot be undone, so check the list before deleting. Agents never delete tickets themselves.
-
 ## Sprints
 
 Marked against `docs/spec/` (rubric summary in `docs/spec/README.md`). The brief sets three sprint stages: 1 Data Input, 2 Data Visualisation, 3 Knowledge Extraction. Each sprint delivers a thin end-to-end slice across the subsystems, and its goal follows its stage. The Scrum Master is different every sprint and the Product Owner rotates too, never the same person as the SM. The roster and the full checklist are in `docs/sprints/README.md`.
