@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -7,19 +6,20 @@ from pydantic import BaseModel, Field
 
 from app.links import clean_link
 from app.model import load_model, model_dir, phishing_score
+from app.risk import RiskLevel, load_cutoffs, risk_level
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load the scaler and the model once, before the first /scan call, and keep
-    # them for every call after. A missing file stops start-up and names the file.
+    # Load the cut-offs, the scaler and the model once, before the first /scan call,
+    # and keep them for every call after. A missing file stops start-up and names it.
+    # The cut-offs go first because they are quick to read and check.
+    app.state.cutoffs = load_cutoffs(model_dir())
     app.state.model = load_model(model_dir())
     yield
 
 
 app = FastAPI(title="LinkGuard", lifespan=lifespan)
-
-RiskLevel = Literal["Safe", "Suspicious", "High risk"]
 
 
 class ScanRequest(BaseModel):
@@ -45,14 +45,13 @@ def scan(request: ScanRequest) -> ScanResponse | JSONResponse:
 
     # The link is only ever handled as text: it is never opened or fetched.
     # Cleaned link, then the shared feature extractor, then the scaler, then the model.
-    phishing_score(app.state.model, cleaned.url)
+    score = phishing_score(app.state.model, cleaned.url)
 
-    # Turning the score into a risk level and sending both is the next scoring step.
-    # Until then, reply with the placeholder and never a made-up risk level or score.
+    # The reasons are filled in by the see-why step, so the list stays empty for now.
     return ScanResponse(
         url=cleaned.url,
-        risk_level=None,
-        score=None,
+        risk_level=risk_level(score, app.state.cutoffs),
+        score=score,
         reasons=[],
-        placeholder=True,
+        placeholder=False,
     )

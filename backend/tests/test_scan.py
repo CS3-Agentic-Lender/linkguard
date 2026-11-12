@@ -10,17 +10,17 @@ from app.links import EMPTY_LINK, INVALID_LINK, LONG_LINK, clean_link
 LINK = "https://login.example/verify?account=1"
 
 
-def test_replies_with_the_placeholder_shape(client):
+def test_replies_with_the_fixed_shape(client):
     response = client.post("/scan", json={"url": LINK})
 
     assert response.status_code == 200
-    assert response.json() == {
-        "url": LINK,
-        "risk_level": None,
-        "score": None,
-        "reasons": [],
-        "placeholder": True,
-    }
+    reply = response.json()
+    assert list(reply) == ["url", "risk_level", "score", "reasons", "placeholder"]
+    assert reply["url"] == LINK
+    assert reply["risk_level"] in {"Safe", "Suspicious", "High risk"}
+    assert 0 <= reply["score"] <= 1
+    assert reply["reasons"] == []
+    assert reply["placeholder"] is False
 
 
 def test_never_fetches_the_link(client, no_network):
@@ -76,7 +76,7 @@ def test_clean_link_examples(client, pasted, expected, added_https, no_network):
     response = client.post("/scan", json={"url": pasted})
     assert response.status_code == 200
     assert response.json()["url"] == expected
-    assert response.json()["placeholder"] is True
+    assert response.json()["placeholder"] is False
 
 
 @pytest.mark.parametrize(
