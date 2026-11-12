@@ -439,6 +439,16 @@ It writes two files:
 
 A link counts as flagged when its phishing score is at or above the cut-off. Lowering the cut-off catches more phishing but flags more safe links too.
 
+## The risk-level cut-offs
+
+The team chose two cut-offs from the curve: lower 0.20 and upper 0.60. They are saved in `ml/models/cutoffs.json`, which the backend reads. That file is the only copy of the values.
+
+- A phishing score below the lower cut-off is **Safe**.
+- From the lower cut-off up to the upper one is **Suspicious**.
+- At or above the upper cut-off is **High risk**.
+
+To change a cut-off, edit `cutoffs.json` and rerun the curve with `--cutoffs` so the chart shows the new values. `tests/test_cutoffs.py` checks the file keeps its shape.
+
 ## Reasons for a link
 
 `features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it. Importing it loads no SHAP, numpy or scikit-learn.
