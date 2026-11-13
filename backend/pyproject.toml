@@ -10,6 +10,9 @@ dependencies = [
     # The model and scaler are saved by ml/ with joblib. Loading them needs the
     # same scikit-learn version that saved them, so this matches ml/uv.lock.
     "scikit-learn==1.9.1",
+    # The reasons for each risky link come from SHAP's tree explainer (docs/adr/0004).
+    # Pinned to the version in ml/uv.lock, so the backend and the training checks agree.
+    "shap==0.54.1",
     "uvicorn>=0.32",
 ]
 
