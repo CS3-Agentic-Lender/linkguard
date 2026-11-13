@@ -182,6 +182,15 @@ h1 {
   height: 2.5rem;
 }
 
+/* The phishing score: smaller than the level, in the muted colour that is already
+   checked on every card surface (scripts/check-contrast.mjs, "Link checked" rows). */
+.result-card__score {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
 /* Reasons: body-colour text on the card's light surface (checked in scripts/check-contrast.mjs).
    Long words wrap, so the list fits at 320px wide and at 200% text size. */
 .result-card__reasons {
