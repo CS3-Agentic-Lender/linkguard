@@ -1,3 +1,4 @@
+import json
 import socket
 
 import joblib
@@ -12,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 
 from app.main import app
 from app.model import MODEL_DIR_VARIABLE, MODEL_FILE, SCALER_FILE
+from app.risk import CUTOFFS_FILE
 
 # Made-up links on reserved names, only ever handled as text. Label 1 is phishing.
 SAMPLE_ROWS = [
@@ -27,6 +29,9 @@ SAMPLE_ROWS = [
 # The saved model leaves them out itself, so the fixture model does too.
 DROPPED = ("NoOfLettersInHostname", "SpecialCharRatioInHostname")
 KEPT = [FEATURE_NAMES.index(name) for name in FEATURE_NAMES if name not in DROPPED]
+
+# The cut-offs the team agreed, in the shape the cut-offs story saves them.
+CUTOFFS = {"lower": 0.20, "upper": 0.60}
 
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
@@ -53,13 +58,14 @@ def fixture_scaler_and_model():
 
 @pytest.fixture
 def fixture_model_dir(tmp_path, monkeypatch):
-    """The fixture scaler and model, saved like the real files.
+    """The fixture scaler, model and cut-offs, saved like the real files.
 
     Nothing here is committed: the files live in pytest's temporary folder.
     """
     scaler, model = fixture_scaler_and_model()
     joblib.dump(scaler, tmp_path / SCALER_FILE)
     joblib.dump(model, tmp_path / MODEL_FILE)
+    (tmp_path / CUTOFFS_FILE).write_text(json.dumps(CUTOFFS), encoding="utf-8")
     monkeypatch.setenv(MODEL_DIR_VARIABLE, str(tmp_path))
     return tmp_path
 

@@ -62,8 +62,9 @@ def test_startup_stops_and_names_a_missing_file(fixture_model_dir, load_calls, m
     assert load_calls == []
 
 
-def test_startup_names_the_first_missing_file_when_both_are_gone(tmp_path, monkeypatch):
-    monkeypatch.setenv(MODEL_DIR_VARIABLE, str(tmp_path))
+def test_startup_names_the_first_missing_file_when_both_are_gone(fixture_model_dir):
+    (fixture_model_dir / SCALER_FILE).unlink()
+    (fixture_model_dir / MODEL_FILE).unlink()
 
     with pytest.raises(ModelFileMissing, match=SCALER_FILE):
         with TestClient(app):
@@ -79,18 +80,16 @@ def test_load_model_reads_the_given_folder(fixture_model_dir):
     assert list(loaded.model.named_steps) == ["keep_final_features", "model"]
 
 
-def test_startup_stops_if_the_scaler_expects_another_feature_order(tmp_path, monkeypatch):
-    scaler, model = fixture_scaler_and_model()
+def test_startup_stops_if_the_scaler_expects_another_feature_order(fixture_model_dir):
+    scaler, _ = fixture_scaler_and_model()
     scaler.feature_names_in_ = np.array(list(reversed(scaler.feature_names_in_)), dtype=object)
-    joblib.dump(scaler, tmp_path / SCALER_FILE)
-    joblib.dump(model, tmp_path / MODEL_FILE)
-    monkeypatch.setenv(MODEL_DIR_VARIABLE, str(tmp_path))
+    joblib.dump(scaler, fixture_model_dir / SCALER_FILE)
 
     with pytest.raises(ModelFileWrong, match="different order") as stopped:
         with TestClient(app):
             pass
 
-    assert str(tmp_path / SCALER_FILE) in str(stopped.value)
+    assert str(fixture_model_dir / SCALER_FILE) in str(stopped.value)
 
 
 def test_default_folder_is_ml_models_as_the_ml_readme_says(monkeypatch):
