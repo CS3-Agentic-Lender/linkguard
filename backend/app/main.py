@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from features.explain import MAX_REASONS
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.links import clean_link
-from app.model import load_model, model_dir, phishing_score
+from app.model import load_model, model_dir, scaled_features, score_of
+from app.reasons import reasons_for_scan
 from app.risk import RiskLevel, load_cutoffs, risk_level
 
 
@@ -32,7 +34,7 @@ class ScanResponse(BaseModel):
     url: str
     risk_level: RiskLevel | None
     score: float | None = Field(ge=0, le=1)
-    reasons: list[str] = Field(max_length=3)
+    reasons: list[str] = Field(max_length=MAX_REASONS)
     placeholder: bool
 
 
@@ -45,13 +47,14 @@ def scan(request: ScanRequest) -> ScanResponse | JSONResponse:
 
     # The link is only ever handled as text: it is never opened or fetched.
     # Cleaned link, then the shared feature extractor, then the scaler, then the model.
-    score = phishing_score(app.state.model, cleaned.url)
+    scaled = scaled_features(app.state.model, cleaned.url)
+    score = score_of(app.state.model, scaled)
+    level = risk_level(score, app.state.cutoffs)
 
-    # The reasons are filled in by the see-why step, so the list stays empty for now.
     return ScanResponse(
         url=cleaned.url,
-        risk_level=risk_level(score, app.state.cutoffs),
+        risk_level=level,
         score=score,
-        reasons=[],
+        reasons=reasons_for_scan(app.state.model, scaled, level),
         placeholder=False,
     )

@@ -5,6 +5,7 @@ from typing import Any
 import warnings
 
 import joblib
+from features.explain import tree_explainer
 from features.hostname import FEATURE_NAMES, extract_features
 
 # The training code saves both files here (see ml/README.md). They are shared
@@ -23,13 +24,16 @@ class ModelFileMissing(RuntimeError):
 
 
 class ModelFileWrong(RuntimeError):
-    """Start-up stops with this when the scaler expects the features in another order."""
+    """Start-up stops with this when a file is there but can't be used as it is."""
 
 
 @dataclass(frozen=True)
 class LoadedModel:
     scaler: Any
     model: Any
+    # Gives each kept feature's push on a link's score, for the reasons. Built once
+    # here, because building SHAP's tree explainer takes far longer than one scan.
+    explainer: Any
 
 
 def model_dir() -> Path:
@@ -55,15 +59,19 @@ def load_model(folder: Path) -> LoadedModel:
             f"Can't start: {paths[SCALER_FILE]} expects the features in a different order "
             f"({', '.join(names)}). Make it again with the training code in ml/."
         )
-    return LoadedModel(scaler=scaler, model=joblib.load(paths[MODEL_FILE]))
+    model = joblib.load(paths[MODEL_FILE])
+    try:
+        explainer = tree_explainer(model)
+    except ValueError as error:
+        raise ModelFileWrong(f"Can't start: {paths[MODEL_FILE]} is not the saved model's shape. {error}") from None
+    return LoadedModel(scaler=scaler, model=model, explainer=explainer)
 
 
-def phishing_score(loaded: LoadedModel, link: str) -> float:
-    """The model's phishing score, from 0 to 1, for a cleaned link.
+def scaled_features(loaded: LoadedModel, link: str) -> list[float]:
+    """A cleaned link's ten features, scaled like the training rows, in FEATURE_NAMES order.
 
-    It is worked out from the link's text alone, with the same shared extractor the
-    training code uses and the features in FEATURE_NAMES order. The model keeps the
-    final features itself, so all ten scaled values go in.
+    They are worked out from the link's text alone, with the same shared extractor the
+    training code uses.
     """
     features = extract_features(link)
     row = [[features[name] for name in FEATURE_NAMES]]
@@ -71,6 +79,22 @@ def phishing_score(loaded: LoadedModel, link: str) -> float:
         # A plain row has no column names, so scikit-learn warns on every check.
         # load_model has already checked that the scaler's order matches this row.
         warnings.filterwarnings("ignore", message="X does not have valid feature names")
-        scaled = loaded.scaler.transform(row)
+        return [float(value) for value in loaded.scaler.transform(row)[0]]
+
+
+def score_of(loaded: LoadedModel, scaled: list[float]) -> float:
+    """The model's phishing score, from 0 to 1, for one link's ten scaled features.
+
+    The model keeps the final features itself, so all ten scaled values go in.
+    """
     phishing = list(loaded.model.classes_).index(PHISHING)
-    return float(loaded.model.predict_proba(scaled)[0][phishing])
+    return float(loaded.model.predict_proba([scaled])[0][phishing])
+
+
+def phishing_score(loaded: LoadedModel, link: str) -> float:
+    """The model's phishing score, from 0 to 1, for a cleaned link.
+
+    /scan works out the scaled features once and reuses them for the reasons, so it
+    calls scaled_features and score_of itself. This is kept for the tests.
+    """
+    return score_of(loaded, scaled_features(loaded, link))

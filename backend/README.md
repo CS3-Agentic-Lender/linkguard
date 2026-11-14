@@ -23,7 +23,7 @@ At start-up the backend loads the risk-level cut-offs, the scaler and the model 
 | `ml/models/scaler.joblib` | the train/test split (see `ml/README.md`) |
 | `ml/models/model.joblib` | the final model training (see `ml/README.md`) |
 
-The scaler and the model are shared outside git, like the dataset. If any of the three files is missing, start-up stops with a message naming it, for example `Can't start: ...\ml\models\model.joblib is missing.` Start-up also stops if the scaler expects the ten features in a different order from the extractor's, or if `cutoffs.json` isn't exactly `{"lower": <number>, "upper": <number>}` with both between 0 and 1 and lower below upper. Set `LINKGUARD_MODEL_DIR` to load them from another folder.
+The scaler and the model are shared outside git, like the dataset. If any of the three files is missing, start-up stops with a message naming it, for example `Can't start: ...\ml\models\model.joblib is missing.` Start-up also stops if the scaler expects the ten features in a different order from the extractor's, if the model isn't the saved shape (a Pipeline that keeps the final features, then the model), or if `cutoffs.json` isn't exactly `{"lower": <number>, "upper": <number>}` with both between 0 and 1 and lower below upper. Set `LINKGUARD_MODEL_DIR` to load them from another folder.
 
 Each `/scan` call cleans the link, works out its ten hostname features with the shared extractor from `ml/features` (the same function the training code uses, never a copy), scales them, then asks the model for a phishing score. The features come from the link's text alone: the link is never opened or looked up. The score then becomes a risk level:
 
@@ -34,6 +34,10 @@ Each `/scan` call cleans the link, works out its ten hostname features with the 
 | `upper` or above | High risk |
 
 The cut-offs are read from `cutoffs.json`, never typed into the code, so changing the file and restarting the backend changes the levels with no code change.
+
+If the reasons for a risky link can't be worked out, the reply still carries its level and score, with `reasons: []`, and a warning is logged, so the user never loses their result over the reasons.
+
+For a Suspicious or High risk link, the reply also carries up to three plain reasons: the features that pushed this link's score up most, largest first, each as its sentence from `ml/features/reasons.py`. They are picked by the shared code in `ml/features/explain.py` (see `docs/adr/0004-explanation-method.md`), using SHAP's tree explainer, which is built once at start-up. A Safe link gets no reasons, and a risky link can get none when no single feature stood out. `shap` is pinned to the same version as in `ml/uv.lock`.
 
 The tests build a small scaler, model and cut-offs file of their own in a temporary folder, shaped like the real ones (a Pipeline that keeps the final features, then gradient boosting), so they never need the real files.
 
@@ -87,15 +91,13 @@ For example:
 
 ```json
 {
-  "url": "https://login.example/verify",
-  "risk_level": "Suspicious",
-  "score": 0.41,
-  "reasons": [],
+  "url": "https://a1b2c3d4e5.example",
+  "risk_level": "High risk",
+  "score": 0.9694765007417221,
+  "reasons": ["The website name contains a lot of numbers."],
   "placeholder": false
 }
 ```
-
-`reasons` stays empty until the reasons are added to the reply.
 
 ### Placeholder reply
 
