@@ -33,6 +33,6 @@ testpaths = ["tests"]
 # Puts backend/ on the import path, so `from app...` works whether pytest
 # runs from backend/ or from the repo root (`pytest backend/tests`).
 pythonpath = ["."]
-# Coverage prints on every run. `app` is named as a package rather than
-# a folder, so it resolves the same way from either directory.
-addopts = "--cov=app --cov-report=term-missing"
+# Coverage prints on every run, for the app and the timing-run script. Both are
+# named as packages rather than folders, so they resolve the same way from either directory.
+addopts = "--cov=app --cov=scripts --cov-report=term-missing"

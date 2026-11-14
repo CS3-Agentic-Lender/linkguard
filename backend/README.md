@@ -49,6 +49,20 @@ uv run pytest
 
 Or from the repo root: `uv run --project backend pytest backend/tests`.
 
+`tests/test_end_to_end.py` starts the backend for real with uvicorn on a free port on `127.0.0.1`, using the tests' own small model, and calls `/scan` over HTTP. It runs in CI with the other tests. Its opening comment lists which test covers each acceptance criterion of the risk-level story.
+
+### Timing run (not in CI)
+
+With the real model files in `ml/models/`, from `backend/`:
+
+```bash
+uv run python -m scripts.timing_run
+```
+
+It starts the backend, sends one warm-up scan, then times 100 `/scan` calls over HTTP: 20 sample links, 5 times each. It prints the median, the p95 (the time 95 of the 100 scans beat) and the slowest scan as a Markdown table, ready for the sprint folder. The run passes only when the p95 is under 2 seconds and every single scan is too. The sample links are only sent as text to the backend on `127.0.0.1`, never opened.
+
+The coverage figure for `scripts/` covers the summary, the pass rules and the shared server start-up (`scripts/local_server.py`, which the end-to-end tests use too). The loop in `run()` that times the real model isn't run in CI, so it is left out of the figure.
+
 ## `POST /scan`
 
 Send the pasted text as JSON:
