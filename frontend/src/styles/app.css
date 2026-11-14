@@ -266,10 +266,13 @@ h1 {
   margin: 0 0 var(--space-6);
 }
 
+/* The note's example link can't break between words. Letting it wrap keeps the page
+   inside a 320px screen at 200% text size, like the result card's link and reasons. */
 .dataset-note {
   padding: var(--space-3) var(--space-4);
   border-left: 4px solid var(--color-border);
   background: var(--color-surface);
+  overflow-wrap: anywhere;
 }
 
 .chart {
@@ -290,10 +293,13 @@ h1 {
   margin: 0 0 var(--space-4);
 }
 
-/* Name and value on one line, the bar underneath, so it reads the same at any width. */
+/* Name and value on one line, the bar underneath. When the two don't fit side by side
+   (320px wide at 200% text), the value drops under the name instead of pushing the
+   row past the edge of the screen. */
 .bar-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   gap: var(--space-1) var(--space-3);
   margin-bottom: var(--space-4);
 }
@@ -312,7 +318,7 @@ h1 {
 }
 
 .bar-track {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   display: block;
   height: var(--space-6);
   border-radius: var(--radius-sm);
