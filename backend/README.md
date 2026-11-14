@@ -59,7 +59,9 @@ With the real model files in `ml/models/`, from `backend/`:
 uv run python -m scripts.timing_run
 ```
 
-It starts the backend, sends one warm-up scan, then times 100 `/scan` calls over HTTP: 20 sample links, 5 times each. It prints the median, the p95 (the time 95 of the 100 scans beat) and the slowest scan as a Markdown table, ready for the sprint folder. The p95 must be under 2 seconds. The sample links are only handled as text, never opened.
+It starts the backend, sends one warm-up scan, then times 100 `/scan` calls over HTTP: 20 sample links, 5 times each. It prints the median, the p95 (the time 95 of the 100 scans beat) and the slowest scan as a Markdown table, ready for the sprint folder. The run passes only when the p95 is under 2 seconds and every single scan is too. The sample links are only sent as text to the backend on `127.0.0.1`, never opened.
+
+The coverage figure for `scripts/` covers the summary, the pass rules and the shared server start-up (`scripts/local_server.py`, which the end-to-end tests use too). The loop in `run()` that times the real model isn't run in CI, so it is left out of the figure.
 
 ## `POST /scan`
 

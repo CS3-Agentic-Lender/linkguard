@@ -10,18 +10,18 @@ Each acceptance criterion of the risk-level story has a named test:
    test_scores_at_and_either_side_of_each_cutoff
 3. the cut-offs come from the file: tests/test_risk.py,
    test_changing_the_file_changes_the_level_without_a_code_change
-4. under 2 seconds on a laptop with the real model: scripts/timing_run.py (not in CI)
+4. under 2 seconds on a laptop with the real model: scripts/timing_run.py (not in CI),
+   whose pass rule is tested in tests/test_timing_run.py
 """
 
-import socket
-import threading
-import time
+import json
 
 import httpx
 import pytest
-import uvicorn
 
 from app.main import app
+from app.risk import CUTOFFS_FILE
+from scripts.local_server import running_backend
 
 LEVELS = {"Safe", "Suspicious", "High risk"}
 
@@ -29,33 +29,18 @@ LEVELS = {"Safe", "Suspicious", "High risk"}
 # With the fixture model and the agreed cut-offs, the first is Safe and the second High risk.
 SAFE_LINK = "https://login.example/verify"
 HIGH_RISK_LINK = "https://paypa1-support-2024.example/verify"
-
-
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+REQUEST_TIMEOUT_SECONDS = 10
 
 
 @pytest.fixture
 def server(fixture_model_dir):
     """The backend running for real on 127.0.0.1, as uvicorn starts it."""
-    port = free_port()
-    running = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-    thread = threading.Thread(target=running.run, daemon=True)
-    thread.start()
-    deadline = time.monotonic() + 30
-    while not running.started:
-        if not thread.is_alive() or time.monotonic() > deadline:
-            raise RuntimeError("The backend did not start.")
-        time.sleep(0.05)
-    yield f"http://127.0.0.1:{port}"
-    running.should_exit = True
-    thread.join(timeout=10)
+    with running_backend(app) as base_url:
+        yield base_url
 
 
 def scan_over_http(server, link):
-    return httpx.post(f"{server}/scan", json={"url": link}, timeout=10)
+    return httpx.post(f"{server}/scan", json={"url": link}, timeout=REQUEST_TIMEOUT_SECONDS)
 
 
 @pytest.mark.parametrize(("link", "level"), [(SAFE_LINK, "Safe"), (HIGH_RISK_LINK, "High risk")])
@@ -70,6 +55,18 @@ def test_a_valid_link_gets_a_level_a_score_and_no_placeholder(server, link, leve
     assert reply["risk_level"] in LEVELS
     assert reply["risk_level"] == level
     assert isinstance(reply["score"], float)
+    assert 0 <= reply["score"] <= 1
+    assert reply["placeholder"] is False
+
+
+def test_a_suspicious_link_over_http(fixture_model_dir):
+    # The fixture model scores this link about 0.93, so these cut-offs make it Suspicious.
+    (fixture_model_dir / CUTOFFS_FILE).write_text(json.dumps({"lower": 0.5, "upper": 0.95}), encoding="utf-8")
+
+    with running_backend(app) as server:
+        reply = scan_over_http(server, HIGH_RISK_LINK).json()
+
+    assert reply["risk_level"] == "Suspicious"
     assert 0 <= reply["score"] <= 1
     assert reply["placeholder"] is False
 
