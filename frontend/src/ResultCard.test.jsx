@@ -208,3 +208,80 @@ describe("reasons on the result card", () => {
     expect(container.querySelector("a, [href]")).toBeNull();
   });
 });
+
+describe("phishing score on the result card", () => {
+  const SCORE_REASONS = ["The link imitates a well-known brand.", "The address is unusually long."];
+
+  it.each(LEVELS)("shows the score as a whole percentage labelled Phishing score with %s", (word) => {
+    render(<ResultCard reply={reply({ risk_level: word, score: 0.5 })} />);
+
+    expect(screen.getByText("Phishing score: 50%")).toBeInTheDocument();
+  });
+
+  it("rounds a score of 0.229 to 23%", () => {
+    render(<ResultCard reply={reply({ risk_level: "Safe", score: 0.229 })} />);
+
+    expect(screen.getByText("Phishing score: 23%")).toBeInTheDocument();
+  });
+
+  it.each([
+    [0, "0%"],
+    [0.004, "0%"],
+    [0.005, "1%"],
+    [0.994, "99%"],
+    [1, "100%"],
+  ])("shows a score of %s as %s", (score, shown) => {
+    render(<ResultCard reply={reply({ risk_level: "Suspicious", score })} />);
+
+    expect(screen.getByText(`Phishing score: ${shown}`)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["is null", null],
+    ["is missing", undefined],
+    ["is not a number", "0.5"],
+    ["is not a real number", Number.NaN],
+    ["is below 0", -0.1],
+    ["is above 1", 1.5],
+  ])("shows no percentage when the score %s", (_, score) => {
+    render(<ResultCard reply={reply({ risk_level: "High risk", score })} />);
+
+    expect(screen.queryByText(/Phishing score/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["the placeholder message", { placeholder: true, score: 0.5 }],
+    ["the failure message", { risk_level: "Unknown", score: 0.5 }],
+  ])("never shows a score with %s", (_, fields) => {
+    render(<ResultCard reply={reply(fields)} />);
+
+    expect(screen.queryByText(/Phishing score/)).not.toBeInTheDocument();
+  });
+
+  it("never calls the score confidence", () => {
+    const { container } = render(<ResultCard reply={reply({ risk_level: "Safe", score: 0.083 })} />);
+
+    expect(container.textContent).not.toMatch(/confiden/i);
+  });
+
+  it("puts the score straight under the risk level, before the reasons and the checked link", () => {
+    const { container } = render(
+      <ResultCard reply={reply({ risk_level: "High risk", score: 0.912, reasons: SCORE_REASONS })} />,
+    );
+    const order = [...container.firstElementChild.children].map((child) => child.className);
+
+    expect(order).toEqual(["result-card__level", "result-card__score", "result-card__reasons", "result-card__link"]);
+  });
+
+  it("is plain text after the risk level, so a screen reader reads it in that order", () => {
+    const { container } = render(<ResultCard reply={reply({ risk_level: "Safe", score: 0.083 })} />);
+    const heading = screen.getByRole("heading", { name: "Safe" });
+    const score = screen.getByText("Phishing score: 8%");
+
+    expect(score.tagName).toBe("P");
+    expect(score).not.toHaveAttribute("aria-hidden");
+    expect(heading.compareDocumentPosition(score) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector(".result-card__score svg")).toBeNull();
+  });
+});

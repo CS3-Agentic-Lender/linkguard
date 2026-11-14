@@ -89,6 +89,18 @@ function readableReasons(reasons) {
 }
 
 /**
+ * The reply's phishing score as a whole percentage, such as 0.229 as "23%", or
+ * null when there is nothing trustworthy to show: no score, or one that is not
+ * a real number from 0 to 1. Showing nothing is better than showing a wrong number.
+ */
+function scorePercent(score) {
+  if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 1) {
+    return null;
+  }
+  return `${Math.round(score * 100)}%`;
+}
+
+/**
  * Up to three reasons as a list, named by its heading, or the general sentence
  * when there are none. The heading sits one level below the risk level, so
  * screen reader users can jump to it. The card sits in the form's live region,
@@ -122,6 +134,9 @@ function Reasons({ reasons }) {
  * guess. The checked link is shown as plain text only, never as a link.
  * Suspicious and High risk results show the reply's reasons under the level,
  * or the general sentence when there are none. A Safe result never shows reasons.
+ * When the reply has a score, it shows as "Phishing score: N%" in smaller text
+ * straight under the level. It is not called confidence: for a Safe link a low
+ * number would read as low confidence.
  */
 export default function ResultCard({ reply }) {
   if (reply?.placeholder === true) {
@@ -148,6 +163,7 @@ export default function ResultCard({ reply }) {
   }
 
   const isRisky = match.level !== "safe";
+  const percent = scorePercent(reply.score);
 
   return (
     <div className="result-card" data-level={match.level}>
@@ -155,6 +171,7 @@ export default function ResultCard({ reply }) {
         <Icon name={match.icon} />
         <span>{reply.risk_level}</span>
       </h2>
+      {percent && <p className="result-card__score">Phishing score: {percent}</p>}
       {isRisky && <Reasons reasons={readableReasons(reply.reasons)} />}
       {reply.url && (
         <p className="result-card__link">
