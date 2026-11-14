@@ -35,6 +35,8 @@ Each `/scan` call cleans the link, works out its ten hostname features with the 
 
 The cut-offs are read from `cutoffs.json`, never typed into the code, so changing the file and restarting the backend changes the levels with no code change.
 
+If the reasons for a risky link can't be worked out, the reply still carries its level and score, with `reasons: []`, and a warning is logged, so the user never loses their result over the reasons.
+
 For a Suspicious or High risk link, the reply also carries up to three plain reasons: the features that pushed this link's score up most, largest first, each as its sentence from `ml/features/reasons.py`. They are picked by the shared code in `ml/features/explain.py` (see `docs/adr/0004-explanation-method.md`), using SHAP's tree explainer, which is built once at start-up. A Safe link gets no reasons, and a risky link can get none when no single feature stood out. `shap` is pinned to the same version as in `ml/uv.lock`.
 
 The tests build a small scaler, model and cut-offs file of their own in a temporary folder, shaped like the real ones (a Pipeline that keeps the final features, then gradient boosting), so they never need the real files.
@@ -75,9 +77,9 @@ For example:
 
 ```json
 {
-  "url": "https://login.example/verify",
+  "url": "https://a1b2c3d4e5.example",
   "risk_level": "High risk",
-  "score": 0.97,
+  "score": 0.9694765007417221,
   "reasons": ["The website name contains a lot of numbers."],
   "placeholder": false
 }

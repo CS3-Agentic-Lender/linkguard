@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from features.explain import MAX_REASONS
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -33,7 +34,7 @@ class ScanResponse(BaseModel):
     url: str
     risk_level: RiskLevel | None
     score: float | None = Field(ge=0, le=1)
-    reasons: list[str] = Field(max_length=3)
+    reasons: list[str] = Field(max_length=MAX_REASONS)
     placeholder: bool
 
 

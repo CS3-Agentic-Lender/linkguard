@@ -92,5 +92,9 @@ def score_of(loaded: LoadedModel, scaled: list[float]) -> float:
 
 
 def phishing_score(loaded: LoadedModel, link: str) -> float:
-    """The model's phishing score, from 0 to 1, for a cleaned link."""
+    """The model's phishing score, from 0 to 1, for a cleaned link.
+
+    /scan works out the scaled features once and reuses them for the reasons, so it
+    calls scaled_features and score_of itself. This is kept for the tests.
+    """
     return score_of(loaded, scaled_features(loaded, link))

@@ -1,11 +1,12 @@
 import dataclasses
 import json
+import logging
 import time
 
 import joblib
 import pytest
 from fastapi.testclient import TestClient
-from features.explain import reasons_for_link
+from features.explain import MAX_REASONS, reasons_for_link
 from features.hostname import FEATURE_NAMES
 from features.reasons import REASON_SENTENCES, reason_for
 from sklearn.linear_model import LogisticRegression
@@ -28,6 +29,9 @@ LINKS = [
     "https://login-verify-account.example.com.secure-check.example/pay",
     "https://shop.example.net/basket",
 ]
+
+# The reasons story's limit for a scan with reasons.
+LIMIT_SECONDS = 2
 
 # Words that must never reach the page (the reasons story, criterion 3).
 TECHNICAL_WORDS = ("feature", "shap", "probability", "model", *(name.lower() for name in FEATURE_NAMES))
@@ -82,6 +86,22 @@ def test_a_suspicious_link_gets_its_reasons_too(fixture_model_dir):
         assert reply["reasons"] != []
 
 
+def test_a_scan_keeps_its_score_when_the_reasons_fail(client, caplog):
+    def broken_explainer(values):
+        return [1.0]  # one push for eight kept features, so the shared code raises ValueError
+
+    client.app.state.model = dataclasses.replace(client.app.state.model, explainer=broken_explainer)
+    with caplog.at_level(logging.WARNING, logger="app.reasons"):
+        response = client.post("/scan", json={"url": RISKY_LINK})
+
+    assert response.status_code == 200
+    reply = response.json()
+    assert reply["risk_level"] == "High risk"
+    assert 0 <= reply["score"] <= 1
+    assert reply["reasons"] == []
+    assert "Couldn't work out the reasons for a High risk link" in caplog.text
+
+
 def test_a_risky_link_can_have_no_reasons(client):
     # Then the page shows its general sentence instead (the reasons story's PO call).
     reply = scan(client, RISKY_WITHOUT_REASONS)
@@ -94,7 +114,7 @@ def test_a_risky_link_can_have_no_reasons(client):
 def test_reasons_are_up_to_three_plain_sentences(client, link):
     reply = scan(client, link)
 
-    assert len(reply["reasons"]) <= 3
+    assert len(reply["reasons"]) <= MAX_REASONS
     assert len(set(reply["reasons"])) == len(reply["reasons"])
     for sentence in reply["reasons"]:
         assert sentence in REASON_SENTENCES.values()
@@ -127,7 +147,7 @@ def test_a_scan_with_reasons_takes_under_two_seconds(client):
         slowest = max(slowest, time.perf_counter() - started)
 
     assert reply["reasons"] != []
-    assert slowest < 2
+    assert slowest < LIMIT_SECONDS
 
 
 def test_startup_stops_if_the_model_is_not_the_saved_shape(fixture_model_dir):
