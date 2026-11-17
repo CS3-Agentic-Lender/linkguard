@@ -1,7 +1,8 @@
 """Collect recent phishing links for the outside test set, without opening any of them.
 
-The links come from the OpenPhish community feed (openphish.com/feed.txt), a free text file
-with one recent phishing link per line. The script downloads that one file and nothing else.
+The links come from the OpenPhish community feed, a free text file with one recent phishing
+link per line. openphish.com/feed.txt redirects to OpenPhish's own GitHub repository, so the
+script asks that repository's file directly. The script downloads that one file and nothing else.
 download_feed() refuses every other address, a redirect to another host is refused too, and no
 link in the feed is ever requested.
 
@@ -35,8 +36,10 @@ ML_DIR = Path(__file__).resolve().parent.parent
 PHIUSIIL_PATH = ML_DIR / "data" / RAW_CSV_NAME
 OUTPUT_PATH = ML_DIR / "data" / "outside" / "phishing_links.csv"
 
-FEED_HOST = "openphish.com"
-FEED_URL = f"https://{FEED_HOST}/feed.txt"
+FEED_HOST = "raw.githubusercontent.com"
+# Anyone can host a file on this host, so only OpenPhish's own repository is allowed.
+FEED_REPO_PATH = "/openphish/public_feed/"
+FEED_URL = f"https://{FEED_HOST}{FEED_REPO_PATH}refs/heads/main/feed.txt"
 FEED_NAME = "OpenPhish community feed"
 
 PHISHING = 1
@@ -46,11 +49,12 @@ TIMEOUT_SECONDS = 60
 
 
 class _RefuseOtherHosts(urllib.request.HTTPRedirectHandler):
-    """Follows a redirect only on the feed's own host, so no phishing site gets a request."""
+    """Follows a redirect only within OpenPhish's repository, so no phishing site gets a request."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if urlsplit(newurl).hostname != FEED_HOST:
-            raise CollectionError(f"Refusing a redirect to {newurl}: only {FEED_HOST} may be contacted.")
+        parts = urlsplit(newurl)
+        if parts.scheme != "https" or parts.hostname != FEED_HOST or not parts.path.startswith(FEED_REPO_PATH):
+            raise CollectionError(f"Refusing a redirect to {newurl}: only the OpenPhish feed may be downloaded.")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 

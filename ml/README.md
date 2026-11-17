@@ -533,11 +533,11 @@ The phishing half of the outside test set comes from the [OpenPhish](https://ope
 uv run python -m outside.phishing_links
 ```
 
-1. It downloads `https://openphish.com/feed.txt` and keeps every line that is an `http` or `https` link.
+1. It downloads the feed file from OpenPhish's own GitHub repository, which is where `openphish.com/feed.txt` redirects. It keeps every line that is an `http` or `https` link.
 2. It removes links already in PhiUSIIL and duplicates, compared the same way as the legitimate links (`ml/outside/normalise.py`).
 3. It stops without saving if fewer than 200 links are left. Otherwise it writes `ml/data/outside/phishing_links.csv` with `url`, `label` (1 = phishing), `source` (the feed name) and `collected_on`.
 
-No link in the feed is ever requested. `download_feed()` refuses every address but the feed file, and it refuses a redirect to any other host. A test records every address asked for and checks the feed is the only one. The feed changes about every 12 hours, so a run that stops short can be tried again later.
+No link in the feed is ever requested. `download_feed()` refuses every address but the feed file, and it refuses a redirect to anywhere outside OpenPhish's repository. A test records every address asked for and checks the feed is the only one. The feed changes about every 12 hours, so a run that stops short can be tried again later.
 
 The links are live phishing links. Never open, click or preview one. The CSV is in `ml/data/`, so git ignores it, and `--out` must stay inside `ml/data/`. Attach it to the outside test set story in Jira instead of committing it.
 

@@ -15,6 +15,7 @@ from outside import phishing_links
 from outside.normalise import normalise
 from outside.phishing_links import (
     FEED_HOST,
+    FEED_REPO_PATH,
     FEED_NAME,
     FEED_URL,
     MIN_LINKS,
@@ -148,12 +149,19 @@ def test_a_redirect_away_from_the_feed_host_is_refused():
         phishing_links._RefuseOtherHosts().redirect_request(request, None, 302, "Found", {}, "http://evil.top/")
 
 
-def test_a_redirect_on_the_feed_host_is_followed():
+def test_a_redirect_to_someone_elses_file_on_the_same_host_is_refused():
     request = phishing_links.urllib.request.Request(FEED_URL)
-    moved = phishing_links._RefuseOtherHosts().redirect_request(
-        request, None, 301, "Moved", {}, f"https://{FEED_HOST}/feed.txt"
-    )
-    assert moved.full_url == f"https://{FEED_HOST}/feed.txt"
+    with pytest.raises(CollectionError, match="Refusing a redirect"):
+        phishing_links._RefuseOtherHosts().redirect_request(
+            request, None, 302, "Found", {}, f"https://{FEED_HOST}/someone/else/main/page.html"
+        )
+
+
+def test_a_redirect_within_the_openphish_repository_is_followed():
+    request = phishing_links.urllib.request.Request(FEED_URL)
+    moved_to = f"https://{FEED_HOST}{FEED_REPO_PATH}main/feed.txt"
+    moved = phishing_links._RefuseOtherHosts().redirect_request(request, None, 301, "Moved", {}, moved_to)
+    assert moved.full_url == moved_to
 
 
 def test_download_feed_tries_again_then_gives_up(monkeypatch, no_waiting):
