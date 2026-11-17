@@ -84,10 +84,14 @@ def test_class_balance_has_the_count_and_share_of_each_label():
 @pytest.mark.parametrize(
     ("phishing", "legitimate", "verdict"),
     [
-        (50, 50, "so the dataset is balanced."),
-        (43, 57, "so the dataset is mildly imbalanced."),
-        (10, 90, "so the dataset is heavily imbalanced."),
-        (90, 10, "so the dataset is heavily imbalanced."),
+        (50, 50, "so there are about as many of each."),
+        (55, 45, "so there are about as many of each."),
+        (43, 57, "so there are somewhat more legitimate links than phishing ones."),
+        (57, 43, "so there are somewhat more phishing links than legitimate ones."),
+        (80, 20, "so there are somewhat more phishing links than legitimate ones."),
+        (19, 81, "so there are far more legitimate links than phishing ones."),
+        (10, 90, "so there are far more legitimate links than phishing ones."),
+        (90, 10, "so there are far more phishing links than legitimate ones."),
     ],
 )
 def test_class_balance_takeaway_says_whether_the_dataset_is_balanced(phishing, legitimate, verdict):

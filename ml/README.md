@@ -268,7 +268,7 @@ The phishing charts page reads a small summary file of counts and percentages, n
 uv run python -m charts.summary
 ```
 
-It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says whether the dataset is balanced, using the share of the smaller class: 45% or more is balanced, 20% to 45% is mildly imbalanced, and under 20% is heavily imbalanced. Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says in plain words whether there are about as many of each, using the share of the smaller class: at 45% or more it says "there are about as many of each", from 20% to under 45% "there are somewhat more legitimate links than phishing ones" (naming whichever group is bigger), and under 20% "there are far more … than …". Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
 
 | Field | Holds |
 |---|---|
