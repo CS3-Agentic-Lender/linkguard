@@ -19,6 +19,8 @@ def test_replies_with_the_fixed_shape(client):
     assert reply["url"] == LINK
     assert reply["risk_level"] in {"Safe", "Suspicious", "High risk"}
     assert 0 <= reply["score"] <= 1
+    # This link is Safe with the fixture model, so it has no reasons.
+    assert reply["risk_level"] == "Safe"
     assert reply["reasons"] == []
     assert reply["placeholder"] is False
 
