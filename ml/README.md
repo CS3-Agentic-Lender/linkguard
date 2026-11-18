@@ -507,6 +507,24 @@ uv run python -m evaluation.charts
 | `ml/reports/evaluation_confusion_matrix.png` | The test confusion matrix: actual class down the side, predicted along the top, both named "phishing" and "legitimate", a count in each cell and the phishing recall in the title. |
 | `ml/reports/evaluation_roc_curve.png` | The test ROC curve (phishing recall against false alarm rate), with the ROC-AUC written on it. |
 
+## Scoring the model on the outside test set
+
+The outside test set is links collected outside PhiUSIIL: legitimate links with paths and query strings, and recent phishing links from a public feed. Its two CSVs live in `ml/data/outside/`, which git ignores, because the phishing file holds live phishing links. Never open any of them.
+
+`ml/evaluation/outside.py` scores the saved chosen model on those links, next to its PhiUSIIL test scores. Run it from `ml/` after the evaluation above:
+
+```bash
+uv run python -m evaluation.outside
+```
+
+1. Each link goes through the same feature extractor the live app uses. It reads the link text only, so no link is opened and no network request is made. A link the extractor cannot read is left out and counted.
+2. The saved scaler and model score the links through the evaluation script's own `load_model`, `score` and `measures`, so there is no second copy of the scoring code.
+3. The PhiUSIIL side is read from `ml/reports/evaluation_results.json`. The test rows are not scored again.
+
+It prints a table of phishing recall, precision, F1, ROC-AUC, the false alarm rate and accuracy for both sets, with how many percentage points each is worse on the outside set. It writes `ml/reports/outside_results.json`, which holds numbers only and no links: the table, the confusion matrix, any drop of more than 10 points, and the false alarms and misses split by whether the link's host is also in PhiUSIIL.
+
+The model only reads the host name, so a link's path and query string do not change its score. The tests (`ml/tests/test_outside_evaluation.py`) use made-up links and fail if anything opens a network connection.
+
 ## Source and licence
 
 | | |
