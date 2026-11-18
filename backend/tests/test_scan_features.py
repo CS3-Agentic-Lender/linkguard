@@ -1,9 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor
 import warnings
 
+from fastapi.testclient import TestClient
 import pytest
 from features.hostname import FEATURE_NAMES, extract_features
 
-from app.model import PHISHING, phishing_score
+from app.main import app
+from app.model import COLUMN_NAME_WARNING, PHISHING, phishing_score, silence_column_name_warning
+
+# Scans sent side by side, as FastAPI's thread pool runs them.
+SCANS_AT_ONCE = 20
 
 # Made-up links on reserved names and documentation addresses, only ever handled
 # as text. Each pair is the text a person pastes, then the link as the dataset
@@ -77,9 +83,42 @@ def test_score_is_the_models_phishing_probability(client):
     assert phishing_score(loaded, link) == pytest.approx(expected[phishing])
 
 
-def test_scoring_does_not_warn_about_feature_names(client):
+def test_scoring_does_not_warn_about_feature_names(fixture_model_dir):
+    # The app starts inside the recording block, as the running backend does: the
+    # warning is silenced once at start-up, not around each scan.
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        client.post("/scan", json={"url": "https://shop.example.net/basket"})
+        with TestClient(app) as client:
+            client.post("/scan", json={"url": "https://shop.example.net/basket"})
 
+    assert [str(warning.message) for warning in caught if "feature names" in str(warning.message)] == []
+
+
+def test_only_the_column_name_warning_is_silenced():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        silence_column_name_warning()
+        warnings.warn(f"{COLUMN_NAME_WARNING}, but StandardScaler was fitted with feature names", UserWarning)
+        warnings.warn("Some other warning", UserWarning)
+
+    assert [str(warning.message) for warning in caught] == ["Some other warning"]
+
+
+def test_scans_at_the_same_time_give_no_warning_and_the_same_scores(fixture_model_dir):
+    links = [link for _, link in LINKS] * 3
+    links = links[:SCANS_AT_ONCE]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with TestClient(app) as client:
+
+            def score(link):
+                return client.post("/scan", json={"url": link}).json()["score"]
+
+            alone = {link: score(link) for link in set(links)}
+            with ThreadPoolExecutor(max_workers=SCANS_AT_ONCE) as pool:
+                together = list(pool.map(score, links))
+
+    assert len(together) == SCANS_AT_ONCE
+    assert together == [alone[link] for link in links]
     assert [str(warning.message) for warning in caught if "feature names" in str(warning.message)] == []
