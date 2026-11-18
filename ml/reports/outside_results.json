@@ -1,0 +1,69 @@
+{
+  "label": "Outside test set: links collected outside PhiUSIIL, scored once by the saved chosen model.",
+  "model": "model.joblib",
+  "positive_class": "phishing (label 1)",
+  "decision": "the model's own predict(): phishing when its phishing score is above 0.5",
+  "outside_rows": 520,
+  "outside_class_counts": {
+    "phishing": 300,
+    "legitimate": 220
+  },
+  "unreadable_links": 0,
+  "outside": {
+    "recall": 0.87,
+    "precision": 0.966667,
+    "f1": 0.915789,
+    "roc_auc": 0.962152,
+    "false_alarm_rate": 0.040909,
+    "accuracy": 0.907692
+  },
+  "phiusiil_test": {
+    "recall": 0.566405,
+    "precision": 0.88947,
+    "f1": 0.692093,
+    "roc_auc": 0.823117,
+    "false_alarm_rate": 0.052464,
+    "accuracy": 0.784769
+  },
+  "drop_points": {
+    "recall": -30.36,
+    "precision": -7.72,
+    "f1": -22.37,
+    "roc_auc": -13.9,
+    "false_alarm_rate": -1.16,
+    "accuracy": -12.29
+  },
+  "big_drops": [],
+  "confusion_matrix": {
+    "rows": "actual",
+    "columns": "predicted",
+    "labels": [
+      "phishing",
+      "legitimate"
+    ],
+    "counts": [
+      [
+        261,
+        39
+      ],
+      [
+        9,
+        211
+      ]
+    ]
+  },
+  "mistakes_by_host": {
+    "host_in_phiusiil": {
+      "legitimate": 64,
+      "false_alarms": 4,
+      "phishing": 0,
+      "missed": 0
+    },
+    "new_host": {
+      "legitimate": 156,
+      "false_alarms": 5,
+      "phishing": 300,
+      "missed": 39
+    }
+  }
+}
