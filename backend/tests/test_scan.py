@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from app.links import EMPTY_LINK, INVALID_LINK, LONG_LINK, clean_link
+from app.links import EMPTY_LINK, INVALID_LINK, LONG_LINK, MAX_PASTE_LENGTH, clean_link
 
 
 # Made-up link on a reserved name. It is only ever handled as text.
@@ -153,3 +153,26 @@ def test_a_link_near_the_limit_with_wrappers_around_it_is_still_cleaned(client, 
 
     assert clean_link(wrapped).url == exactly_2000
     assert client.post("/scan", json={"url": wrapped}).status_code == 200
+
+
+def test_a_paste_at_the_paste_limit_is_cleaned_and_one_character_over_is_turned_down(
+    client, no_network
+):
+    prefix = "https://example.com/"
+    link_2000 = prefix + "x" * (2000 - len(prefix))
+    exactly_4000 = "<" * 1000 + link_2000 + ">" * 1000
+    assert len(exactly_4000) == MAX_PASTE_LENGTH
+
+    assert clean_link(exactly_4000).url == link_2000
+    assert client.post("/scan", json={"url": exactly_4000}).status_code == 200
+
+    # The link inside is short enough on its own, so only the paste limit turns it down.
+    link_1999 = link_2000[:-1]
+    over_by_one = "<" * 1001 + link_1999 + ">" * 1001
+    assert len(over_by_one) == MAX_PASTE_LENGTH + 1
+
+    with pytest.raises(ValueError, match=re.escape(LONG_LINK)):
+        clean_link(over_by_one)
+    response = client.post("/scan", json={"url": over_by_one})
+    assert response.status_code == 400
+    assert response.json() == {"error": LONG_LINK}
