@@ -52,9 +52,15 @@ def load_model(folder: Path) -> LoadedModel:
             )
     scaler = joblib.load(paths[SCALER_FILE])
     # The training code fits the scaler on a table, so it remembers the column order.
-    # Each check sends the features in FEATURE_NAMES order, so the two must match.
+    # Each check sends the features in FEATURE_NAMES order, so recorded names are
+    # required and must match that order.
     names = getattr(scaler, "feature_names_in_", None)
-    if names is not None and tuple(names) != FEATURE_NAMES:
+    if names is None:
+        raise ModelFileWrong(
+            f"Can't start: {paths[SCALER_FILE]} has no recorded feature order. "
+            "Make it again with the training code in ml/."
+        )
+    if tuple(names) != FEATURE_NAMES:
         raise ModelFileWrong(
             f"Can't start: {paths[SCALER_FILE]} expects the features in a different order "
             f"({', '.join(names)}). Make it again with the training code in ml/."

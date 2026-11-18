@@ -1,6 +1,7 @@
 import joblib
 import pytest
 from fastapi.testclient import TestClient
+from features.hostname import FEATURE_NAMES
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -90,6 +91,18 @@ def test_startup_stops_if_the_scaler_expects_another_feature_order(fixture_model
             pass
 
     assert str(fixture_model_dir / SCALER_FILE) in str(stopped.value)
+
+
+def test_startup_stops_if_the_scaler_has_no_recorded_feature_order(fixture_model_dir):
+    scaler = StandardScaler().fit(np.zeros((2, len(FEATURE_NAMES))))
+    joblib.dump(scaler, fixture_model_dir / SCALER_FILE)
+
+    with pytest.raises(ModelFileWrong, match="no recorded feature order") as stopped:
+        with TestClient(app):
+            pass
+
+    assert str(fixture_model_dir / SCALER_FILE) in str(stopped.value)
+    assert "Make it again with the training code in ml/." in str(stopped.value)
 
 
 def test_default_folder_is_ml_models_as_the_ml_readme_says(monkeypatch):
