@@ -521,7 +521,7 @@ uv run python -m evaluation.outside
 2. The saved scaler and model score the links through the evaluation script's own `load_model`, `score` and `measures`, so there is no second copy of the scoring code.
 3. The PhiUSIIL side is read from `ml/reports/evaluation_results.json`. The test rows are not scored again.
 
-It prints a table of phishing recall, precision, F1, ROC-AUC, the false alarm rate and accuracy for both sets, with how many percentage points each is worse on the outside set. It writes `ml/reports/outside_results.json`, which holds numbers only and no links: the table, the confusion matrix, any drop of more than 10 points, and the false alarms and misses split by whether the link's host is also in PhiUSIIL.
+It prints a table of phishing recall, precision, F1, ROC-AUC, the false alarm rate and accuracy for both sets, with the change in percentage points (+ means better on the outside set). These use the model's own 0.5. A second table shows what users see: how many phishing and legitimate links land in Safe, Suspicious and High risk, using the two cut-offs the backend reads from `ml/models/cutoffs.json`. It writes `ml/reports/outside_results.json`, which holds numbers only and no links: both tables, the confusion matrix, any drop of more than 10 points, and the false alarms and misses split by whether the link's host is also in PhiUSIIL.
 
 The model only reads the host name, so a link's path and query string do not change its score. The tests (`ml/tests/test_outside_evaluation.py`) use made-up links and fail if anything opens a network connection.
 

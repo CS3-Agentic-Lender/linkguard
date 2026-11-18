@@ -65,5 +65,21 @@
       "phishing": 300,
       "missed": 39
     }
+  },
+  "risk_levels": {
+    "cutoffs": {
+      "lower": 0.2,
+      "upper": 0.6
+    },
+    "phishing": {
+      "Safe": 4,
+      "Suspicious": 42,
+      "High risk": 254
+    },
+    "legitimate": {
+      "Safe": 61,
+      "Suspicious": 156,
+      "High risk": 3
+    }
   }
 }
