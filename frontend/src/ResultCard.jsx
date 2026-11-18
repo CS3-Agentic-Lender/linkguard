@@ -59,6 +59,17 @@ const LEVELS = {
   "High risk": { level: "high", icon: "octagon-alert" },
 };
 
+/**
+ * The card's class for a reply ("safe", "suspicious" or "high"), or null for a
+ * placeholder, a failure or anything else that isn't one of the three levels.
+ */
+export function levelOf(reply) {
+  if (reply?.placeholder === true) {
+    return null;
+  }
+  return Object.hasOwn(LEVELS, reply?.risk_level ?? "") ? LEVELS[reply.risk_level].level : null;
+}
+
 function Icon({ name }) {
   return (
     <svg
