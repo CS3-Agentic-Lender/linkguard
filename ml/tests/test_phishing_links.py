@@ -25,6 +25,7 @@ from outside.phishing_links import (
     collect_phishing_links,
     download_feed,
     read_feed,
+    site,
 )
 
 ML_DIR = Path(__file__).resolve().parent.parent
@@ -267,3 +268,34 @@ def test_main_stops_when_the_dataset_is_missing(monkeypatch, tmp_path, capsys):
 def test_main_refuses_to_save_outside_the_ignored_data_folder(tmp_path, capsys):
     assert phishing_links.main(["--out", str(tmp_path / "phishing_links.csv")]) == 1
     assert "inside" in capsys.readouterr().err
+
+
+# Keeping one site from filling the set
+
+
+def test_site_is_the_last_two_parts_of_the_host():
+    assert site("https://abc123.pages.dev/login") == "pages.dev"
+    assert site("http://Login.Example.top/x") == "example.top"
+    assert site("http://182.20.4.9/x") == "4.9"
+
+
+def test_per_site_keeps_at_most_that_many_links_from_one_site():
+    links = [f"https://x{n}.pages.dev/login" for n in range(5)] + ["http://a.top/x", "http://b.top/y"]
+    kept = collect_phishing_links(links, phiusiil_urls=[], collected_on=TODAY, per_site=2)
+    assert list(kept["url"]) == ["https://x0.pages.dev/login", "https://x1.pages.dev/login", "http://a.top/x", "http://b.top/y"]
+
+
+def test_without_per_site_every_new_link_is_kept():
+    links = [f"https://x{n}.pages.dev/login" for n in range(5)]
+    assert len(collect_phishing_links(links, phiusiil_urls=[], collected_on=TODAY)) == 5
+
+
+def test_a_repeat_does_not_use_up_a_sites_place():
+    links = ["https://x0.pages.dev/a", "https://www.x0.pages.dev/a/", "https://x1.pages.dev/b"]
+    kept = collect_phishing_links(links, phiusiil_urls=[], collected_on=TODAY, per_site=2)
+    assert list(kept["url"]) == ["https://x0.pages.dev/a", "https://x1.pages.dev/b"]
+
+
+def test_main_refuses_a_per_site_below_one(capsys):
+    assert phishing_links.main(["--per-site", "0"]) == 1
+    assert "--per-site" in capsys.readouterr().err
