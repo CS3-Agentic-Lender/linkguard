@@ -38,3 +38,15 @@ export const ALREADY_CLICKED = [
   { situation: "It was on a work device", line: "Tell your IT department." },
 ];
 
+// The help page: the Irish reporting routes.
+export const HELP_LINK_TEXT = "Where to get help";
+export const HELP_ROUTES = [
+  { situation: "Money was taken, or you shared bank details", where: "Your bank, straight away" },
+  { situation: "Any scam email, text or call, whether it worked or not", where: "Your local Garda station" },
+  {
+    situation: "The scam happened on a website or marketplace",
+    where: "That website's own reporting tool, as well as the Gardaí",
+  },
+  { situation: "A scam email", where: "Your email provider's \"report phishing\" option, if it has one" },
+  { situation: "Scam calls or texts that keep coming", where: "Your mobile provider. Ask them to block the number" },
+];
