@@ -1,13 +1,13 @@
-# Runs the tests on every PR into dev, so a broken change shows up red
-# before review. It runs again on every push to dev and main, so a break
-# from two PRs merged together, or from the release PR, shows up too.
+# Runs the tests on every PR into dev or main, so a broken change shows up
+# red before review, the release PR included. It runs again on every push to
+# dev and main, so a break from two PRs merged together shows up too.
 # Needs no secrets, no .env, no dataset and no model file: the tests build
 # their own small made-up data.
 name: Tests
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
   push:
     branches: [dev, main]
 
