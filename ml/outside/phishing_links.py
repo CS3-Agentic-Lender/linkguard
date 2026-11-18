@@ -7,7 +7,11 @@ download_feed() refuses every other address, a redirect to another host is refus
 link in the feed is ever requested.
 
 Links already in PhiUSIIL and repeats are removed, compared after normalise() (no scheme,
-leading www. or trailing slash). The feed changes about every 12 hours.
+leading www. or trailing slash, host in lowercase). The feed changes about every 12 hours.
+
+One free hosting site can fill most of the feed. --per-site keeps at most that many links per
+site (the last two parts of the host, such as pages.dev), so the set is less one-sided. It is
+off by default, which is how the 17 Nov 2026 set was collected.
 
 Writes ml/data/outside/phishing_links.csv with url, label (1 = phishing), source and
 collected_on. ml/data/ is ignored by git, so the file cannot be committed.
@@ -21,6 +25,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from datetime import date
 from pathlib import Path
@@ -78,17 +83,30 @@ def read_feed(text: str) -> list[str]:
     return links
 
 
+def site(link: str) -> str:
+    """The last two parts of the link's host, such as pages.dev for abc.pages.dev."""
+    host = (urlsplit(link).hostname or "").removesuffix(".")
+    return ".".join(host.split(".")[-2:])
+
+
 def collect_phishing_links(
-    feed_links: Iterable[str], *, phiusiil_urls: Iterable[str], collected_on: date
+    feed_links: Iterable[str], *, phiusiil_urls: Iterable[str], collected_on: date, per_site: int | None = None
 ) -> pd.DataFrame:
-    """The feed links that are not in PhiUSIIL, each once, labelled phishing."""
+    """The feed links that are not in PhiUSIIL, each once, labelled phishing.
+
+    With per_site, at most that many links are kept from any one site, in feed order.
+    """
     known = {normalise(url) for url in phiusiil_urls}
+    per_site_count: Counter[str] = Counter()
     rows = []
     for link in feed_links:
         key = normalise(link)
         if key in known:
             continue
+        if per_site is not None and per_site_count[site(link)] >= per_site:
+            continue
         known.add(key)
+        per_site_count[site(link)] += 1
         rows.append({"url": link, "label": PHISHING, "source": FEED_NAME, "collected_on": collected_on.isoformat()})
     return pd.DataFrame(rows, columns=["url", "label", "source", "collected_on"])
 
@@ -131,7 +149,11 @@ def download_feed(address: str = FEED_URL) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=OUTPUT_PATH)
+    parser.add_argument("--per-site", type=int, default=None, help="keep at most this many links per site")
     args = parser.parse_args(argv)
+    if args.per_site is not None and args.per_site < 1:
+        print("--per-site must be 1 or more.", file=sys.stderr)
+        return 1
 
     data_dir = ML_DIR / "data"
     if not args.out.resolve().is_relative_to(data_dir.resolve()):
@@ -144,7 +166,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         feed_links = read_feed(download_feed())
         phiusiil_urls = pd.read_csv(PHIUSIIL_PATH, usecols=["URL"], encoding="utf-8-sig")["URL"]
-        links = collect_phishing_links(feed_links, phiusiil_urls=phiusiil_urls, collected_on=date.today())
+        links = collect_phishing_links(
+            feed_links, phiusiil_urls=phiusiil_urls, collected_on=date.today(), per_site=args.per_site
+        )
         print(f"{FEED_NAME}: {len(feed_links)} links, {len(links)} new after removing PhiUSIIL links and repeats.")
         check_enough(links)
     except CollectionError as problem:
