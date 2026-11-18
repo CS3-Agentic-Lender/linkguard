@@ -54,5 +54,4 @@ uv run pytest -q
 The recorded run at the commit above passed **33 tests**, with **100% app
 statement coverage (66 statements)**. The backend, ml and secret checks on
 the referenced PR passed. The existing httpx dependency warning is separate
-work. This table must also be attached to the parent story, and its own PR
-must merge before this deliverable is marked Done.
+work.
