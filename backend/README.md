@@ -87,6 +87,8 @@ This is the one shape the page and the trained model both use, so the field name
 | `reasons` | Up to three plain-language reasons, empty for a Safe result or a placeholder reply |
 | `placeholder` | `false` now that the trained model is served |
 
+The backend checks these rules every time it builds a reply. A placeholder reply can't have a risk level, a score or reasons. A real reply must have a risk level and a score from 0 to 1. A Safe reply has no reasons. A reply that breaks a rule is never sent, so the page never gets one it can't show.
+
 For example:
 
 ```json
