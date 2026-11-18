@@ -93,6 +93,8 @@ Every PR into `dev` runs these checks. Each one shows a tick or a cross at the b
 | `ml` | Installs the ml code from its lock file and runs its tests. |
 | `frontend` | Installs the web app from its lock file, runs its tests and the colour contrast check, then builds it. |
 
+The `backend`, `ml` and `frontend` checks also run on every push to `dev` and `main`, so each merged PR and each release gets a test run of its own. You can see it in the repo's Actions tab under Tests.
+
 **Before a PR can merge into `dev`:** all four checks green, and one approval from a teammate. GitHub blocks the merge button until both are true.
 
 None of the checks needs a `.env` file, the dataset or a model file. The tests make their own small made-up data.
