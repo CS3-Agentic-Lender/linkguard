@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 
 from app.links import clean_link
-from app.model import load_model, model_dir, scaled_features, score_of
+from app.model import load_model, model_dir, scaled_features, score_of, silence_column_name_warning
 from app.reasons import reasons_for_scan
 from app.risk import RiskLevel, load_cutoffs, risk_level
 
@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
     # Load the cut-offs, the scaler and the model once, before the first /scan call,
     # and keep them for every call after. A missing file stops start-up and names it.
     # The cut-offs go first because they are quick to read and check.
+    silence_column_name_warning()
     app.state.cutoffs = load_cutoffs(model_dir())
     app.state.model = load_model(model_dir())
     yield
