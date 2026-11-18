@@ -35,3 +35,12 @@ def test_only_a_leading_www_is_removed():
 
 def test_two_ways_of_writing_one_link_match():
     assert normalise("https://www.bbc.com/news/") == normalise("http://bbc.com/news")
+
+
+def test_the_host_is_lowercased_so_two_spellings_match():
+    assert normalise("https://BBC.com/news") == normalise("https://bbc.com/news") == "bbc.com/news"
+    assert normalise("https://WWW.Shop.IE?x=1") == "shop.ie?x=1"
+
+
+def test_the_path_and_query_keep_their_case():
+    assert normalise("https://Shop.ie/Item/5?Colour=Red") == "shop.ie/Item/5?Colour=Red"
