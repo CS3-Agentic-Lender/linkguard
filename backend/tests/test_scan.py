@@ -1,5 +1,6 @@
 import re
 import socket
+import time
 
 import pytest
 
@@ -123,3 +124,32 @@ def test_length_limit_uses_the_cleaned_link(client, no_network):
     # The automatically added scheme counts toward the same final limit.
     assert client.post("/scan", json={"url": exactly_2000[8:]}).status_code == 200
     assert client.post("/scan", json={"url": exactly_2000[8:] + "x"}).json() == {"error": LONG_LINK}
+
+
+# How long a huge paste may take to be turned down. Before the early check, 600,000
+# characters of nested wrappers took 2.7 seconds on a laptop.
+QUICK_SECONDS = 0.5
+
+
+def test_a_huge_paste_of_nested_wrappers_is_turned_down_quickly(client, no_network):
+    huge = "<" * 500_000 + ">" * 500_000
+
+    started = time.perf_counter()
+    with pytest.raises(ValueError, match=re.escape(LONG_LINK)):
+        clean_link(huge)
+    assert time.perf_counter() - started < QUICK_SECONDS
+
+    started = time.perf_counter()
+    response = client.post("/scan", json={"url": huge})
+    assert time.perf_counter() - started < QUICK_SECONDS
+    assert response.status_code == 400
+    assert response.json() == {"error": LONG_LINK}
+
+
+def test_a_link_near_the_limit_with_wrappers_around_it_is_still_cleaned(client, no_network):
+    prefix = "https://example.com/"
+    exactly_2000 = prefix + "x" * (2000 - len(prefix))
+    wrapped = "  " + "<" * 20 + '"' + exactly_2000 + '"' + ">" * 20 + "  "
+
+    assert clean_link(wrapped).url == exactly_2000
+    assert client.post("/scan", json={"url": wrapped}).status_code == 200
