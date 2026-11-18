@@ -542,6 +542,24 @@ No link in the feed is ever requested. `download_feed()` refuses every address b
 
 The links are live phishing links. Never open, click or preview one. The CSV is in `ml/data/`, so git ignores it, and `--out` must stay inside `ml/data/`. Attach it to the outside test set story in Jira instead of committing it.
 
+## Scoring the model on the outside test set
+
+The outside test set is links collected outside PhiUSIIL: legitimate links with paths and query strings, and recent phishing links from a public feed. Its two CSVs live in `ml/data/outside/`, which git ignores, because the phishing file holds live phishing links. Never open any of them.
+
+`ml/evaluation/outside.py` scores the saved chosen model on those links, next to its PhiUSIIL test scores. Run it from `ml/` after the evaluation above:
+
+```bash
+uv run python -m evaluation.outside
+```
+
+1. Each link goes through the same feature extractor the live app uses. It reads the link text only, so no link is opened and no network request is made. A link the extractor cannot read is left out and counted.
+2. The saved scaler and model score the links through the evaluation script's own `load_model`, `score` and `measures`, so there is no second copy of the scoring code.
+3. The PhiUSIIL side is read from `ml/reports/evaluation_results.json`. The test rows are not scored again.
+
+It prints a table of phishing recall, precision, F1, ROC-AUC, the false alarm rate and accuracy for both sets, with the change in percentage points (+ means better on the outside set). These use the model's own 0.5. A second table shows what users see: how many phishing and legitimate links land in Safe, Suspicious and High risk, using the two cut-offs the backend reads from `ml/models/cutoffs.json`. It writes `ml/reports/outside_results.json`, which holds numbers only and no links: both tables, the confusion matrix, any drop of more than 10 points, and the false alarms and misses split by whether the link's host is also in PhiUSIIL.
+
+The model only reads the host name, so a link's path and query string do not change its score. The tests (`ml/tests/test_outside_evaluation.py`) use made-up links and fail if anything opens a network connection.
+
 ## Source and licence
 
 | | |
