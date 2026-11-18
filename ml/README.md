@@ -525,6 +525,23 @@ No link in the set is ever requested. `fetch()` refuses every host but `index.co
 
 The CSV is in `ml/data/`, so git ignores it. `--out` must stay inside `ml/data/` for the same reason. Attach the CSV to the outside test set story in Jira instead of committing it.
 
+## Outside test set: phishing links
+
+The phishing half of the outside test set comes from the [OpenPhish](https://openphish.com) community feed. It is a free text file with one recent phishing link per line. `ml/outside/phishing_links.py` downloads that file and nothing else. Run it from `ml/`:
+
+```bash
+uv run python -m outside.phishing_links
+```
+
+1. It downloads the feed file from OpenPhish's own GitHub repository, which is where `openphish.com/feed.txt` redirects. It keeps every line that is an `http` or `https` link.
+2. It removes links already in PhiUSIIL and duplicates, compared the same way as the legitimate links (`ml/outside/normalise.py`).
+3. With `--per-site N` it keeps at most N links from any one site, meaning the last two parts of the host (such as `pages.dev`). One free hosting site can fill most of the feed: 189 of the 300 links collected on 17 Nov 2026 were on `pages.dev`. The option is off by default, which is how that set was collected. Try `--per-site 20` for a more even set next time.
+4. It stops without saving if fewer than 200 links are left. Otherwise it writes `ml/data/outside/phishing_links.csv` with `url`, `label` (1 = phishing), `source` (the feed name) and `collected_on`.
+
+No link in the feed is ever requested. `download_feed()` refuses every address but the feed file, and it refuses a redirect to anywhere outside OpenPhish's repository. A test records every address asked for and checks the feed is the only one. The feed changes about every 12 hours, so a run that stops short can be tried again later.
+
+The links are live phishing links. Never open, click or preview one. The CSV is in `ml/data/`, so git ignores it, and `--out` must stay inside `ml/data/`. Attach it to the outside test set story in Jira instead of committing it.
+
 ## Source and licence
 
 | | |
