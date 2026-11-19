@@ -7,6 +7,7 @@ the real model does.
 
 import ast
 import json
+import re
 from pathlib import Path
 
 import joblib
@@ -241,6 +242,7 @@ SPLIT_NAMES = {"TEST", "TEST_SET", "SETS", "load_split"}
 KNOWN_SPLIT_READERS = {
     "evaluation/evaluate.py": "scores the one saved chosen model on the test rows",
     "evaluation/charts.py": "reads the saved test scores from the results file; never reads rows or loads a model",
+    "evaluation/outside.py": "reads the saved test scores from the results file to compare; never reads test rows",
     "splitting/split.py": "makes, saves and checks the split",
     "training/pipeline.py": "names the test set only to refuse unknown set names; reads training rows only",
     "ranking/training_split.py": "names the test set only to refuse unknown set names; keeps training rows only",
@@ -272,7 +274,8 @@ def test_only_the_evaluation_script_scores_the_test_rows():
             found.add(relative.as_posix())
     assert found == set(KNOWN_SPLIT_READERS)
     # Of these, only the evaluation script makes predictions with a model.
-    scorers = {name for name in found if ".predict" in (ML_DIR / name).read_text(encoding="utf-8")}
+    calls = re.compile(r"\.(predict\w*|decision_function)\(")
+    scorers = {name for name in found if calls.search((ML_DIR / name).read_text(encoding="utf-8"))}
     assert scorers == {"evaluation/evaluate.py"}
 
 

@@ -268,7 +268,7 @@ The phishing charts page reads a small summary file of counts and percentages, n
 uv run python -m charts.summary
 ```
 
-It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says whether the dataset is balanced, using the share of the smaller class: 45% or more is balanced, 20% to 45% is mildly imbalanced, and under 20% is heavily imbalanced. Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says in plain words whether there are about as many of each, using the share of the smaller class: at 45% or more it says "there are about as many of each", from 20% to under 45% "there are somewhat more legitimate links than phishing ones" (naming whichever group is bigger), and under 20% "there are far more … than …". Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
 
 | Field | Holds |
 |---|---|
@@ -506,6 +506,59 @@ uv run python -m evaluation.charts
 |---|---|
 | `ml/reports/evaluation_confusion_matrix.png` | The test confusion matrix: actual class down the side, predicted along the top, both named "phishing" and "legitimate", a count in each cell and the phishing recall in the title. |
 | `ml/reports/evaluation_roc_curve.png` | The test ROC curve (phishing recall against false alarm rate), with the ROC-AUC written on it. |
+
+## Outside test set: legitimate links
+
+Every legitimate link in PhiUSIIL is a bare home page, such as `https://www.bbc.com`. So the outside test needs ordinary legitimate links with a path and, where possible, a query string. `ml/outside/legit_links.py` collects them without opening any of them. Run it from `ml/`:
+
+```bash
+uv run python -m outside.legit_links
+```
+
+1. It downloads the latest [Tranco list](https://tranco-list.eu) of the most visited domains and keeps the top 300 (`--top`).
+2. It skips hosting and shortener sites, such as Google Docs, GitHub Pages and bit.ly. Anyone can put a page on them, phishing included. The list and the reason for each site are in `EXCLUDED_DOMAINS`.
+3. For each domain it asks the [Common Crawl URL index](https://index.commoncrawl.org) which pages a public web crawl saw there. It keeps pages that loaded as web pages, with a path, and takes at most 2 per domain (`--per-domain`), links with a query string first. It uses the newest index that answers, or the one given with `--index`.
+4. It removes links already in PhiUSIIL and duplicates. Links are compared after removing the scheme, a leading `www.` and a trailing slash, with the host in lowercase (`ml/outside/normalise.py`). The path and query keep their case.
+5. It stops without saving if fewer than 200 links are left. Otherwise it writes `ml/data/outside/legit_links.csv` with `url`, `label` (0 = legitimate), `source` (the index and Tranco list ids) and `collected_on`.
+
+No link in the set is ever requested. `fetch()` refuses every host but `index.commoncrawl.org` and `tranco-list.eu`, and it refuses a redirect to any other host too. A test gives the collector a fake index that records every address it is asked for, and checks that every one is on the index. The index is often busy and answers 504 or drops the connection, so each request is tried 3 times. A domain that never answers is skipped. A run takes about an hour.
+
+The CSV is in `ml/data/`, so git ignores it. `--out` must stay inside `ml/data/` for the same reason. Attach the CSV to the outside test set story in Jira instead of committing it.
+
+## Outside test set: phishing links
+
+The phishing half of the outside test set comes from the [OpenPhish](https://openphish.com) community feed. It is a free text file with one recent phishing link per line. `ml/outside/phishing_links.py` downloads that file and nothing else. Run it from `ml/`:
+
+```bash
+uv run python -m outside.phishing_links
+```
+
+1. It downloads the feed file from OpenPhish's own GitHub repository, which is where `openphish.com/feed.txt` redirects. It keeps every line that is an `http` or `https` link.
+2. It removes links already in PhiUSIIL and duplicates, compared the same way as the legitimate links (`ml/outside/normalise.py`).
+3. With `--per-site N` it keeps at most N links from any one site, meaning the last two parts of the host (such as `pages.dev`). One free hosting site can fill most of the feed: 189 of the 300 links collected on 17 Nov 2026 were on `pages.dev`. The option is off by default, which is how that set was collected. Try `--per-site 20` for a more even set next time.
+4. It stops without saving if fewer than 200 links are left. Otherwise it writes `ml/data/outside/phishing_links.csv` with `url`, `label` (1 = phishing), `source` (the feed name) and `collected_on`.
+
+No link in the feed is ever requested. `download_feed()` refuses every address but the feed file, and it refuses a redirect to anywhere outside OpenPhish's repository. A test records every address asked for and checks the feed is the only one. The feed changes about every 12 hours, so a run that stops short can be tried again later.
+
+The links are live phishing links. Never open, click or preview one. The CSV is in `ml/data/`, so git ignores it, and `--out` must stay inside `ml/data/`. Attach it to the outside test set story in Jira instead of committing it.
+
+## Scoring the model on the outside test set
+
+The outside test set is links collected outside PhiUSIIL: legitimate links with paths and query strings, and recent phishing links from a public feed. Its two CSVs live in `ml/data/outside/`, which git ignores, because the phishing file holds live phishing links. Never open any of them.
+
+`ml/evaluation/outside.py` scores the saved chosen model on those links, next to its PhiUSIIL test scores. Run it from `ml/` after the evaluation above:
+
+```bash
+uv run python -m evaluation.outside
+```
+
+1. Each link goes through the same feature extractor the live app uses. It reads the link text only, so no link is opened and no network request is made. A link the extractor cannot read is left out and counted.
+2. The saved scaler and model score the links through the evaluation script's own `load_model`, `score` and `measures`, so there is no second copy of the scoring code.
+3. The PhiUSIIL side is read from `ml/reports/evaluation_results.json`. The test rows are not scored again.
+
+It prints a table of phishing recall, precision, F1, ROC-AUC, the false alarm rate and accuracy for both sets, with the change in percentage points (+ means better on the outside set). These use the model's own 0.5. A second table shows what users see: how many phishing and legitimate links land in Safe, Suspicious and High risk, using the two cut-offs the backend reads from `ml/models/cutoffs.json`. It writes `ml/reports/outside_results.json`, which holds numbers only and no links: both tables, the confusion matrix, any drop of more than 10 points, and the false alarms and misses split by whether the link's host is also in PhiUSIIL.
+
+The model only reads the host name, so a link's path and query string do not change its score. The tests (`ml/tests/test_outside_evaluation.py`) use made-up links and fail if anything opens a network connection.
 
 ## Source and licence
 

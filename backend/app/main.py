@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from features.explain import MAX_REASONS
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.links import clean_link
 from app.model import load_model, model_dir, scaled_features, score_of
@@ -36,6 +36,20 @@ class ScanResponse(BaseModel):
     score: float | None = Field(ge=0, le=1)
     reasons: list[str] = Field(max_length=MAX_REASONS)
     placeholder: bool
+
+    @model_validator(mode="after")
+    def check_it_can_be_shown(self) -> "ScanResponse":
+        # The result card shows its "couldn't check" message for a reply that
+        # contradicts itself, so a reply like that is never built. The rules are
+        # the ones in the reply table in backend/README.md.
+        if self.placeholder:
+            if self.risk_level is not None or self.score is not None or self.reasons:
+                raise ValueError("A placeholder reply can't have a risk level, a score or reasons.")
+        elif self.risk_level is None or self.score is None:
+            raise ValueError("A real reply must have a risk level and a score.")
+        elif self.risk_level == "Safe" and self.reasons:
+            raise ValueError("A Safe reply can't have reasons.")
+        return self
 
 
 @app.post("/scan", response_model=ScanResponse)
