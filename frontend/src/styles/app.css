@@ -168,6 +168,8 @@ h1 {
 
 .result-card__level {
   display: flex;
+  /* At 320px and 200% text size, let the word drop below the icon. */
+  flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
   margin: 0;
@@ -182,23 +184,10 @@ h1 {
   height: 2.5rem;
 }
 
-/* When the screen is narrow and the text is large, the word drops below the icon and may
-   break inside the word, rather than spill out of the card (checked at 320px wide and
-   200% text size). */
-.result-card__level {
-  flex-wrap: wrap;
-}
-
+/* Long level words may break inside the word rather than spill out of the card. */
 .result-card__level span {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-/* Less padding on a narrow screen, so the words inside get more room. */
-@media (max-width: 30rem) {
-  .result-card {
-    padding: var(--space-4);
-  }
 }
 
 /* The phishing score: smaller than the level, in the muted colour that is already
@@ -273,6 +262,11 @@ h1 {
 
 /* Phone width: the button moves under the box and fills the width. */
 @media (max-width: 30rem) {
+  /* Less padding gives the words inside the card more room. */
+  .result-card {
+    padding: var(--space-4);
+  }
+
   .check-row {
     flex-direction: column;
   }
