@@ -35,8 +35,8 @@ PHISHING_LABEL = 1
 LEGITIMATE_LABEL = 0
 LONG_LINK_CHARACTERS = 50
 DECIMALS = 1
-# Share of the smaller class, in percent, at or above which the data counts as
-# balanced, and below which it counts as heavily imbalanced.
+# Share of the smaller class, in percent, at or above which there are about as
+# many of each, and below which there are far more of the larger class.
 BALANCED_MINORITY_SHARE = 45
 HEAVY_IMBALANCE_MINORITY_SHARE = 20
 
@@ -91,14 +91,16 @@ def _compare_sign(has_sign: Callable[[pd.DataFrame], pd.Series]) -> Callable[[pd
 
 
 def _balance_takeaway(phishing: float, legitimate: float) -> str:
+    """Say in plain words whether there are about as many of each, or more of one."""
     minority = min(phishing, legitimate)
+    larger, smaller = ("phishing", "legitimate") if phishing > legitimate else ("legitimate", "phishing")
     if minority >= BALANCED_MINORITY_SHARE:
-        verdict = "balanced"
+        ending = "there are about as many of each"
     elif minority >= HEAVY_IMBALANCE_MINORITY_SHARE:
-        verdict = "mildly imbalanced"
+        ending = f"there are somewhat more {larger} links than {smaller} ones"
     else:
-        verdict = "heavily imbalanced"
-    return f"About {phishing:.0f}% of links are phishing and {legitimate:.0f}% are legitimate, so the dataset is {verdict}."
+        ending = f"there are far more {larger} links than {smaller} ones"
+    return f"About {phishing:.0f}% of links are phishing and {legitimate:.0f}% are legitimate, so {ending}."
 
 
 CHART_SPECS = (
