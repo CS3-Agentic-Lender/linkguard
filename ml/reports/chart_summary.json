@@ -9,7 +9,7 @@
     {
       "id": "class_balance",
       "title": "How many links are phishing and how many are legitimate",
-      "takeaway": "About 43% of links are phishing and 57% are legitimate, so the dataset is mildly imbalanced.",
+      "takeaway": "About 43% of links are phishing and 57% are legitimate, so there are somewhat more legitimate links than phishing ones.",
       "unit": "percent",
       "groups": [
         {
