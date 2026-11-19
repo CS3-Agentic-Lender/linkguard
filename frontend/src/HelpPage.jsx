@@ -5,8 +5,7 @@ export const BACK_TEXT = "Back to the link checker";
 
 /**
  * The "Where to get help" page: the Irish reporting routes from docs/advice.md,
- * as a list a screen reader can step through. It holds no links out of the app,
- * only the way back to the checker.
+ * as a list a screen reader can step through, with each route's official source.
  */
 export default function HelpPage() {
   return (
@@ -16,10 +15,11 @@ export default function HelpPage() {
       </h1>
       <p className="lead">{HELP_INTRO}</p>
       <ul className="help-page__routes">
-        {HELP_ROUTES.map(({ situation, where }) => (
+        {HELP_ROUTES.map(({ situation, where, source }) => (
           <li key={situation}>
             <span className="help-page__situation">{situation}</span>
             <span className="help-page__where">{where}</span>
+            <a className="text-link" href={source.url}>{source.name}</a>
           </li>
         ))}
       </ul>
