@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { HELP_LINK_TEXT } from "./advice.js";
 import HelpPage from "./HelpPage.jsx";
@@ -24,12 +24,16 @@ export default function App({ check = checkLink }) {
   }, []);
 
   const onHelp = hash === HELP_HASH;
+  const wasOnHelp = useRef(false);
 
-  // Moving to the help page puts keyboard and screen reader focus on its heading.
+  // Each page change moves focus to its heading, without stealing initial focus.
   useEffect(() => {
     if (onHelp) {
       document.getElementById("help-heading")?.focus();
+    } else if (wasOnHelp.current) {
+      document.getElementById("checker-heading")?.focus();
     }
+    wasOnHelp.current = onHelp;
   }, [onHelp]);
 
   return (
@@ -45,7 +49,7 @@ export default function App({ check = checkLink }) {
       {/* Hidden rather than removed while the help page shows, so the pasted link,
           its result and its advice are still there when the user comes back. */}
       <div hidden={onHelp}>
-        <h1>Is this link safe?</h1>
+        <h1 id="checker-heading" tabIndex={-1}>Is this link safe?</h1>
         <p className="lead">
           Paste a link from a text, email or message. We check it for you without opening it.
         </p>

@@ -409,6 +409,7 @@ h1 {
 }
 
 .text-link:focus-visible,
+.page #checker-heading:focus-visible,
 .help-page h1:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);

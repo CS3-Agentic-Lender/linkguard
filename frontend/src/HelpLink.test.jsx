@@ -92,5 +92,16 @@ describe("going to the help page and back", () => {
     expect(screen.getByLabelText(LABEL)).toHaveValue(LINK);
     expect(screen.getByRole("heading", { name: "High risk" })).toBeVisible();
     expect(screen.getByRole("region", { name: ADVICE_HEADING })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Is this link safe?" })).toHaveFocus();
+  });
+
+  it("returns focus to the checker heading when browser Back changes the route", async () => {
+    render(<App check={answer("Safe")} />);
+    await goTo(HELP_HASH);
+    expect(screen.getByRole("heading", { name: HELP_LINK_TEXT })).toHaveFocus();
+
+    await goTo("");
+
+    expect(screen.getByRole("heading", { name: "Is this link safe?" })).toHaveFocus();
   });
 });
