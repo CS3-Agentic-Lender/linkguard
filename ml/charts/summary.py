@@ -27,6 +27,7 @@ from pathlib import Path
 import pandas as pd
 
 from cleaning.storage import CLEANED_CSV_NAME, load_cleaned
+from features.hostname import cleaned_host
 
 ML_DIR = Path(__file__).resolve().parents[1]
 SUMMARY_FILE_NAME = "chart_summary.json"
@@ -90,6 +91,15 @@ def _compare_sign(has_sign: Callable[[pd.DataFrame], pd.Series]) -> Callable[[pd
     return groups
 
 
+def _hyphen_in_site_name(rows: pd.DataFrame) -> pd.Series:
+    """True where the website name has a hyphen, the same cleaned host the model reads.
+
+    Every legitimate link here is a bare homepage, so its hyphens can only be in the
+    name. Counting the path and query too would compare different things for phishing.
+    """
+    return rows["URL"].map(lambda link: "-" in cleaned_host(link))
+
+
 def _balance_takeaway(phishing: float, legitimate: float) -> str:
     """Say in plain words whether there are about as many of each, or more of one."""
     minority = min(phishing, legitimate)
@@ -129,11 +139,12 @@ CHART_SPECS = (
     ),
     ChartSpec(
         id="hyphens",
-        title="Links that contain a hyphen (-)",
-        groups=_compare_sign(lambda rows: rows["URL"].str.contains("-", regex=False)),
+        title="Links with a hyphen (-) in the website name",
+        groups=_compare_sign(_hyphen_in_site_name),
         takeaway=lambda phishing, legitimate: (
-            f"About {phishing:.0f}% of phishing links contain a hyphen, against {legitimate:.0f}% of legitimate "
-            "ones. Fake sites often join words with hyphens to look like a real company's name."
+            f"About {phishing:.0f}% of phishing links have a hyphen in the website name, against "
+            f"{legitimate:.0f}% of legitimate ones. Fake sites often join words with hyphens to look like a "
+            "real company's name."
         ),
     ),
 )
