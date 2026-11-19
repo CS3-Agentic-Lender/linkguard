@@ -83,9 +83,13 @@ The research notes marked these as unconfirmed. Each was checked on 12 November 
 | [G2] | An Garda Síochána, "I've been caught out by an online scam. What should I do?". https://www.garda.ie/en/crime/cyber-crime/i-ve-been-caught-out-by-an-online-scam-what-should-i-do-.html | 12 Nov 2026 |
 | [G3] | An Garda Síochána, "Fraud". https://www.garda.ie/en/crime/fraud/ | 12 Nov 2026 |
 | [F1] | FraudSMART (Banking & Payments Federation Ireland), "Smishing". https://www.fraudsmart.ie/personal/fraud-scams/text-scams/smishing/ | 12 Nov 2026 |
-| [CR1] | ComReg, "Scam Calls & Texts". https://www.comreg.ie/advice-information/scam-calls/ | 29 Sep 2026, for the research notes. The page did not load on 12 Nov 2026 |
+| [CR1] | ComReg, "Scam Calls & Texts". https://www.comreg.ie/advice-information/scam-calls/ | Rechecked 19 Nov 2026: it advises blocking persistent scam numbers. The page did not load on 12 Nov 2026 |
 | [U1] | UK NCSC, "How to spot a scam email, text message or call". https://www.ncsc.gov.uk/collection/phishing-scams/spot-scams | 12 Nov 2026 |
 | [U2] | UK NCSC, "If you've shared sensitive information". https://www.ncsc.gov.uk/collection/phishing-scams/what-to-do | 12 Nov 2026 |
 | [C1] | CISA (US), "Recognize and Report Phishing". https://www.cisa.gov/secure-our-world/recognize-and-report-phishing | 12 Nov 2026 |
 
 [U1], [U2] and [C1] are not Irish. They are only used next to an Irish source, or for a detail no Irish page gives (the number on your card).
+
+## Wording check, 19 November 2026
+
+The FraudSMART smishing page, Garda fraud advice and NCSC Ireland guide were rechecked. They support independently verifying unexpected messages and never disclosing a PIN or password. They do not establish the broader statement that a bank will never text any link. The app therefore keeps the sourced PIN/password sentence above. The Product Owner must reconcile the broader sentence in the story's specification before accepting that part of the story.
