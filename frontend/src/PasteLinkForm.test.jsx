@@ -130,8 +130,10 @@ describe("paste-a-link form", () => {
     await user.type(screen.getByLabelText(LABEL), `${LINK}{Enter}`);
     expect(await screen.findByText(LINK)).toBeInTheDocument();
 
-    expect(screen.queryAllByRole("link")).toHaveLength(0);
-    expect(container.querySelectorAll("a, [href]")).toHaveLength(0);
+    // The only link on the page is the "Where to get help" link in the header.
+    const links = [...container.querySelectorAll("a, [href]")];
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["#help"]);
+    expect(screen.getByText(LINK).closest("a, [href]")).toBeNull();
   });
 });
 
