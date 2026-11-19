@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -36,11 +36,19 @@ describe("where to get help page", () => {
     expect(document.body.textContent).not.toMatch(/phishing\.gov\.uk/i);
   });
 
-  it("has no links out of the app, only a keyboard-reachable way back to the checker", async () => {
+  it("shows each route's documented official source and keeps Back keyboard reachable", async () => {
     const user = userEvent.setup();
     render(<HelpPage />);
 
-    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getAllByRole("link")).toHaveLength(HELP_ROUTES.length + 1);
+    for (const [index, { source }] of HELP_ROUTES.entries()) {
+      const route = screen.getAllByRole("listitem")[index];
+      const link = within(route).getByRole("link", { name: source.name });
+      expect(link).toHaveAttribute("href", source.url);
+      expect(ADVICE_FILE).toContain(source.url);
+      await user.tab();
+      expect(link).toHaveFocus();
+    }
     await user.tab();
     expect(screen.getByRole("link", { name: BACK_TEXT })).toHaveFocus();
     expect(screen.getByRole("link", { name: BACK_TEXT })).toHaveAttribute("href", "#");
