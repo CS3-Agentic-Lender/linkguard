@@ -7,11 +7,11 @@ FastAPI service that checks a pasted link for LinkGuard. The link is only ever h
 Needs Python 3.12 and [uv](https://docs.astral.sh/uv/). From `backend/`:
 
 ```bash
-uv sync                                   # once, and after dependencies change
+uv sync --locked                          # once, and after dependencies change
 uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
 ```
 
-`uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
+`--locked` stops with an error if `uv.lock` is out of date instead of quietly updating it, the same as CI. `uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
 
 ### The model files
 
@@ -48,10 +48,10 @@ The interactive API docs are at http://127.0.0.1:8000/docs while it runs.
 From `backend/`:
 
 ```bash
-uv run pytest
+uv run --locked pytest
 ```
 
-Or from the repo root: `uv run --project backend pytest backend/tests`.
+Or from the repo root: `uv run --locked --project backend pytest backend/tests`.
 
 `tests/test_end_to_end.py` starts the backend for real with uvicorn on a free port on `127.0.0.1`, using the tests' own small model, and calls `/scan` over HTTP. It runs in CI with the other tests. Its opening comment lists which test covers each acceptance criterion of the risk-level story.
 
