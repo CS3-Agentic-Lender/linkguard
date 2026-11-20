@@ -382,6 +382,29 @@ h1 {
   border: 0;
 }
 
+/* Text links: primary blue, underlined so they never rely on colour alone,
+   with at least a 44px tall target and the shared focus outline. */
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target-min);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.text-link:hover {
+  color: var(--color-primary-hover);
+}
+
+.text-link:focus-visible,
+.help-page h1:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}
+
 /* Advice under a result: body text on a white card (checked in scripts/check-contrast.mjs). */
 .advice {
   margin: var(--space-6) 0 0;
@@ -410,7 +433,8 @@ h1 {
   padding-left: var(--space-6);
 }
 
-.advice li + li {
+.advice li + li,
+.help-page__routes li + li {
   margin-top: var(--space-2);
 }
 
@@ -418,4 +442,20 @@ h1 {
   .advice {
     padding: var(--space-4);
   }
+}
+
+/* Help page: each route as the situation, then where to go, in body text. */
+.help-page__routes {
+  margin: 0 0 var(--space-8);
+  padding-left: var(--space-6);
+  overflow-wrap: anywhere;
+}
+
+.help-page__situation {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+}
+
+.help-page__where {
+  display: block;
 }
