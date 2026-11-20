@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -37,6 +40,16 @@ const MADE_UP = {
 
 function charts() {
   return screen.getAllByRole("figure");
+}
+
+// The declarations of every app.css rule whose selector list includes `selector`.
+// Read from disk: Vitest turns CSS imports into empty strings, even with ?raw.
+function cssRulesFor(selector) {
+  const appCss = readFileSync(join(import.meta.dirname, "styles", "app.css"), "utf8");
+  const withoutComments = appCss.replace(/\/\*[\s\S]*?\*\//g, "");
+  return [...withoutComments.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter(([, selectors]) => selectors.split(",").some((s) => s.trim() === selector))
+    .map(([, , declarations]) => declarations);
 }
 
 describe("phishing charts page, from the real summary file", () => {
@@ -101,6 +114,24 @@ describe("phishing charts page, from the real summary file", () => {
 
     expect(summary.dataset_note).toMatch(/every legitimate link .* homepage/i);
     expect(screen.getByText(summary.dataset_note)).toBeVisible();
+  });
+
+  // The note holds an example link that can't break between words. Without a wrap
+  // rule it pushes the page wider than a 320 px screen at 200% text (WCAG 1.4.10).
+  // jsdom has no layout, so this checks the rule; the width itself is checked by hand.
+  it("lets long words in the dataset note wrap, so the page fits a 320 px screen", () => {
+    expect(summary.dataset_note).toMatch(/\S{24,}/);
+    expect(cssRulesFor(".dataset-note").some((rule) => /overflow-wrap:\s*anywhere/.test(rule))).toBe(true);
+  });
+
+  // At 200% text on a 320 px screen, "Legitimate" and "57.3%" don't fit side by side.
+  // A fixed two-column row pushed the value and bar past the edge (page 386 px wide),
+  // so the row must wrap and put the value under the name when there isn't room.
+  it("lets a bar's value drop under its name, so the bars fit a 320 px screen", () => {
+    const rowRules = cssRulesFor(".bar-row");
+
+    expect(rowRules.some((rule) => /flex-wrap:\s*wrap/.test(rule))).toBe(true);
+    expect(rowRules.some((rule) => /grid-template-columns/.test(rule))).toBe(false);
   });
 
   // Criterion 4: groups told apart by text labels on the bars, not by colour alone.

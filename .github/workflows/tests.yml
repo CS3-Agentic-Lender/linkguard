@@ -1,11 +1,15 @@
-# Runs the tests on every PR into dev, so a broken change shows up red
-# before review. Needs no secrets, no .env, no dataset and no model file:
-# the tests build their own small made-up data.
+# Runs the tests on every PR into dev or main, so a broken change shows up
+# red before review, the release PR included. It runs again on every push to
+# dev and main, so a break from two PRs merged together shows up too.
+# Needs no secrets, no .env, no dataset and no model file: the tests build
+# their own small made-up data.
 name: Tests
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
 
 permissions:
   contents: read
@@ -39,8 +43,24 @@ jobs:
         run: uv sync --locked
 
       # Coverage prints too: pytest's addopts in ml/pyproject.toml include it.
+      # The extra report writes the same coverage as a web page to save below.
       - name: Run ml tests
-        run: uv run --locked pytest
+        run: uv run --locked pytest --cov-report=html:htmlcov
+
+      # One short text file with the coverage table, so the report can quote it.
+      # These steps run even when a test fails, so a red run still has its coverage.
+      - name: Write the ml coverage summary
+        if: ${{ !cancelled() }}
+        run: uv run --locked coverage report > htmlcov/coverage-summary.txt
+
+      - name: Save the ml coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ml-coverage
+          path: ml/htmlcov/
+          retention-days: 30
+          if-no-files-found: error
 
   backend:
     runs-on: ubuntu-latest
@@ -66,8 +86,24 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --locked
 
+      # Coverage prints too: pytest's addopts in backend/pyproject.toml include it.
+      # The extra report writes the same coverage as a web page to save below.
       - name: Run backend tests
-        run: uv run --locked pytest
+        run: uv run --locked pytest --cov-report=html:htmlcov
+
+      # These steps run even when a test fails, so a red run still has its coverage.
+      - name: Write the backend coverage summary
+        if: ${{ !cancelled() }}
+        run: uv run --locked coverage report > htmlcov/coverage-summary.txt
+
+      - name: Save the backend coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: backend-coverage
+          path: backend/htmlcov/
+          retention-days: 30
+          if-no-files-found: error
 
   frontend:
     runs-on: ubuntu-latest
@@ -92,11 +128,32 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # The same tests as npm test, with coverage written to frontend/coverage/
+      # (settings in vite.config.js).
       - name: Run frontend tests
-        run: npm test
+        run: npm run test:coverage
+
+      # Runs even when a test fails, so a red run still has its coverage.
+      - name: Save the frontend coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Check colour contrast
         run: npm run contrast
 
       - name: Build the frontend
         run: npm run build
+
+      # The production build: the files a web server would host.
+      - name: Save the frontend build
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 30
+          if-no-files-found: error

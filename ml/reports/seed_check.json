@@ -1,0 +1,55 @@
+{
+  "seeds": [
+    {
+      "seed": 0,
+      "before": 0.835563,
+      "after": 0.835344,
+      "difference": -0.000219
+    },
+    {
+      "seed": 1,
+      "before": 0.835417,
+      "after": 0.835843,
+      "difference": 0.000426
+    },
+    {
+      "seed": 2,
+      "before": 0.835294,
+      "after": 0.835633,
+      "difference": 0.000339
+    },
+    {
+      "seed": 3,
+      "before": 0.835702,
+      "after": 0.835824,
+      "difference": 0.000122
+    },
+    {
+      "seed": 4,
+      "before": 0.835803,
+      "after": 0.835277,
+      "difference": -0.000526
+    }
+  ],
+  "summary": {
+    "after_wins": 3,
+    "seeds": 5,
+    "mean_difference": 2.8e-05,
+    "std_difference": 0.000397,
+    "smallest_difference": -0.000526,
+    "largest_difference": 0.000426
+  },
+  "before": {
+    "learning_rate": 0.1,
+    "max_iter": 100,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20
+  },
+  "after": {
+    "learning_rate": 0.1,
+    "max_iter": 100,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 100
+  },
+  "training_rows": 188295
+}

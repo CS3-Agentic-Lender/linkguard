@@ -27,6 +27,7 @@ from pathlib import Path
 import pandas as pd
 
 from cleaning.storage import CLEANED_CSV_NAME, load_cleaned
+from features.hostname import cleaned_host
 
 ML_DIR = Path(__file__).resolve().parents[1]
 SUMMARY_FILE_NAME = "chart_summary.json"
@@ -35,8 +36,8 @@ PHISHING_LABEL = 1
 LEGITIMATE_LABEL = 0
 LONG_LINK_CHARACTERS = 50
 DECIMALS = 1
-# Share of the smaller class, in percent, at or above which the data counts as
-# balanced, and below which it counts as heavily imbalanced.
+# Share of the smaller class, in percent, at or above which there are about as
+# many of each, and below which there are far more of the larger class.
 BALANCED_MINORITY_SHARE = 45
 HEAVY_IMBALANCE_MINORITY_SHARE = 20
 
@@ -90,15 +91,26 @@ def _compare_sign(has_sign: Callable[[pd.DataFrame], pd.Series]) -> Callable[[pd
     return groups
 
 
+def _hyphen_in_site_name(rows: pd.DataFrame) -> pd.Series:
+    """True where the website name has a hyphen, the same cleaned host the model reads.
+
+    Every legitimate link here is a bare homepage, so its hyphens can only be in the
+    name. Counting the path and query too would compare different things for phishing.
+    """
+    return rows["URL"].map(lambda link: "-" in cleaned_host(link))
+
+
 def _balance_takeaway(phishing: float, legitimate: float) -> str:
+    """Say in plain words whether there are about as many of each, or more of one."""
     minority = min(phishing, legitimate)
+    larger, smaller = ("phishing", "legitimate") if phishing > legitimate else ("legitimate", "phishing")
     if minority >= BALANCED_MINORITY_SHARE:
-        verdict = "balanced"
+        ending = "there are about as many of each"
     elif minority >= HEAVY_IMBALANCE_MINORITY_SHARE:
-        verdict = "mildly imbalanced"
+        ending = f"there are somewhat more {larger} links than {smaller} ones"
     else:
-        verdict = "heavily imbalanced"
-    return f"About {phishing:.0f}% of links are phishing and {legitimate:.0f}% are legitimate, so the dataset is {verdict}."
+        ending = f"there are far more {larger} links than {smaller} ones"
+    return f"About {phishing:.0f}% of links are phishing and {legitimate:.0f}% are legitimate, so {ending}."
 
 
 CHART_SPECS = (
@@ -127,11 +139,12 @@ CHART_SPECS = (
     ),
     ChartSpec(
         id="hyphens",
-        title="Links that contain a hyphen (-)",
-        groups=_compare_sign(lambda rows: rows["URL"].str.contains("-", regex=False)),
+        title="Links with a hyphen (-) in the website name",
+        groups=_compare_sign(_hyphen_in_site_name),
         takeaway=lambda phishing, legitimate: (
-            f"About {phishing:.0f}% of phishing links contain a hyphen, against {legitimate:.0f}% of legitimate "
-            "ones. Fake sites often join words with hyphens to look like a real company's name."
+            f"About {phishing:.0f}% of phishing links have a hyphen in the website name, against "
+            f"{legitimate:.0f}% of legitimate ones. Fake sites often join words with hyphens to look like a "
+            "real company's name."
         ),
     ),
 )

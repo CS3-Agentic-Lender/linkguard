@@ -52,7 +52,7 @@ If `git status` lists the CSV, stop and tell the team. It means the ignore rules
 | Path | Holds | In git? |
 |---|---|---|
 | `ml/data/` | The downloaded dataset and any cleaned copies | No, the whole folder is ignored |
-| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`) | No, those file types are ignored |
+| `ml/models/` | Trained model and scaler files (`*.joblib`, `*.pkl`). The final model is `ml/models/model.joblib` (see "The final model" below). | No, those file types are ignored |
 
 Training code saves the model and scaler to `ml/models/`, and the backend loads them from there. Like the dataset, they are shared outside git.
 
@@ -268,7 +268,7 @@ The phishing charts page reads a small summary file of counts and percentages, n
 uv run python -m charts.summary
 ```
 
-It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says whether the dataset is balanced, using the share of the smaller class: 45% or more is balanced, 20% to 45% is mildly imbalanced, and under 20% is heavily imbalanced. Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links that contain a hyphen. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
+It reads the cleaned data and writes `ml/reports/chart_summary.json` (committed, about 3 KB). The first chart is the class balance: how many links are phishing and how many are legitimate, as a share of all links. Its takeaway says in plain words whether there are about as many of each, using the share of the smaller class: at 45% or more it says "there are about as many of each", from 20% to under 45% "there are somewhat more legitimate links than phishing ones" (naming whichever group is bigger), and under 20% "there are far more … than …". Three more charts each compare phishing with legitimate links: links that use HTTPS, links longer than 50 characters and links with a hyphen in the website name. The hyphen chart looks only at the cleaned host from `cleaned_host` in `features/hostname.py`, the same name the model reads, because every legitimate link here is a bare homepage and a hyphen in a phishing link's path would not be a fair comparison. Each chart has a one-line takeaway, worked out from the unrounded shares, and the file carries the dataset note and the source line the licence asks for.
 
 | Field | Holds |
 |---|---|
@@ -354,6 +354,8 @@ How the model is chosen:
 3. If they are also within 0.01 of the best F1 among them, the simpler model wins (logistic regression, then the balanced one, then random forest, then gradient boosting).
 4. The baseline is never chosen. It is there to show what always guessing the most common class scores.
 
+This was the Sprint 2 rule. At Sprint 3 planning the team changed it to the highest ROC-AUC, because the risk-level cut-offs set our own flag lines. That picks gradient boosting (0.836). See "Tuning the chosen model" below.
+
 A model looks overfit when its training recall or F1 is more than 0.05 above its cross-validation score. It looks underfit when its F1 on its own training rows is under 0.70.
 
 The run stops and saves nothing if the results file:
@@ -367,6 +369,196 @@ The run stops and saves nothing if the results file:
 The report also names a known limitation. The split keeps each host in one set but not each parent domain. On the shared split, 23.5% of test links share a parent domain (such as `web.app`) with training links. So the scores may look better than they really are.
 
 These are in-dataset cross-validation results, not real-world accuracy. The tests (`ml/tests/test_model_comparison.py`) use a made-up results file.
+
+## Tuning the chosen model
+
+`ml/training/tuning.py` tunes the chosen model, gradient boosting (`HistGradientBoostingClassifier`). Sprint 3 planning picked it by ROC-AUC (0.836 in the model comparison), because the risk-level cut-offs set our own flag lines. It tries every combination of these settings:
+
+| Setting | Values | Why |
+|---|---|---|
+| `learning_rate` | 0.05, 0.1, 0.2 | How big a step each new tree takes. The default is 0.1. |
+| `max_iter` | 100, 300 | The most trees allowed. Early stopping can stop sooner. The default is 100. |
+| `max_leaf_nodes` | 15, 31, 63 | How detailed each tree may be. The default is 31. |
+| `min_samples_leaf` | 20, 100 | The fewest rows a leaf may hold. A larger value stops a tree learning from a few odd rows. The default is 20. |
+| Early stopping, seed, class weight | on, 0, none (fixed) | These match the model comparison, so its settings are the "before" row. |
+
+Each combination is scored with the same host-grouped, stratified 5-fold cross-validation as the model comparison (same folds, seed 0). The scaler and the model sit in one Pipeline per fold. The scoring measure is **ROC-AUC**, chosen before the search ran. Combinations within 0.001 of the best mean ROC-AUC count as a tie, and the simplest wins: fewer leaves, then fewer trees, then larger leaves, then a smaller learning rate. The test split is never loaded. Run it from `ml/` (about 30 seconds on 10 cores):
+
+```bash
+uv run python -m training.tuning
+```
+
+**Known limitation:** on the real data early stopping is on, so gradient boosting holds back 10% of each fold's training rows to decide when to stop. That hold-out is not grouped by host, so a host can be on both sides of it. The outer held-out fold and the test split are never touched, so the scores stay honest, but early stopping may stop a little late.
+
+It writes `ml/reports/tuning_results.json` (every combination's scores on every fold) and `ml/reports/tuning.md` (the before and after table in the model comparison's layout, with F2 added, then every combination).
+
+### Seed check
+
+The search uses one seed. `ml/training/seed_check.py` scores the before and after settings again with seeds 0 to 4. Each seed makes its own host-grouped fold split and sets the model's own randomness. It reports whether after beats before on every seed, and by how much. It only measures stability. It never picks a seed, because picking the luckiest seed would be fitting to noise. Run it after the tuning (about 1.5 minutes):
+
+```bash
+uv run python -m training.seed_check
+```
+
+It writes `ml/reports/seed_check.json` and `ml/reports/seed_check.md`.
+
+## The final model
+
+`ml/training/final_model.py` fits the tuned gradient boosting model on every training row and saves it to **`ml/models/model.joblib`**. It reads the chosen settings from `ml/reports/tuning_results.json`, so run the tuning first. From `ml/`:
+
+```bash
+uv run python -m training.tuning        # if tuning_results.json is not there yet
+uv run python -m training.final_model
+```
+
+Gradient boosting does not need scaled inputs, because each tree only compares a feature with a split value. The model still sits after the saved scaler, so the backend has one fixed chain whatever model we use. The test split is never loaded. Like the scaler, the model file is gitignored and shared outside git. Anyone can rebuild it with the two commands above.
+
+How to use the two files for one link:
+
+1. Work out the ten hostname features with `extract_features`, in the order of `FEATURE_NAMES`.
+2. Transform them with the saved scaler, `ml/models/scaler.joblib` (transform only).
+3. Pass all ten scaled values to the model. Its first step keeps only the 8 in the final feature list, so the backend never picks columns itself. `predict_proba(...)[:, 1]` is the phishing score.
+
+The script first saves to a temporary file. A fresh Python session loads it and predicts 10 training rows, spread from the first to the last. If those predictions differ from the ones the model made before saving, the run stops and the file is deleted. Only a file that passes is moved to `ml/models/model.joblib`. Both files are pickles, and loading a pickle runs code. Only load the files these scripts saved to `ml/models/`.
+
+## The precision/recall curve
+
+`ml/training/precision_recall.py` draws the precision/recall curve for the phishing class. The risk-level cut-offs are chosen from it. From `ml/`:
+
+```bash
+uv run python -m training.precision_recall                      # the curve
+uv run python -m training.precision_recall --cutoffs 0.2 0.6    # the curve with two cut-offs marked
+```
+
+The scores come from cross-validation on the training rows, never from the test split, so the test results stay fair. The training rows are cut into the same 5 host-grouped folds as the model comparison and the tuning (seed 0). For each fold, the tuned gradient boosting model learns from the other 4 folds and scores the held-out one. Each row is scored once, by a model that never saw its host. The settings come from `ml/reports/tuning_results.json`, so run the tuning first.
+
+It writes two files:
+
+- `ml/reports/precision_recall.png`: the chart. Recall (the share of phishing links caught) is along the bottom, precision (the share of flagged links that really are phishing) up the side. The dashed line is what guessing would give.
+- `ml/reports/precision_recall.json`: recall, precision and the share of all links flagged at every cut-off from 0.00 to 1.00, in steps of 0.01. Use it to read off the values for a cut-off (rounded to six decimals).
+
+A link counts as flagged when its phishing score is at or above the cut-off. Lowering the cut-off catches more phishing but flags more safe links too.
+
+## The risk-level cut-offs
+
+The team chose two cut-offs from the curve: lower 0.20 and upper 0.60. They are saved in `ml/models/cutoffs.json`, which the backend reads. That file is the only copy of the values.
+
+- A phishing score below the lower cut-off is **Safe**.
+- From the lower cut-off up to the upper one is **Suspicious**.
+- At or above the upper cut-off is **High risk**.
+
+To change a cut-off, edit `cutoffs.json` and rerun the curve with `--cutoffs` so the chart shows the new values. `tests/test_cutoffs.py` checks the file keeps its shape.
+
+## Reasons for a link
+
+`features/explain.py` works out which features raised a link's score, by the method in `docs/adr/0004-explanation-method.md`. It lives in the shared `features` package, so the backend's scan can call it. Importing it loads no SHAP, numpy or scikit-learn.
+
+The final model is gradient boosting, so each feature's push on the score comes from SHAP's tree explainer. Build the explainer once, when the model is loaded, and pass it in:
+
+```python
+from features.explain import reasons_for_link
+from features.reasons import reason_for
+from features.explain import tree_explainer
+
+explainer = tree_explainer(model)                     # once, after loading ml/models/model.joblib
+reasons = reasons_for_link(model, explainer, scaled)  # scaled: the ten scaled values by name
+sentences = [reason_for(name) for name in reasons]
+```
+
+`explainer` is a function that takes one link's kept feature values, in the model's order, and returns one push per value. `tree_explainer` wraps `shap.TreeExplainer` on the model's last step that way. It lives in `features`, so the hand check and the backend use the same code. It imports `shap` and `numpy` only when it is called, so importing `features.explain` needs neither. Whoever calls it needs `shap` pinned to the version in `ml/uv.lock`.
+
+Up to three features that pushed the score up, and whose sentence is true for the link, are returned, largest first. Features that are never shown are left out. The result can be empty.
+
+`training/explanation_check.py` checks the reasons by hand on five made-up links. It needs the saved scaler and model, and writes `ml/reports/explanation_check.md`: each link's full explanation next to the reasons picked from it, and the time a scan with reasons takes. From `ml/`:
+
+```bash
+uv run python -m training.explanation_check
+```
+
+The links are made up (documentation-only addresses) and are only handled as text.
+
+## Evaluating the chosen model on the test split
+
+`ml/evaluation/evaluate.py` scores the one saved chosen model on the held-back test rows. It is the only code in `ml/` that scores a model on the test rows, and it fits and tunes nothing. (The split code and the conflicting-hosts audit also name the test set, but neither loads a model. `ml/tests/test_evaluate.py` lists every module that does and fails if a new one appears.) It needs the feature set, the shared split, the scaler and the saved model (`ml/models/model.joblib`). Run it from `ml/`:
+
+```bash
+uv run python -m evaluation.evaluate
+```
+
+It prints the scores and writes `ml/reports/evaluation_results.json`, which holds:
+
+- phishing recall (the main measure), precision, F1, ROC-AUC and accuracy on the test rows, plus the false alarm rate on legitimate links, read off the confusion matrix;
+- the confusion matrix counts, with rows (actual) and columns (predicted) named "phishing" and "legitimate";
+- the same model's training recall and F1, and a one-line note on over- or underfitting, using the same limits as the model comparison (a gap of more than 0.05, or a training F1 under 0.70);
+- the ROC curve's points, so the chart can be drawn without reading the test rows again.
+
+Phishing (label 1) is the positive class, and a link counts as phishing when the model's phishing score is above 0.5 (its own `predict()`). The split is read with `load_split`, so the run stops if the split was made from different cleaned data. Before scoring, the run also stops and saves nothing if any cleaned host has rows in both the training and the test set. That guard runs on the real split every time.
+
+Accuracy is not the headline number: a simple pattern rule with nothing learned scores over 99% on PhiUSIIL. These are in-dataset results, not real-world accuracy. The tests (`ml/tests/test_evaluate.py`) use a small made-up set with known answers.
+
+Then draw the two charts from the results file. This does not read the test rows again:
+
+```bash
+uv run python -m evaluation.charts
+```
+
+| File | Shows |
+|---|---|
+| `ml/reports/evaluation_confusion_matrix.png` | The test confusion matrix: actual class down the side, predicted along the top, both named "phishing" and "legitimate", a count in each cell and the phishing recall in the title. |
+| `ml/reports/evaluation_roc_curve.png` | The test ROC curve (phishing recall against false alarm rate), with the ROC-AUC written on it. |
+
+## Outside test set: legitimate links
+
+Every legitimate link in PhiUSIIL is a bare home page, such as `https://www.bbc.com`. So the outside test needs ordinary legitimate links with a path and, where possible, a query string. `ml/outside/legit_links.py` collects them without opening any of them. Run it from `ml/`:
+
+```bash
+uv run python -m outside.legit_links
+```
+
+1. It downloads the latest [Tranco list](https://tranco-list.eu) of the most visited domains and keeps the top 300 (`--top`).
+2. It skips hosting and shortener sites, such as Google Docs, GitHub Pages and bit.ly. Anyone can put a page on them, phishing included. The list and the reason for each site are in `EXCLUDED_DOMAINS`.
+3. For each domain it asks the [Common Crawl URL index](https://index.commoncrawl.org) which pages a public web crawl saw there. It keeps pages that loaded as web pages, with a path, and takes at most 2 per domain (`--per-domain`), links with a query string first. It uses the newest index that answers, or the one given with `--index`.
+4. It removes links already in PhiUSIIL and duplicates. Links are compared after removing the scheme, a leading `www.` and a trailing slash, with the host in lowercase (`ml/outside/normalise.py`). The path and query keep their case.
+5. It stops without saving if fewer than 200 links are left. Otherwise it writes `ml/data/outside/legit_links.csv` with `url`, `label` (0 = legitimate), `source` (the index and Tranco list ids) and `collected_on`.
+
+No link in the set is ever requested. `fetch()` refuses every host but `index.commoncrawl.org` and `tranco-list.eu`, and it refuses a redirect to any other host too. A test gives the collector a fake index that records every address it is asked for, and checks that every one is on the index. The index is often busy and answers 504 or drops the connection, so each request is tried 3 times. A domain that never answers is skipped. A run takes about an hour.
+
+The CSV is in `ml/data/`, so git ignores it. `--out` must stay inside `ml/data/` for the same reason. Attach the CSV to the outside test set story in Jira instead of committing it.
+
+## Outside test set: phishing links
+
+The phishing half of the outside test set comes from the [OpenPhish](https://openphish.com) community feed. It is a free text file with one recent phishing link per line. `ml/outside/phishing_links.py` downloads that file and nothing else. Run it from `ml/`:
+
+```bash
+uv run python -m outside.phishing_links
+```
+
+1. It downloads the feed file from OpenPhish's own GitHub repository, which is where `openphish.com/feed.txt` redirects. It keeps every line that is an `http` or `https` link.
+2. It removes links already in PhiUSIIL and duplicates, compared the same way as the legitimate links (`ml/outside/normalise.py`).
+3. With `--per-site N` it keeps at most N links from any one site, meaning the last two parts of the host (such as `pages.dev`). One free hosting site can fill most of the feed: 189 of the 300 links collected on 17 Nov 2026 were on `pages.dev`. The option is off by default, which is how that set was collected. Try `--per-site 20` for a more even set next time.
+4. It stops without saving if fewer than 200 links are left. Otherwise it writes `ml/data/outside/phishing_links.csv` with `url`, `label` (1 = phishing), `source` (the feed name) and `collected_on`.
+
+No link in the feed is ever requested. `download_feed()` refuses every address but the feed file, and it refuses a redirect to anywhere outside OpenPhish's repository. A test records every address asked for and checks the feed is the only one. The feed changes about every 12 hours, so a run that stops short can be tried again later.
+
+The links are live phishing links. Never open, click or preview one. The CSV is in `ml/data/`, so git ignores it, and `--out` must stay inside `ml/data/`. Attach it to the outside test set story in Jira instead of committing it.
+
+## Scoring the model on the outside test set
+
+The outside test set is links collected outside PhiUSIIL: legitimate links with paths and query strings, and recent phishing links from a public feed. Its two CSVs live in `ml/data/outside/`, which git ignores, because the phishing file holds live phishing links. Never open any of them.
+
+`ml/evaluation/outside.py` scores the saved chosen model on those links, next to its PhiUSIIL test scores. Run it from `ml/` after the evaluation above:
+
+```bash
+uv run python -m evaluation.outside
+```
+
+1. Each link goes through the same feature extractor the live app uses. It reads the link text only, so no link is opened and no network request is made. A link the extractor cannot read is left out and counted.
+2. The saved scaler and model score the links through the evaluation script's own `load_model`, `score` and `measures`, so there is no second copy of the scoring code.
+3. The PhiUSIIL side is read from `ml/reports/evaluation_results.json`. The test rows are not scored again.
+
+It prints a table of phishing recall, precision, F1, ROC-AUC, the false alarm rate and accuracy for both sets, with the change in percentage points (+ means better on the outside set). These use the model's own 0.5. A second table shows what users see: how many phishing and legitimate links land in Safe, Suspicious and High risk, using the two cut-offs the backend reads from `ml/models/cutoffs.json`. It writes `ml/reports/outside_results.json`, which holds numbers only and no links: both tables, the confusion matrix, any drop of more than 10 points, and the false alarms and misses split by whether the link's host is also in PhiUSIIL.
+
+The model only reads the host name, so a link's path and query string do not change its score. The tests (`ml/tests/test_outside_evaluation.py`) use made-up links and fail if anything opens a network connection.
 
 ## Source and licence
 

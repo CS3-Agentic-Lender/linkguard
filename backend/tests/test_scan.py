@@ -1,67 +1,32 @@
 import re
 import socket
+import time
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app
-from app.links import EMPTY_LINK, INVALID_LINK, LONG_LINK, clean_link
+from app.links import EMPTY_LINK, INVALID_LINK, LONG_LINK, MAX_PASTE_LENGTH, clean_link
 
-client = TestClient(app)
 
 # Made-up link on a reserved name. It is only ever handled as text.
 LINK = "https://login.example/verify?account=1"
 
 
-LOOPBACK = {"127.0.0.1", "::1", "localhost"}
-
-
-@pytest.fixture
-def no_network(monkeypatch):
-    """Fail the test if anything tries to open an outgoing connection.
-
-    Loopback is still allowed: on Windows the event loop that runs the test
-    client connects a socket to itself on 127.0.0.1 when it starts.
-    """
-    real_connect = socket.socket.connect
-    real_connect_ex = socket.socket.connect_ex
-    real_getaddrinfo = socket.getaddrinfo
-
-    def check(host):
-        if host not in LOOPBACK:
-            raise AssertionError(f"a network connection was attempted to {host}")
-
-    def connect(sock, address):
-        check(address[0])
-        return real_connect(sock, address)
-
-    def connect_ex(sock, address):
-        check(address[0])
-        return real_connect_ex(sock, address)
-
-    def getaddrinfo(host, *args, **kwargs):
-        check(host)
-        return real_getaddrinfo(host, *args, **kwargs)
-
-    monkeypatch.setattr(socket.socket, "connect", connect)
-    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
-    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
-
-
-def test_replies_with_the_placeholder_shape():
+def test_replies_with_the_fixed_shape(client):
     response = client.post("/scan", json={"url": LINK})
 
     assert response.status_code == 200
-    assert response.json() == {
-        "url": LINK,
-        "risk_level": None,
-        "score": None,
-        "reasons": [],
-        "placeholder": True,
-    }
+    reply = response.json()
+    assert list(reply) == ["url", "risk_level", "score", "reasons", "placeholder"]
+    assert reply["url"] == LINK
+    assert reply["risk_level"] in {"Safe", "Suspicious", "High risk"}
+    assert 0 <= reply["score"] <= 1
+    # This link is Safe with the fixture model, so it has no reasons.
+    assert reply["risk_level"] == "Safe"
+    assert reply["reasons"] == []
+    assert reply["placeholder"] is False
 
 
-def test_never_fetches_the_link(no_network):
+def test_never_fetches_the_link(client, no_network):
     response = client.post("/scan", json={"url": LINK})
 
     assert response.status_code == 200
@@ -74,7 +39,7 @@ def test_network_block_catches_a_fetch(no_network):
         socket.create_connection(("login.example", 443))
 
 
-def test_missing_url_gets_a_clear_422():
+def test_missing_url_gets_a_clear_422(client):
     response = client.post("/scan", json={})
 
     assert response.status_code == 422
@@ -84,7 +49,7 @@ def test_missing_url_gets_a_clear_422():
 
 
 @pytest.mark.parametrize("pasted_text", ["", "   ", " \t\r\n "])
-def test_empty_input_gets_the_paste_link_error(pasted_text, no_network):
+def test_empty_input_gets_the_paste_link_error(client, pasted_text, no_network):
     response = client.post("/scan", json={"url": pasted_text})
 
     assert response.status_code == 400
@@ -106,7 +71,7 @@ def test_empty_input_gets_the_paste_link_error(pasted_text, no_network):
         ("example.com:8080/path", "https://example.com:8080/path", True),
     ],
 )
-def test_clean_link_examples(pasted, expected, added_https, no_network):
+def test_clean_link_examples(client, pasted, expected, added_https, no_network):
     cleaned = clean_link(pasted)
 
     assert cleaned.url == expected
@@ -114,7 +79,7 @@ def test_clean_link_examples(pasted, expected, added_https, no_network):
     response = client.post("/scan", json={"url": pasted})
     assert response.status_code == 200
     assert response.json()["url"] == expected
-    assert response.json()["placeholder"] is True
+    assert response.json()["placeholder"] is False
 
 
 @pytest.mark.parametrize(
@@ -137,7 +102,7 @@ def test_clean_link_examples(pasted, expected, added_https, no_network):
         ("ftp://example.com/" + "x" * 2000, LONG_LINK),
     ],
 )
-def test_invalid_links_return_only_the_agreed_error(pasted, message, no_network):
+def test_invalid_links_return_only_the_agreed_error(client, pasted, message, no_network):
     with pytest.raises(ValueError, match=re.escape(message)):
         clean_link(pasted)
 
@@ -146,7 +111,7 @@ def test_invalid_links_return_only_the_agreed_error(pasted, message, no_network)
     assert response.json() == {"error": message}
 
 
-def test_length_limit_uses_the_cleaned_link(no_network):
+def test_length_limit_uses_the_cleaned_link(client, no_network):
     prefix = "https://example.com/"
     exactly_2000 = prefix + "x" * (2000 - len(prefix))
 
@@ -159,3 +124,55 @@ def test_length_limit_uses_the_cleaned_link(no_network):
     # The automatically added scheme counts toward the same final limit.
     assert client.post("/scan", json={"url": exactly_2000[8:]}).status_code == 200
     assert client.post("/scan", json={"url": exactly_2000[8:] + "x"}).json() == {"error": LONG_LINK}
+
+
+# How long a huge paste may take to be turned down. Before the early check, 600,000
+# characters of nested wrappers took 2.7 seconds on a laptop.
+QUICK_SECONDS = 0.5
+
+
+def test_a_huge_paste_of_nested_wrappers_is_turned_down_quickly(client, no_network):
+    huge = "<" * 500_000 + ">" * 500_000
+
+    started = time.perf_counter()
+    with pytest.raises(ValueError, match=re.escape(LONG_LINK)):
+        clean_link(huge)
+    assert time.perf_counter() - started < QUICK_SECONDS
+
+    started = time.perf_counter()
+    response = client.post("/scan", json={"url": huge})
+    assert time.perf_counter() - started < QUICK_SECONDS
+    assert response.status_code == 400
+    assert response.json() == {"error": LONG_LINK}
+
+
+def test_a_link_near_the_limit_with_wrappers_around_it_is_still_cleaned(client, no_network):
+    prefix = "https://example.com/"
+    exactly_2000 = prefix + "x" * (2000 - len(prefix))
+    wrapped = "  " + "<" * 20 + '"' + exactly_2000 + '"' + ">" * 20 + "  "
+
+    assert clean_link(wrapped).url == exactly_2000
+    assert client.post("/scan", json={"url": wrapped}).status_code == 200
+
+
+def test_a_paste_at_the_paste_limit_is_cleaned_and_one_character_over_is_turned_down(
+    client, no_network
+):
+    prefix = "https://example.com/"
+    link_2000 = prefix + "x" * (2000 - len(prefix))
+    exactly_4000 = "<" * 1000 + link_2000 + ">" * 1000
+    assert len(exactly_4000) == MAX_PASTE_LENGTH
+
+    assert clean_link(exactly_4000).url == link_2000
+    assert client.post("/scan", json={"url": exactly_4000}).status_code == 200
+
+    # The link inside is short enough on its own, so only the paste limit turns it down.
+    link_1999 = link_2000[:-1]
+    over_by_one = "<" * 1001 + link_1999 + ">" * 1001
+    assert len(over_by_one) == MAX_PASTE_LENGTH + 1
+
+    with pytest.raises(ValueError, match=re.escape(LONG_LINK)):
+        clean_link(over_by_one)
+    response = client.post("/scan", json={"url": over_by_one})
+    assert response.status_code == 400
+    assert response.json() == {"error": LONG_LINK}

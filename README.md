@@ -84,7 +84,7 @@ Use exactly **one** ticket key across the branch, commits, PR title and PR body.
 
 ### Pull request checks
 
-Every PR into `dev` runs these checks. Each one shows a tick or a cross at the bottom of the PR, and runs again on every push.
+Every PR into `dev` or `main` runs these checks. Each one shows a tick or a cross at the bottom of the PR, and runs again on every push.
 
 | Check | What it does |
 |---|---|
@@ -93,9 +93,22 @@ Every PR into `dev` runs these checks. Each one shows a tick or a cross at the b
 | `ml` | Installs the ml code from its lock file and runs its tests. |
 | `frontend` | Installs the web app from its lock file, runs its tests and the colour contrast check, then builds it. |
 
-**Before a PR can merge into `dev`:** all four checks green, and one approval from a teammate. GitHub blocks the merge button until both are true.
+The `backend`, `ml` and `frontend` checks also run on every push to `dev` and `main`, so each merged PR and each release gets a test run of its own. You can see it in the repo's Actions tab under Tests.
+
+**Before a PR can merge into `dev` or `main`:** all four checks green, and one approval from a teammate. GitHub blocks the merge button until both are true.
 
 None of the checks needs a `.env` file, the dataset or a model file. The tests make their own small made-up data.
+
+**Artefacts.** Every Tests run saves four downloadable files, kept for 30 days. They're at the bottom of the run's summary page in the Actions tab.
+
+| Artefact | What's in it |
+|---|---|
+| `ml-coverage` | The ml coverage report as a web page (`index.html`), plus `coverage-summary.txt` with the coverage table |
+| `backend-coverage` | The same for the backend |
+| `frontend-coverage` | The frontend coverage report as a web page, plus `coverage-summary.txt` with the totals |
+| `frontend-build` | The production build from `npm run build`: the files a web server would host |
+
+The coverage artefacts are saved even when a test fails. To get the same frontend report locally, run `npm run test:coverage` in `frontend/`.
 
 #### Run the same checks on your machine
 

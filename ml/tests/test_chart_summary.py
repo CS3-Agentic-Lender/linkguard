@@ -73,6 +73,33 @@ def test_long_link_and_hyphen_figures():
     assert group(chart(summary, "hyphens"), "Legitimate")["value"] == pytest.approx(33.3)
 
 
+@pytest.mark.parametrize(
+    ("link", "counted"),
+    [
+        ("http://x.example/log-in", False),
+        ("http://x.example/?next=sign-in", False),
+        ("http://x.example/#log-in", False),
+        ("http://log-in.example/account", True),
+        ("http://www.secure-pay.example", True),
+        ("http://pay.secure-login.example/", True),
+    ],
+)
+def test_hyphen_chart_counts_hyphens_in_the_website_name_only(link, counted):
+    rows = pd.DataFrame({"URL": [link, "https://www.a.example"], "URLLength": [len(link), 21], "IsHTTPS": [0, 1]})
+    rows = rows.assign(label=[1, 0])
+
+    hyphens = chart(build_summary(rows), "hyphens")
+
+    assert group(hyphens, "Phishing")["count"] == int(counted)
+
+
+def test_hyphen_chart_title_and_takeaway_say_website_name():
+    hyphens = chart(build_summary(ROWS), "hyphens")
+
+    assert "website name" in hyphens["title"]
+    assert "hyphen in the website name" in hyphens["takeaway"]
+
+
 def test_class_balance_has_the_count_and_share_of_each_label():
     summary = build_summary(ROWS)
 
@@ -84,10 +111,14 @@ def test_class_balance_has_the_count_and_share_of_each_label():
 @pytest.mark.parametrize(
     ("phishing", "legitimate", "verdict"),
     [
-        (50, 50, "so the dataset is balanced."),
-        (43, 57, "so the dataset is mildly imbalanced."),
-        (10, 90, "so the dataset is heavily imbalanced."),
-        (90, 10, "so the dataset is heavily imbalanced."),
+        (50, 50, "so there are about as many of each."),
+        (55, 45, "so there are about as many of each."),
+        (43, 57, "so there are somewhat more legitimate links than phishing ones."),
+        (57, 43, "so there are somewhat more phishing links than legitimate ones."),
+        (80, 20, "so there are somewhat more phishing links than legitimate ones."),
+        (19, 81, "so there are far more legitimate links than phishing ones."),
+        (10, 90, "so there are far more legitimate links than phishing ones."),
+        (90, 10, "so there are far more phishing links than legitimate ones."),
     ],
 )
 def test_class_balance_takeaway_says_whether_the_dataset_is_balanced(phishing, legitimate, verdict):
