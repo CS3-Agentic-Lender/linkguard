@@ -7,11 +7,11 @@ FastAPI service that checks a pasted link for LinkGuard. The link is only ever h
 Needs Python 3.12 and [uv](https://docs.astral.sh/uv/). From `backend/`:
 
 ```bash
-uv sync                                   # once, and after dependencies change
+uv sync --locked                          # once, and after dependencies change
 uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
 ```
 
-`uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
+`--locked` stops with an error if `uv.lock` is out of date instead of quietly updating it, the same as CI. `uv sync` also installs the shared feature extractor from `ml/features` as the local package `linkguard-features`.
 
 ### The model files
 
@@ -23,7 +23,7 @@ At start-up the backend loads the risk-level cut-offs, the scaler and the model 
 | `ml/models/scaler.joblib` | the train/test split (see `ml/README.md`) |
 | `ml/models/model.joblib` | the final model training (see `ml/README.md`) |
 
-The scaler and the model are shared outside git, like the dataset. If any of the three files is missing, start-up stops with a message naming it, for example `Can't start: ...\ml\models\model.joblib is missing.` Start-up also stops if the scaler expects the ten features in a different order from the extractor's, if the model isn't the saved shape (a Pipeline that keeps the final features, then the model), or if `cutoffs.json` isn't exactly `{"lower": <number>, "upper": <number>}` with both between 0 and 1 and lower below upper. Set `LINKGUARD_MODEL_DIR` to load them from another folder.
+The scaler and the model are shared outside git, like the dataset. If any of the three files is missing, start-up stops with a message naming it, for example `Can't start: ...\ml\models\model.joblib is missing.` Start-up also stops if the scaler has no recorded feature order or expects the ten features in a different order from the extractor's, if the model isn't the saved shape (a Pipeline that keeps the final features, then the model), or if `cutoffs.json` isn't exactly `{"lower": <number>, "upper": <number>}` with both between 0 and 1 and lower below upper. A scaler with no recorded feature order must be made again with the training code in `ml/`. Set `LINKGUARD_MODEL_DIR` to load them from another folder.
 
 Each `/scan` call cleans the link, works out its ten hostname features with the shared extractor from `ml/features` (the same function the training code uses, never a copy), scales them, then asks the model for a phishing score. The features come from the link's text alone: the link is never opened or looked up. The score then becomes a risk level:
 
@@ -48,10 +48,10 @@ The interactive API docs are at http://127.0.0.1:8000/docs while it runs.
 From `backend/`:
 
 ```bash
-uv run pytest
+uv run --locked pytest
 ```
 
-Or from the repo root: `uv run --project backend pytest backend/tests`.
+Or from the repo root: `uv run --locked --project backend pytest backend/tests`.
 
 `tests/test_end_to_end.py` starts the backend for real with uvicorn on a free port on `127.0.0.1`, using the tests' own small model, and calls `/scan` over HTTP. It runs in CI with the other tests. Its opening comment lists which test covers each acceptance criterion of the risk-level story.
 
@@ -86,6 +86,8 @@ This is the one shape the page and the trained model both use, so the field name
 | `score` | The model's phishing score, a number from 0 to 1, or `null` in a placeholder reply |
 | `reasons` | Up to three plain-language reasons, empty for a Safe result or a placeholder reply |
 | `placeholder` | `false` now that the trained model is served |
+
+The backend checks these rules every time it builds a reply. A placeholder reply can't have a risk level, a score or reasons. A real reply must have a risk level and a score from 0 to 1. A Safe reply has no reasons. A reply that breaks a rule is never sent, so the page never gets one it can't show.
 
 For example:
 
