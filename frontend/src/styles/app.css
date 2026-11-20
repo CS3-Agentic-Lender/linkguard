@@ -25,7 +25,7 @@ body {
 }
 
 .logo {
-  margin: 0 0 var(--space-8);
+  margin: 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
 }
@@ -382,6 +382,16 @@ h1 {
   border: 0;
 }
 
+/* Header: the logo and the "Where to get help" link, in the same place on every page. */
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 var(--space-8);
+}
+
 /* Text links: primary blue, underlined so they never rely on colour alone,
    with at least a 44px tall target and the shared focus outline. */
 .text-link {
@@ -399,6 +409,7 @@ h1 {
 }
 
 .text-link:focus-visible,
+.page #checker-heading:focus-visible,
 .help-page h1:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);
