@@ -62,7 +62,14 @@ export default function RiskLevelGuide({ level }) {
                 <Icon name={entry.icon} />
                 <span>
                   <strong>{name}:</strong> {meaning}
-                  {isCurrent && <span className="level-guide__current">{YOUR_RESULT}</span>}
+                  {/* A real space, not just CSS margin, so screen readers don't run the
+                      sentence and the label together. */}
+                  {isCurrent && (
+                    <>
+                      {" "}
+                      <span className="level-guide__current">{YOUR_RESULT}</span>
+                    </>
+                  )}
                 </span>
               </li>
             );

@@ -72,6 +72,16 @@ describe("marking the current level (acceptance criterion 3)", () => {
     expect(within(list).getAllByText(YOUR_RESULT)).toHaveLength(1);
   });
 
+  it("separates the sentence and 'Your result' with a space, so they aren't read as one word", async () => {
+    const { list } = await openGuide("suspicious");
+
+    const current = within(list)
+      .getAllByRole("listitem")
+      .find((item) => item.getAttribute("aria-current") === "true");
+    const meaning = LEVEL_MEANINGS.find(({ name }) => name === "Suspicious").meaning;
+    expect(current.textContent).toContain(`${meaning} ${YOUR_RESULT}`);
+  });
+
   it("gives every level its own icon, hidden from screen readers since the word says it", async () => {
     const { list } = await openGuide();
 
