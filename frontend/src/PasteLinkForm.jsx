@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import ResultCard from "./ResultCard.jsx";
+import AdvicePanel from "./AdvicePanel.jsx";
+import ResultCard, { levelOf } from "./ResultCard.jsx";
 import { LinkError } from "./scan.js";
 
 // Wording is copied word for word from the paste-a-link story.
@@ -81,6 +82,8 @@ export default function PasteLinkForm({ check }) {
       <div className="status" role="status" aria-live="polite">
         {busy ? CHECKING : reply && <ResultCard reply={reply} />}
       </div>
+      {/* Outside the live region, so the advice is reached by its heading rather than read out with every result. */}
+      {!busy && reply && <AdvicePanel level={levelOf(reply)} />}
     </form>
   );
 }
