@@ -81,11 +81,24 @@ def scaled_features(loaded: LoadedModel, link: str) -> list[float]:
     """
     features = extract_features(link)
     row = [[features[name] for name in FEATURE_NAMES]]
-    with warnings.catch_warnings():
-        # A plain row has no column names, so scikit-learn warns on every check.
-        # load_model has already checked that the scaler's order matches this row.
-        warnings.filterwarnings("ignore", message="X does not have valid feature names")
-        return [float(value) for value in loaded.scaler.transform(row)[0]]
+    return [float(value) for value in loaded.scaler.transform(row)[0]]
+
+
+# What scikit-learn says when a fitted scaler gets a plain row with no column names.
+COLUMN_NAME_WARNING = "X does not have valid feature names"
+
+
+def silence_column_name_warning() -> None:
+    """Hide scikit-learn's column-name warning for the rest of the process.
+
+    Each check hands the scaler a plain row, so scikit-learn would warn on every scan.
+    load_model has already checked that the scaler's order matches the row, so the
+    warning says nothing new. This is called once at start-up, not around each scan:
+    scans run side by side in FastAPI's thread pool, and a filter switched on and off
+    per scan is shared by the whole process, so two scans could undo each other's.
+    Only this one message is hidden; every other warning still shows.
+    """
+    warnings.filterwarnings("ignore", message=COLUMN_NAME_WARNING, category=UserWarning)
 
 
 def score_of(loaded: LoadedModel, scaled: list[float]) -> float:
