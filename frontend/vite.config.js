@@ -21,5 +21,15 @@ export default defineConfig({
     // focus and the live region the way a user and a screen reader meet them.
     environment: "jsdom",
     setupFiles: ["./src/test/setup.js"],
+    // Used by `npm run test:coverage`, which the Tests workflow runs and saves as
+    // an artefact. "text" prints in the log, "text-summary" writes one short file
+    // the report can quote, and "html" is the full page to browse.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{js,jsx}"],
+      exclude: ["src/test/**", "src/**/*.test.{js,jsx}"],
+      reporter: ["text", ["text-summary", { file: "coverage-summary.txt" }], "html"],
+      reportsDirectory: "coverage",
+    },
   },
 });

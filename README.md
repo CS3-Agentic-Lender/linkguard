@@ -99,6 +99,17 @@ The `backend`, `ml` and `frontend` checks also run on every push to `dev` and `m
 
 None of the checks needs a `.env` file, the dataset or a model file. The tests make their own small made-up data.
 
+**Artefacts.** Every Tests run saves four downloadable files, kept for 30 days. They're at the bottom of the run's summary page in the Actions tab.
+
+| Artefact | What's in it |
+|---|---|
+| `ml-coverage` | The ml coverage report as a web page (`index.html`), plus `coverage-summary.txt` with the coverage table |
+| `backend-coverage` | The same for the backend |
+| `frontend-coverage` | The frontend coverage report as a web page, plus `coverage-summary.txt` with the totals |
+| `frontend-build` | The production build from `npm run build`: the files a web server would host |
+
+The coverage artefacts are saved even when a test fails. To get the same frontend report locally, run `npm run test:coverage` in `frontend/`.
+
 #### Run the same checks on your machine
 
 Run these before you push, so a red cross doesn't surprise you. Each part needs its own tools: uv for `backend/` and `ml/` and betterleaks for the secret scan (both in [Setup](#setup)), and Node 22.22.2+ or 24.15.0+ for `frontend/`.
