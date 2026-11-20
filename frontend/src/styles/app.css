@@ -245,6 +245,36 @@ h1 {
   margin: var(--space-4) 0 0;
 }
 
+/* "Copy result": an outlined button at the bottom of the card. Text and border use the
+   card's own text colour, which is already checked on every card surface. */
+.result-card__copy {
+  margin: var(--space-4) 0 0;
+}
+
+.result-card__copy-button {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.result-card__copy-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.result-card__copy-error {
+  margin: var(--space-2) 0 0;
+  color: var(--color-error);
+  font-weight: var(--font-weight-semibold);
+}
+
 /* Placeholder and failure: smaller and with no level word, so they never look like a result. */
 .result-card__notice {
   display: flex;
