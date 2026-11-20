@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import AdvicePanel from "./AdvicePanel.jsx";
 import ResultCard, { levelOf } from "./ResultCard.jsx";
+import RiskLevelGuide from "./RiskLevelGuide.jsx";
 import { LinkError } from "./scan.js";
 
 // Wording is copied word for word from the paste-a-link story.
@@ -82,6 +83,9 @@ export default function PasteLinkForm({ check }) {
       <div className="status" role="status" aria-live="polite">
         {busy ? CHECKING : reply && <ResultCard reply={reply} />}
       </div>
+      {/* Outside the live region, so opening it doesn't read the result out again. Keyed by
+          the result, so it starts closed when a different link is checked. */}
+      {!busy && reply && <RiskLevelGuide key={`${reply.url}|${levelOf(reply)}`} level={levelOf(reply)} />}
       {/* Outside the live region, so the advice is reached by its heading rather than read out with every result. */}
       {!busy && reply && <AdvicePanel level={levelOf(reply)} />}
     </form>
