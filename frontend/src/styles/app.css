@@ -565,3 +565,34 @@ h1 {
   margin: var(--space-4) 0 0;
   color: var(--color-text-muted);
 }
+
+/*
+ * A second, quieter action, such as "Check another link": blue text and border on
+ * white, so it never competes with the blue Check button. The same touch target and
+ * focus outline as every other control.
+ */
+.secondary-button {
+  min-height: var(--touch-target-min);
+  padding: var(--space-2) var(--space-6);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-hover);
+}
+
+.secondary-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.check-another {
+  margin: var(--space-6) 0 0;
+}
