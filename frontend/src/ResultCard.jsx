@@ -63,7 +63,7 @@ const ICONS = {
 };
 
 // The three levels /scan can send, keyed by the backend's exact wording.
-const LEVELS = {
+export const LEVELS = {
   Safe: { level: "safe", icon: "shield-check" },
   Suspicious: { level: "suspicious", icon: "triangle-alert" },
   "High risk": { level: "high", icon: "octagon-alert" },
@@ -80,7 +80,7 @@ export function levelOf(reply) {
   return Object.hasOwn(LEVELS, reply?.risk_level ?? "") ? LEVELS[reply.risk_level].level : null;
 }
 
-function Icon({ name }) {
+export function Icon({ name }) {
   return (
     <svg
       data-icon={name}
