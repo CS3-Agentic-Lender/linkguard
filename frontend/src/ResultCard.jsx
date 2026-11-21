@@ -1,16 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId } from "react";
 
-import { EVERY_RESULT, LEVEL_ADVICE } from "./advice.js";
 import { CANT_CHECK, PLACEHOLDER } from "./scan.js";
 
-// Wording for the copy button, from the "copy the result and advice" story.
-export const COPY_BUTTON = "Copy result";
-export const COPIED = "Copied";
-export const COPY_FAILED = "Couldn't copy. Select the text and copy it yourself.";
-export const COPY_INTRO = "LinkGuard checked this link: ";
-export const COPY_WARNING = "Do not open this link unless LinkGuard said it was safe.";
-// How long the button says "Copied" before it goes back to "Copy result".
-export const COPIED_MS = 3000;
 
 // Wording is copied word for word from the result card story.
 export const SAFE_CAVEAT =
@@ -102,7 +93,7 @@ export function Icon({ name }) {
  * The reply's reasons that can be shown: plain, non-blank sentences, in the
  * reply's order, at most MAX_REASONS. Anything else in the list is skipped.
  */
-function readableReasons(reasons) {
+export function readableReasons(reasons) {
   if (!Array.isArray(reasons)) {
     return [];
   }
@@ -144,52 +135,6 @@ function Reasons({ reasons }) {
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-/**
- * The plain text the copy button puts on the clipboard, in the story's order: the
- * link, the risk level, the reasons one per line, that level's advice, then the
- * warning. `level` is the card's class ("safe", "suspicious" or "high").
- */
-export function copyText(reply, level) {
-  const reasons = level === "safe" ? [] : readableReasons(reply.reasons);
-  const advice = [...LEVEL_ADVICE[level], ...EVERY_RESULT];
-  return [`${COPY_INTRO}${reply.url ?? ""}`, reply.risk_level, ...reasons, ...advice, COPY_WARNING].join("\n");
-}
-
-/**
- * The "Copy result" button. On success it says "Copied" for a few seconds; the
- * card is inside the form's live region, so screen readers announce the change.
- * If the browser has no clipboard or refuses, the card says how to copy by hand
- * rather than failing silently.
- */
-function CopyResult({ text }) {
-  const [state, setState] = useState("idle");
-  const timer = useRef(null);
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  async function copy() {
-    clearTimeout(timer.current);
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("No clipboard");
-      }
-      await navigator.clipboard.writeText(text);
-      setState("copied");
-      timer.current = setTimeout(() => setState("idle"), COPIED_MS);
-    } catch {
-      setState("failed");
-    }
-  }
-
-  return (
-    <div className="result-card__copy">
-      <button type="button" className="result-card__copy-button" onClick={copy}>
-        {state === "copied" ? COPIED : COPY_BUTTON}
-      </button>
-      {state === "failed" && <p className="result-card__copy-error">{COPY_FAILED}</p>}
     </div>
   );
 }
@@ -246,7 +191,6 @@ export default function ResultCard({ reply }) {
         </p>
       )}
       {match.level === "safe" && <p className="result-card__caveat">{SAFE_CAVEAT}</p>}
-      <CopyResult text={copyText(reply, match.level)} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import AdvicePanel from "./AdvicePanel.jsx";
+import CopyResult, { copyText } from "./CopyResult.jsx";
 import ResultCard, { levelOf } from "./ResultCard.jsx";
 import RiskLevelGuide from "./RiskLevelGuide.jsx";
 import { LinkError } from "./scan.js";
@@ -83,6 +84,11 @@ export default function PasteLinkForm({ check }) {
       <div className="status" role="status" aria-live="polite">
         {busy ? CHECKING : reply && <ResultCard reply={reply} />}
       </div>
+      {/* Straight under the card but outside its live region, so "Copied" is announced on
+          its own rather than with the whole result. Keyed by the result, so it resets. */}
+      {!busy && reply && levelOf(reply) && (
+        <CopyResult key={`${reply.url}|${levelOf(reply)}`} text={copyText(reply, levelOf(reply))} />
+      )}
       {/* Outside the live region, so opening it doesn't read the result out again. Keyed by
           the result, so it starts closed when a different link is checked. */}
       {!busy && reply && <RiskLevelGuide key={`${reply.url}|${levelOf(reply)}`} level={levelOf(reply)} />}
