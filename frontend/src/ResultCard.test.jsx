@@ -197,7 +197,7 @@ describe("reasons on the result card", () => {
     const { container } = render(<ResultCard reply={reply({ risk_level: "Suspicious", reasons: REASONS })} />);
     const order = [...container.firstElementChild.children].map((child) => child.className);
 
-    expect(order).toEqual(["result-card__level", "result-card__reasons", "result-card__link", "result-card__copy"]);
+    expect(order).toEqual(["result-card__level", "result-card__reasons", "result-card__link"]);
   });
 
   it("shows reasons as plain text, never as links", () => {
@@ -271,14 +271,14 @@ describe("phishing score on the result card", () => {
     );
     const order = [...container.firstElementChild.children].map((child) => child.className);
 
-    expect(order).toEqual(["result-card__level", "result-card__score", "result-card__reasons", "result-card__link", "result-card__copy"]);
+    expect(order).toEqual(["result-card__level", "result-card__score", "result-card__reasons", "result-card__link"]);
   });
 
   it("puts the Safe score straight under the risk level, before the checked link and caveat", () => {
     const { container } = render(<ResultCard reply={reply({ risk_level: "Safe", score: 0.083 })} />);
     const order = [...container.firstElementChild.children].map((child) => child.className);
 
-    expect(order).toEqual(["result-card__level", "result-card__score", "result-card__link", "result-card__caveat", "result-card__copy"]);
+    expect(order).toEqual(["result-card__level", "result-card__score", "result-card__link", "result-card__caveat"]);
   });
 
   it("is plain text after the risk level, so a screen reader reads it in that order", () => {
