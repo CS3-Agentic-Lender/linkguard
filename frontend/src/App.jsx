@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { HELP_LINK_TEXT } from "./advice.js";
 import HelpPage from "./HelpPage.jsx";
+import { checkFrom, saveCheck } from "./history.js";
 import PasteLinkForm from "./PasteLinkForm.jsx";
 import PhishingCharts from "./PhishingCharts.jsx";
 import { checkLink } from "./scan.js";
@@ -25,6 +26,14 @@ export default function App({ check = checkLink }) {
 
   const onHelp = hash === HELP_HASH;
   const wasOnHelp = useRef(false);
+
+  // Each check with a result is saved in this browser only, never sent anywhere.
+  function remember(reply) {
+    const saved = checkFrom(reply);
+    if (saved) {
+      saveCheck(saved);
+    }
+  }
 
   // Each page change moves focus to its heading, without stealing initial focus.
   useEffect(() => {
@@ -53,7 +62,7 @@ export default function App({ check = checkLink }) {
         <p className="lead">
           Paste a link from a text, email or message. We check it for you without opening it.
         </p>
-        <PasteLinkForm check={check} />
+        <PasteLinkForm check={check} onResult={remember} />
         <PhishingCharts />
       </div>
     </main>
