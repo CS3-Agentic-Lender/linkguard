@@ -629,6 +629,12 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+/* "You haven't checked any links yet", in place of an empty table. */
+.history__empty {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+}
+
 /* The word and icon together, in the result card's colour for that level. */
 .history__result {
   display: inline-flex;

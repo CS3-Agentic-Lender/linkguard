@@ -6,6 +6,7 @@ import { RiskIcon } from "./ResultCard.jsx";
 export const HISTORY_HEADING = "Your last 5 checks";
 export const CLEAR_TEXT = "Clear my history";
 export const COLUMNS = ["Date and time", "Link", "Result"];
+export const NO_CHECKS = "You haven't checked any links yet";
 
 // Irish local time, for example "8 Oct 2026, 14:05", whatever time zone the device is set to.
 const IRISH_TIME = new Intl.DateTimeFormat("en-IE", {
@@ -27,7 +28,8 @@ const LEVEL_CLASS = { Safe: "safe", Suspicious: "suspicious", "High risk": "high
 /**
  * The checks saved in this browser, newest first, with a button that clears
  * them. Each link is plain text, never a link, so it can't be opened by
- * accident. Each result shows its word and icon, never colour alone.
+ * accident. Each result shows its word and icon, never colour alone. With no
+ * saved checks, a short message shows in place of an empty table.
  * `checks` is the list from history.js, already newest first.
  */
 export default function HistoryTable({ checks, onClear }) {
@@ -45,7 +47,9 @@ export default function HistoryTable({ checks, onClear }) {
       <h2 id="history-heading" ref={heading} tabIndex={-1}>
         {HISTORY_HEADING}
       </h2>
-      {checks.length > 0 && (
+      {checks.length === 0 ? (
+        <p className="history__empty">{NO_CHECKS}</p>
+      ) : (
         <>
           {/* The explicit roles keep this a table for screen readers when a phone
               screen stacks each row into lines (see app.css). */}
