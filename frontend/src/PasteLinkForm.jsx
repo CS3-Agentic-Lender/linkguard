@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import AdvicePanel from "./AdvicePanel.jsx";
 import CopyResult, { copyText } from "./CopyResult.jsx";
@@ -9,6 +9,7 @@ import { LinkError } from "./scan.js";
 // Wording is copied word for word from the paste-a-link story.
 export const LABEL = "Paste the link here";
 export const CHECKING = "Checking…";
+export const CHECK_ANOTHER = "Check another link";
 
 /**
  * The box, the Check button and the result card. `check(link)` sends the
@@ -22,6 +23,7 @@ export default function PasteLinkForm({ check }) {
   // The /scan reply the card shows, or null before the first check.
   const [reply, setReply] = useState(null);
   const [error, setError] = useState("");
+  const box = useRef(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -46,6 +48,15 @@ export default function PasteLinkForm({ check }) {
     }
   }
 
+  // Starts a fresh check: the box is emptied, the result and its advice go, and
+  // the cursor goes back in the box, ready to paste the next link.
+  function checkAnother() {
+    setLink("");
+    setReply(null);
+    setError("");
+    box.current?.focus();
+  }
+
   return (
     <form className="check-form" onSubmit={handleSubmit} noValidate>
       <label htmlFor="link">{LABEL}</label>
@@ -61,6 +72,7 @@ export default function PasteLinkForm({ check }) {
       )}
       <div className="check-row">
         <input
+          ref={box}
           id="link"
           name="link"
           type="text"
@@ -94,6 +106,12 @@ export default function PasteLinkForm({ check }) {
       {!busy && reply && <RiskLevelGuide key={`${reply.url}|${levelOf(reply)}`} level={levelOf(reply)} />}
       {/* Outside the live region, so the advice is reached by its heading rather than read out with every result. */}
       {!busy && reply && <AdvicePanel level={levelOf(reply)} />}
+      {/* Only once there is a result to clear. A plain button, so it never sends the form. */}
+      {!busy && reply && (
+        <button type="button" className="secondary-button check-another" onClick={checkAnother}>
+          {CHECK_ANOTHER}
+        </button>
+      )}
     </form>
   );
 }
