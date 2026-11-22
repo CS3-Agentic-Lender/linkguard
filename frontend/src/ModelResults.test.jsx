@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import App from "./App.jsx";
 import ModelResults, {
   BASELINE,
-  chooseModel,
+  CHOSEN_MODEL,
   HONESTY_NOTE,
   NOT_AVAILABLE,
   parseFile,
@@ -31,11 +31,13 @@ function folds(recall, precision, f1, roc_auc) {
   return { folds: [1, 2].map((fold) => ({ fold, cv: { recall, precision, f1, roc_auc, accuracy: 0.5 } })) };
 }
 
+// Like the real file, another model has the higher recall, but gradient boosting
+// ranks best and is the model the team chose.
 const COMPARISON = {
   models: {
     [BASELINE]: folds(0, 0, 0, 0.5),
-    "Model A": folds(0.6, 0.9, 0.72, 0.83),
-    "Model B": folds(0.65, 0.8, 0.71, 0.78),
+    "Logistic regression (balanced)": folds(0.65, 0.8, 0.71, 0.78),
+    [CHOSEN_MODEL]: folds(0.6, 0.9, 0.72, 0.83),
   },
 };
 
@@ -106,51 +108,45 @@ describe("the model comparison (acceptance criterion 3)", () => {
 
     expect(rowsOf(table)).toEqual([
       [BASELINE, "0.000", "0.000", "0.000", "0.500"],
-      ["Model A", "0.600", "0.900", "0.720", "0.830"],
-      ["Model B (chosen)", "0.650", "0.800", "0.710", "0.780"],
+      ["Logistic regression (balanced)", "0.650", "0.800", "0.710", "0.780"],
+      ["Gradient boosting (chosen)", "0.600", "0.900", "0.720", "0.830"],
     ]);
   });
 
-  it("gives the reason the model was chosen", () => {
-    expect(results().getByText(/because it caught the most phishing links/)).toHaveTextContent(
-      "We chose Model B because it caught the most phishing links in testing (phishing recall 0.650).",
+  it("marks the model the team chose, not the one with the highest recall", () => {
+    expect(CHOSEN_MODEL).toBe("Gradient boosting");
+    expect(results().getByRole("rowheader", { name: /chosen/ })).toHaveTextContent("Gradient boosting");
+  });
+
+  it("gives the real reason, and says why the higher-recall model wasn't chosen", () => {
+    expect(results().getByText(/^We chose/)).toHaveTextContent(
+      "We chose Gradient boosting because it was best at ranking phishing links above safe ones (ROC-AUC 0.830 in cross-validation), as the team agreed at sprint planning. The test scores above are this model's. Logistic regression (balanced) caught a few more phishing links (phishing recall 0.650), and the recall-first comparison picked it, but it ranked them less well.",
     );
   });
 
-  it("splits models within 0.01 of the best recall by F1, and never picks the baseline", () => {
-    const rows = readComparison({
-      models: {
-        [BASELINE]: folds(1, 0, 0, 0.5),
-        "Model A": folds(0.645, 0.9, 0.73, 0.83),
-        "Model B": folds(0.65, 0.8, 0.71, 0.78),
-      },
-    });
-
-    expect(chooseModel(rows)).toMatchObject({ model: { name: "Model A" }, reason: "f1" });
-  });
-
-  it("picks the simpler model when the best are also within 0.01 on F1", () => {
-    const rows = readComparison({
-      models: {
-        "Random forest": folds(0.645, 0.9, 0.725, 0.83),
-        "Logistic regression": folds(0.64, 0.8, 0.72, 0.78),
-      },
-    });
-
-    expect(chooseModel(rows)).toMatchObject({ model: { name: "Logistic regression" }, reason: "simpler" });
-  });
-
-  it("gives the reason from the step of the rule that decided, not always the highest recall", () => {
-    const comparison = {
-      models: {
-        "Model A": folds(0.645, 0.9, 0.73, 0.83),
-        "Model B": folds(0.65, 0.8, 0.71, 0.78),
-      },
-    };
+  it("doesn't say it ranked best when another model ranked better", () => {
+    const comparison = { models: { ...COMPARISON.models, "Random forest": folds(0.55, 0.9, 0.7, 0.9) } };
     const reason = results({ comparison }).getByText(/^We chose/);
 
-    expect(reason).toHaveTextContent("We chose Model A because it caught about as many phishing links as the best model");
-    expect(reason).not.toHaveTextContent("caught the most phishing links");
+    expect(reason).toHaveTextContent(
+      "We chose Gradient boosting as the team agreed at sprint planning (ROC-AUC 0.830 in cross-validation).",
+    );
+    expect(reason).not.toHaveTextContent("best at ranking");
+  });
+
+  it("leaves out the recall note when no other model caught more phishing links", () => {
+    const comparison = { models: { [BASELINE]: folds(0, 0, 0, 0.5), [CHOSEN_MODEL]: folds(0.6, 0.9, 0.72, 0.83) } };
+
+    expect(results({ comparison }).getByText(/^We chose/)).not.toHaveTextContent("recall-first");
+  });
+
+  it("marks no model and gives no reason when the chosen model isn't in the file", () => {
+    const comparison = { models: { "Model A": folds(0.6, 0.9, 0.72, 0.83) } };
+    const section = results({ comparison });
+
+    expect(section.getByRole("table", { name: /cross-validation folds/ })).toBeInTheDocument();
+    expect(section.queryByRole("rowheader", { name: /chosen/ })).not.toBeInTheDocument();
+    expect(section.queryByText(/^We chose/)).not.toBeInTheDocument();
   });
 
   it("averages each score over the folds", () => {
@@ -207,6 +203,10 @@ describe("a missing or unreadable results file (acceptance criterion 6)", () => 
       "a confusion matrix with the labels the other way round",
       { evaluation: { ...EVALUATION, confusion_matrix: { ...EVALUATION.confusion_matrix, labels: ["legitimate", "phishing"] } } },
     ],
+    [
+      "a confusion matrix with only the first label wrong",
+      { evaluation: { ...EVALUATION, confusion_matrix: { ...EVALUATION.confusion_matrix, labels: ["safe", "legitimate"] } } },
+    ],
     ["a comparison with no folds", { comparison: { models: { "Model A": { folds: [] } } } }],
     ["an evaluation file that isn't valid JSON", { evaluation: parseFile('{"test": {"recall": 0.5') }],
     ["a comparison file that isn't valid JSON", { comparison: parseFile("not json") }],
@@ -226,6 +226,7 @@ describe("on the page", () => {
 
     expect(section.queryByText(NOT_AVAILABLE)).not.toBeInTheDocument();
     expect(section.getAllByRole("table")).toHaveLength(3);
-    expect(section.getByRole("rowheader", { name: /chosen/ })).toHaveTextContent("Logistic regression (balanced)");
+    expect(section.getByRole("rowheader", { name: /chosen/ })).toHaveTextContent("Gradient boosting");
+    expect(section.getByText(/^We chose/)).toHaveTextContent("We chose Gradient boosting because it was best at ranking");
   });
 });

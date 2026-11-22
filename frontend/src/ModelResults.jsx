@@ -23,9 +23,11 @@ export function parseFile(text) {
   }
 }
 
-// Simplest first, for the last step of the choosing rule. A model not listed
-// counts as the least simple.
-const SIMPLEST_FIRST = ["Logistic regression", "Logistic regression (balanced)", "Random forest", "Gradient boosting"];
+// The model the team chose and the app runs. It was picked by ROC-AUC, as agreed at
+// sprint planning, and the Product Owner confirmed it on 9 November 2026 (ADR 0004
+// and ml/reports/evaluation_report.md). It is a recorded decision, so it is named
+// here, not worked out again from the cross-validation scores.
+export const CHOSEN_MODEL = "Gradient boosting";
 
 // Wording from the model performance story. The honesty note is word for word.
 export const RESULTS_HEADING = "How well the model does";
@@ -111,47 +113,25 @@ export function readComparison(file) {
   return rows.length > 0 ? rows : null;
 }
 
-const simplicity = (name) => {
-  const rank = SIMPLEST_FIRST.indexOf(name);
-  return rank === -1 ? SIMPLEST_FIRST.length : rank;
-};
-
 /**
- * The chosen model and the step of the team's choosing rule that decided it
- * (ml/reports/model_comparison.md): the highest mean phishing recall wins ("recall").
- * If models are within 0.01 of the best recall, the highest F1 wins ("f1"). If they
- * are also within 0.01 of the best F1 among them, the simpler model wins
- * ("simpler"). The baseline is never a candidate. Null when there is no candidate.
+ * Why the chosen model was chosen, in plain words, from its own row of the
+ * comparison. It only says the model was best at ranking when the scores show it.
+ * If another model caught more phishing links, it says so, because that is the
+ * model the recall-first comparison picked, and the table would look odd otherwise.
  */
-export function chooseModel(rows) {
-  const candidates = rows.filter((row) => row.name !== BASELINE);
-  if (candidates.length === 0) {
-    return null;
-  }
-  const bestRecall = Math.max(...candidates.map((row) => row.recall));
-  const closeOnRecall = candidates.filter((row) => bestRecall - row.recall <= 0.01);
-  if (closeOnRecall.length === 1) {
-    return { model: closeOnRecall[0], reason: "recall" };
-  }
-  const bestF1 = Math.max(...closeOnRecall.map((row) => row.f1));
-  const closeOnF1 = closeOnRecall.filter((row) => bestF1 - row.f1 <= 0.01);
-  if (closeOnF1.length === 1) {
-    return { model: closeOnF1[0], reason: "f1" };
-  }
-  const simplest = closeOnF1.reduce((best, row) => (simplicity(row.name) < simplicity(best.name) ? row : best));
-  return { model: simplest, reason: "simpler" };
-}
-
-// Why the chosen model won, in plain words, for each step of the rule.
-function reasonFor({ model, reason }) {
-  const recall = MEASURE.format(model.recall);
-  if (reason === "recall") {
-    return `because it caught the most phishing links in testing (phishing recall ${recall}). It gives up some precision for that, and a missed phishing link is the costly mistake.`;
-  }
-  if (reason === "f1") {
-    return `because it caught about as many phishing links as the best model (phishing recall ${recall}) and had the best balance of recall and precision (F1 ${MEASURE.format(model.f1)}).`;
-  }
-  return `because it scored about as well as the best models (phishing recall ${recall}) and is the simplest of them.`;
+export function chosenReason(chosen, rows) {
+  const others = rows.filter((row) => row !== chosen && row.name !== BASELINE);
+  const rocAuc = MEASURE.format(chosen.roc_auc);
+  const bestAtRanking = others.every((row) => chosen.roc_auc >= row.roc_auc);
+  const reason = bestAtRanking
+    ? `because it was best at ranking phishing links above safe ones (ROC-AUC ${rocAuc} in cross-validation), as the team agreed at sprint planning.`
+    : `as the team agreed at sprint planning (ROC-AUC ${rocAuc} in cross-validation).`;
+  const mostCaught = others.reduce((best, row) => (best && best.recall >= row.recall ? best : row), null);
+  const recallNote =
+    mostCaught && mostCaught.recall > chosen.recall
+      ? ` ${mostCaught.name} caught a few more phishing links (phishing recall ${MEASURE.format(mostCaught.recall)}), and the recall-first comparison picked it, but it ranked them less well.`
+      : "";
+  return `${reason} The test scores above are this model's.${recallNote}`;
 }
 
 
@@ -258,13 +238,13 @@ function Mistakes({ results }) {
 }
 
 function Comparison({ rows }) {
-  const chosen = chooseModel(rows);
+  const chosen = rows.find((row) => row.name === CHOSEN_MODEL);
   return (
     <>
       <h3>The models we compared</h3>
       {chosen && (
         <p>
-          We chose <strong>{chosen.model.name}</strong> {reasonFor(chosen)}
+          We chose <strong>{chosen.name}</strong> {chosenReason(chosen, rows)}
         </p>
       )}
       <ResultsTable
@@ -272,7 +252,7 @@ function Comparison({ rows }) {
         columns={["Model", "Phishing recall", "Precision", "F1", "ROC-AUC"]}
         rows={rows.map((row) => ({
           heading: row.name,
-          chosen: row === chosen?.model,
+          chosen: row === chosen,
           cells: [row.recall, row.precision, row.f1, row.roc_auc].map((value) => MEASURE.format(value)),
         }))}
       />
