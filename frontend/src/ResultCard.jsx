@@ -90,6 +90,14 @@ export function Icon({ name }) {
 }
 
 /**
+ * The icon for one of the three result words, such as "High risk", the same one
+ * the result card shows. Decorative: the word next to it carries the meaning.
+ */
+export function RiskIcon({ riskLevel }) {
+  return Object.hasOwn(LEVELS, riskLevel ?? "") ? <Icon name={LEVELS[riskLevel].icon} /> : null;
+}
+
+/**
  * The reply's reasons that can be shown: plain, non-blank sentences, in the
  * reply's order, at most MAX_REASONS. Anything else in the list is skipped.
  */

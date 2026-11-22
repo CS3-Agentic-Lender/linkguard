@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { HELP_LINK_TEXT } from "./advice.js";
 import HelpPage from "./HelpPage.jsx";
-import { checkFrom, saveCheck } from "./history.js";
+import { checkFrom, clearHistory, loadHistory, saveCheck } from "./history.js";
+import HistoryTable from "./HistoryTable.jsx";
 import PasteLinkForm from "./PasteLinkForm.jsx";
 import PhishingCharts from "./PhishingCharts.jsx";
 import { checkLink } from "./scan.js";
@@ -17,6 +18,8 @@ function currentHash() {
 
 export default function App({ check = checkLink }) {
   const [hash, setHash] = useState(currentHash);
+  // The checks saved in this browser, newest first, read once when the page opens.
+  const [checks, setChecks] = useState(loadHistory);
 
   useEffect(() => {
     const onHashChange = () => setHash(currentHash());
@@ -31,7 +34,10 @@ export default function App({ check = checkLink }) {
   function remember(reply) {
     const saved = checkFrom(reply);
     if (saved) {
-      saveCheck(saved);
+      // Built from the list on the page, so a check the browser couldn't store isn't
+      // lost. It uses the latest list, not the one from when the check started, so
+      // checks cleared while a check was running don't come back when it finishes.
+      setChecks((current) => saveCheck(saved, { current }));
     }
   }
 
@@ -63,6 +69,13 @@ export default function App({ check = checkLink }) {
           Paste a link from a text, email or message. We check it for you without opening it.
         </p>
         <PasteLinkForm check={check} onResult={remember} />
+        <HistoryTable
+          checks={checks}
+          onClear={() => {
+            clearHistory();
+            setChecks([]);
+          }}
+        />
         <PhishingCharts />
       </div>
     </main>

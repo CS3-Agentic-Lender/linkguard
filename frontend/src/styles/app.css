@@ -648,3 +648,93 @@ h1 {
 .check-another {
   margin: var(--space-6) 0 0;
 }
+
+/*
+ * The last checks saved in this browser. Links can be very long, so they wrap
+ * anywhere rather than pushing the table wider than a phone screen.
+ */
+.history {
+  margin: var(--space-12) 0 0;
+}
+
+.history h2:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.history__table {
+  width: 100%;
+  margin: var(--space-4) 0;
+  border-collapse: collapse;
+  background: var(--color-surface);
+}
+
+.history__table th,
+.history__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.history__link {
+  overflow-wrap: anywhere;
+}
+
+/* The word and icon together, in the result card's colour for that level. */
+.history__result {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-weight: var(--font-weight-semibold);
+}
+
+.history__result svg {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+}
+
+.history__result[data-level="safe"] {
+  color: var(--color-risk-safe);
+}
+
+.history__result[data-level="suspicious"] {
+  color: var(--color-risk-suspicious);
+}
+
+.history__result[data-level="high"] {
+  color: var(--color-risk-high);
+}
+
+/*
+ * Narrow screens, including 320 px with 200% text: each check becomes a short
+ * block of labelled lines instead of three columns that can't fit. The column
+ * headings are hidden here, because each line carries its own label.
+ */
+@media (max-width: 40em) {
+  .history__table thead {
+    display: none;
+  }
+
+  .history__table tr {
+    display: block;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .history__table td {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    border-bottom: none;
+  }
+
+  .history__table td::before {
+    content: attr(data-label) ": ";
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .history__result {
+    flex-wrap: wrap;
+  }
+}
