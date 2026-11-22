@@ -9,7 +9,8 @@
 - The ROC-AUC is 0.823 and the accuracy is 78.5%.
 - The model is not overfit: its training and test scores are close. It slightly underfits: it scores only moderately even on the rows it learned from, and bigger models did not do better, so the hostname features set the limit (see "Over- and underfitting").
 - These are the model's raw results at a cut-off of 0.5. The website's risk levels use the agreed cut-offs of 0.20 and 0.60 instead, so what users see is not the same as these numbers.
-- These scores are probably still too high for real links (see "Why these scores are likely too high"). There is no outside-links test in this release, so the PhiUSIIL scores are an upper bound on how the model will do in real use.
+- These scores are probably still too high for real links (see "Why these scores are likely too high"), so the PhiUSIIL scores are an upper bound on how the model will do in real use.
+- On 520 links from outside PhiUSIIL the model caught more phishing, with recall 0.870, but that set is a best case too (see "Outside-links test"). Neither set is an estimate of real-world accuracy.
 
 ## What was tested
 
@@ -83,11 +84,38 @@ The cross-validation column is copied from the tuning report ([`ml/reports/tunin
   - The split keeps each host in one set, but not each parent domain.
   - The model comparison counted that 23.5% of test links, and 51.8% of test phishing links, share a parent domain (such as `web.app`) with training links.
   - So part of the test set is easier than truly new links would be.
-- **No outside test:** there is no outside-links test in this release. That means the PhiUSIIL scores are an **upper bound** on real-world performance, not an estimate of it.
+- So the PhiUSIIL scores are an **upper bound** on real-world performance, not an estimate of it. The outside-links test below does not change that.
+
+## Outside-links test
+
+Added in Sprint 4, after the outside test set was collected and scored. Every score and count here comes from `ml/reports/outside_results.json`, which `uv run python -m evaluation.outside` saves (see `ml/README.md`). The links were never opened: only their text was read.
+
+- **What was tested:** the same saved model, at the same 0.5 cut-off, on 520 links from outside PhiUSIIL. 300 are phishing links from the OpenPhish community feed, and 220 are legitimate pages with paths on popular sites. Both sets were collected on 17 Nov 2026. Links already in PhiUSIIL were left out.
+
+| Measure | PhiUSIIL test split | Outside links |
+|---|---|---|
+| **Phishing recall (main measure)** | 0.566 | **0.870** (261 of 300 caught, 39 missed) |
+| Precision | 0.889 | 0.967 |
+| F1 | 0.692 | 0.916 |
+| False alarm rate | 0.052 | 0.041 (9 of 220) |
+| ROC-AUC | 0.823 | 0.962 |
+| Accuracy | 0.785 | 0.908 |
+
+- **Why the PhiUSIIL scores are a best case:** the leakage and the legitimate-link template above. The legitimate links are bare homepages, and many test hosts share a parent domain with training hosts.
+- **Why the outside scores are a best case too:**
+  - 189 of the 300 phishing links are on one free hosting site, `pages.dev` (`ml/README.md`). Their long, random host names are easy for a hostname model to catch. [Nic's outside-test analysis](https://alprojectcs3.atlassian.net/wiki/spaces/AGILE/pages/57311233/ALG-99+Outside+test+results+Nic) reports recall of about 0.65 without them. That figure is from his analysis, not a field in the results file.
+  - The legitimate links come from the most popular sites, whose host names are short and clean.
+  - So the outside set is easier than the links people really paste, and its higher scores do not mean the model is better than the PhiUSIIL numbers say.
+- **Hosts the model has seen:** none of the phishing hosts are in PhiUSIIL, and 64 of the legitimate links are on hosts that are. False alarms were 4 of 64 on those hosts and 5 of 156 on new hosts, so the seen hosts do not flatter the result.
+- **What users would see** at the website's cut-offs of 0.20 and 0.60:
+  - Phishing links: 4 Safe, 42 Suspicious and 254 High risk.
+  - Legitimate links: 61 Safe, 156 Suspicious and 3 High risk.
+  - So the low cut-off almost never calls phishing Safe, but it calls 71% of ordinary pages Suspicious.
+- **Limits:** 520 links is a small set, from one phishing feed on one day and one list of popular sites. Hosting and link-shortener sites were left out of the legitimate links, so the test says nothing about legitimate pages on shared hosting, where much phishing also lives.
 
 ## Limitations and next steps
 
-- Test the model on links that do not come from PhiUSIIL, such as recent phishing feeds and ordinary legitimate links with paths, before trusting these numbers.
+- Repeat the outside test with more links, more feeds, at most a few links from any one hosting site (`--per-site`), and legitimate pages on shared hosting.
 - Regroup the split by parent domain, so that shared platforms can't sit in both sets. This is already noted as separate work in the model comparison.
 - Set the website's risk-level cut-offs with recall in mind, using the training data, never the test set.
 - Add features beyond the hostname only if they can be worked out the same way at scan time and do not bring the template leakage back.

@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { HELP_LINK_TEXT } from "./advice.js";
 import HelpPage from "./HelpPage.jsx";
+import { checkFrom, clearHistory, loadHistory, saveCheck } from "./history.js";
+import HistoryTable from "./HistoryTable.jsx";
 import PasteLinkForm from "./PasteLinkForm.jsx";
 import PhishingCharts from "./PhishingCharts.jsx";
+import ModelResults from "./ModelResults.jsx";
 import { checkLink } from "./scan.js";
 
 // The help page lives at #help, so it needs no server routes and the browser's
@@ -16,6 +19,8 @@ function currentHash() {
 
 export default function App({ check = checkLink }) {
   const [hash, setHash] = useState(currentHash);
+  // The checks saved in this browser, newest first, read once when the page opens.
+  const [checks, setChecks] = useState(loadHistory);
 
   useEffect(() => {
     const onHashChange = () => setHash(currentHash());
@@ -25,6 +30,17 @@ export default function App({ check = checkLink }) {
 
   const onHelp = hash === HELP_HASH;
   const wasOnHelp = useRef(false);
+
+  // Each check with a result is saved in this browser only, never sent anywhere.
+  function remember(reply) {
+    const saved = checkFrom(reply);
+    if (saved) {
+      // Built from the list on the page, so a check the browser couldn't store isn't
+      // lost. It uses the latest list, not the one from when the check started, so
+      // checks cleared while a check was running don't come back when it finishes.
+      setChecks((current) => saveCheck(saved, { current }));
+    }
+  }
 
   // Each page change moves focus to its heading, without stealing initial focus.
   useEffect(() => {
@@ -53,8 +69,16 @@ export default function App({ check = checkLink }) {
         <p className="lead">
           Paste a link from a text, email or message. We check it for you without opening it.
         </p>
-        <PasteLinkForm check={check} />
+        <PasteLinkForm check={check} onResult={remember} />
+        <HistoryTable
+          checks={checks}
+          onClear={() => {
+            clearHistory();
+            setChecks([]);
+          }}
+        />
         <PhishingCharts />
+        <ModelResults />
       </div>
     </main>
   );

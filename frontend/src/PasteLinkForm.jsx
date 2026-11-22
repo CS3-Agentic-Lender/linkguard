@@ -1,25 +1,30 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import AdvicePanel from "./AdvicePanel.jsx";
+import CopyResult, { copyText } from "./CopyResult.jsx";
 import ResultCard, { levelOf } from "./ResultCard.jsx";
+import RiskLevelGuide from "./RiskLevelGuide.jsx";
 import { LinkError } from "./scan.js";
 
 // Wording is copied word for word from the paste-a-link story.
 export const LABEL = "Paste the link here";
 export const CHECKING = "Checking…";
+export const CHECK_ANOTHER = "Check another link";
 
 /**
  * The box, the Check button and the result card. `check(link)` sends the
  * pasted text off and resolves with the /scan reply for the card, or rejects
  * with a LinkError saying what's wrong with the pasted text. The link is only ever held as text: it is never
  * opened, fetched, previewed or shown as a clickable link.
+ * `onResult(reply)`, if given, is told about each reply the card shows.
  */
-export default function PasteLinkForm({ check }) {
+export default function PasteLinkForm({ check, onResult }) {
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   // The /scan reply the card shows, or null before the first check.
   const [reply, setReply] = useState(null);
   const [error, setError] = useState("");
+  const box = useRef(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -30,7 +35,9 @@ export default function PasteLinkForm({ check }) {
     setError("");
     setReply(null);
     try {
-      setReply(await check(link));
+      const answer = await check(link);
+      setReply(answer);
+      onResult?.(answer);
     } catch (failure) {
       if (failure instanceof LinkError) {
         // The pasted text stays in the box, so the user can fix it.
@@ -42,6 +49,15 @@ export default function PasteLinkForm({ check }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // Starts a fresh check: the box is emptied, the result and its advice go, and
+  // the cursor goes back in the box, ready to paste the next link.
+  function checkAnother() {
+    setLink("");
+    setReply(null);
+    setError("");
+    box.current?.focus();
   }
 
   return (
@@ -59,6 +75,7 @@ export default function PasteLinkForm({ check }) {
       )}
       <div className="check-row">
         <input
+          ref={box}
           id="link"
           name="link"
           type="text"
@@ -82,8 +99,22 @@ export default function PasteLinkForm({ check }) {
       <div className="status" role="status" aria-live="polite">
         {busy ? CHECKING : reply && <ResultCard reply={reply} />}
       </div>
+      {/* Straight under the card but outside its live region, so "Copied" is announced on
+          its own rather than with the whole result. Keyed by the result, so it resets. */}
+      {!busy && reply && levelOf(reply) && (
+        <CopyResult key={`${reply.url}|${levelOf(reply)}`} text={copyText(reply, levelOf(reply))} />
+      )}
+      {/* Outside the live region, so opening it doesn't read the result out again. Keyed by
+          the result, so it starts closed when a different link is checked. */}
+      {!busy && reply && <RiskLevelGuide key={`${reply.url}|${levelOf(reply)}`} level={levelOf(reply)} />}
       {/* Outside the live region, so the advice is reached by its heading rather than read out with every result. */}
       {!busy && reply && <AdvicePanel level={levelOf(reply)} />}
+      {/* Only once there is a result to clear. A plain button, so it never sends the form. */}
+      {!busy && reply && (
+        <button type="button" className="secondary-button check-another" onClick={checkAnother}>
+          {CHECK_ANOTHER}
+        </button>
+      )}
     </form>
   );
 }

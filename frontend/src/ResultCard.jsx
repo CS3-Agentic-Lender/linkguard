@@ -2,6 +2,7 @@ import { useId } from "react";
 
 import { CANT_CHECK, PLACEHOLDER } from "./scan.js";
 
+
 // Wording is copied word for word from the result card story.
 export const SAFE_CAVEAT =
   "No warning signs found. Still don't enter passwords or bank details from a message you weren't expecting.";
@@ -53,7 +54,7 @@ const ICONS = {
 };
 
 // The three levels /scan can send, keyed by the backend's exact wording.
-const LEVELS = {
+export const LEVELS = {
   Safe: { level: "safe", icon: "shield-check" },
   Suspicious: { level: "suspicious", icon: "triangle-alert" },
   "High risk": { level: "high", icon: "octagon-alert" },
@@ -70,7 +71,7 @@ export function levelOf(reply) {
   return Object.hasOwn(LEVELS, reply?.risk_level ?? "") ? LEVELS[reply.risk_level].level : null;
 }
 
-function Icon({ name }) {
+export function Icon({ name }) {
   return (
     <svg
       data-icon={name}
@@ -89,10 +90,18 @@ function Icon({ name }) {
 }
 
 /**
+ * The icon for one of the three result words, such as "High risk", the same one
+ * the result card shows. Decorative: the word next to it carries the meaning.
+ */
+export function RiskIcon({ riskLevel }) {
+  return Object.hasOwn(LEVELS, riskLevel ?? "") ? <Icon name={LEVELS[riskLevel].icon} /> : null;
+}
+
+/**
  * The reply's reasons that can be shown: plain, non-blank sentences, in the
  * reply's order, at most MAX_REASONS. Anything else in the list is skipped.
  */
-function readableReasons(reasons) {
+export function readableReasons(reasons) {
   if (!Array.isArray(reasons)) {
     return [];
   }

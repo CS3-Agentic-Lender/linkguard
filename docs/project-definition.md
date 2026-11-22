@@ -20,6 +20,8 @@ Ordinary people who get suspicious links by text, email or message. Phishing hur
 - the specific reasons the link looks dangerous;
 - clear advice on what to do next.
 
+The site also shows how well the model does on the held-back test split: its phishing recall, precision, F1 and ROC-AUC, the mistakes it makes, the models it was chosen from, and a note that these scores are an upper bound on real-world performance. This was added in Sprint 4 from Sprint 2 review feedback, which asked to see the model's results on the website.
+
 It is built from a React frontend, a Python FastAPI backend and a classification model trained on the PhiUSIIL Phishing URL Dataset (UCI, 235,795 labelled URLs: 134,850 legitimate, 100,945 phishing). It is delivered over three one-week sprints that follow the brief's stages:
 
 | Sprint | Stage | Slice |
