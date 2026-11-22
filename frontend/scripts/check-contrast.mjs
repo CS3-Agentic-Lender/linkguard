@@ -36,6 +36,7 @@ const PAIRS = [
   ["text-muted", "risk-safe-surface", TEXT, "Link checked on a Safe result card"],
   ["text-muted", "risk-suspicious-surface", TEXT, "Link checked on a Suspicious result card"],
   ["text-muted", "risk-high-surface", TEXT, "Link checked on a High risk result card"],
+  ["error", "background", TEXT, "Couldn't copy message under the result card"],
   ["border", "surface", NON_TEXT, "Link box border"],
   ["border", "background", NON_TEXT, "Link box border on the page"],
   ["focus", "surface", NON_TEXT, "Focus outline on a card"],

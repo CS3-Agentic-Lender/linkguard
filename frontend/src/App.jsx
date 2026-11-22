@@ -34,8 +34,10 @@ export default function App({ check = checkLink }) {
   function remember(reply) {
     const saved = checkFrom(reply);
     if (saved) {
-      // Built from the list on the page, so a check the browser couldn't store isn't lost.
-      setChecks(saveCheck(saved, { current: checks }));
+      // Built from the list on the page, so a check the browser couldn't store isn't
+      // lost. It uses the latest list, not the one from when the check started, so
+      // checks cleared while a check was running don't come back when it finishes.
+      setChecks((current) => saveCheck(saved, { current }));
     }
   }
 

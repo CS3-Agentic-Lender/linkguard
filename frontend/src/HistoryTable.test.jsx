@@ -113,6 +113,28 @@ describe("clear my history", () => {
     expect(rows()).toHaveLength(0);
   });
 
+  it("keeps the history cleared when it is cleared while a check is still running", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(SAMPLE));
+    let finish;
+    const running = new Promise((resolve) => {
+      finish = resolve;
+    });
+    render(<App check={() => running} />);
+
+    await user.type(screen.getByLabelText(LABEL), "https://new-check.example/");
+    await user.click(screen.getByRole("button", { name: "Check" }));
+    await user.click(screen.getByRole("button", { name: CLEAR_TEXT }));
+    expect(rows()).toHaveLength(0);
+
+    finish({ url: "https://new-check.example/", risk_level: "Safe", score: 0.1, reasons: [], placeholder: false });
+    await screen.findByRole("cell", { name: "new-check.example" });
+
+    // Only the new check: none of the cleared ones come back, on the page or in storage.
+    expect(rows()).toHaveLength(1);
+    expect(loadHistory().map(({ link }) => link)).toEqual(["new-check.example"]);
+  });
+
   it("works from the keyboard alone", async () => {
     const user = userEvent.setup();
     const cleared = [];

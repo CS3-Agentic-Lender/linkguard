@@ -2,6 +2,7 @@ import { useId } from "react";
 
 import { CANT_CHECK, PLACEHOLDER } from "./scan.js";
 
+
 // Wording is copied word for word from the result card story.
 export const SAFE_CAVEAT =
   "No warning signs found. Still don't enter passwords or bank details from a message you weren't expecting.";
@@ -100,7 +101,7 @@ export function RiskIcon({ riskLevel }) {
  * The reply's reasons that can be shown: plain, non-blank sentences, in the
  * reply's order, at most MAX_REASONS. Anything else in the list is skipped.
  */
-function readableReasons(reasons) {
+export function readableReasons(reasons) {
   if (!Array.isArray(reasons)) {
     return [];
   }
