@@ -421,6 +421,88 @@ h1 {
   font-size: var(--font-size-sm);
 }
 
+/*
+ * "How well the model does": plain tables with captions, so screen readers read
+ * them as they are. Text colours are the ones already checked by
+ * scripts/check-contrast.mjs. The chosen model is marked by the word "(chosen)"
+ * and bold text, never by colour alone.
+ */
+.model-results {
+  margin: var(--space-12) 0 0;
+}
+
+.model-results h3 {
+  margin: var(--space-8) 0 var(--space-2);
+}
+
+.results-table {
+  width: 100%;
+  margin: var(--space-4) 0;
+  border-collapse: collapse;
+  background: var(--color-surface);
+}
+
+.results-table caption {
+  padding: 0 0 var(--space-2);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+}
+
+.results-table th,
+.results-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Row headers in normal weight, so the chosen model's row can stand out in bold. */
+.results-table tbody th {
+  font-weight: var(--font-weight-regular);
+}
+
+.results-table__chosen th,
+.results-table__chosen td {
+  font-weight: var(--font-weight-bold);
+}
+
+/*
+ * Narrow screens, including 320 px with 200% text: each row becomes a short block
+ * of labelled lines instead of columns that can't fit, the same way as the history
+ * table. The column headings are hidden here, because each line carries its own.
+ */
+@media (max-width: 40em) {
+  .results-table thead {
+    display: none;
+  }
+
+  .results-table caption {
+    display: block;
+  }
+
+  .results-table tr {
+    display: block;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .results-table th,
+  .results-table td {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    border-bottom: none;
+  }
+
+  .results-table tbody th {
+    font-weight: var(--font-weight-bold);
+  }
+
+  .results-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
 /* Kept for screen readers, hidden on screen. */
 .visually-hidden {
   position: absolute;

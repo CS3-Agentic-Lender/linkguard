@@ -6,6 +6,7 @@ import { checkFrom, clearHistory, loadHistory, saveCheck } from "./history.js";
 import HistoryTable from "./HistoryTable.jsx";
 import PasteLinkForm from "./PasteLinkForm.jsx";
 import PhishingCharts from "./PhishingCharts.jsx";
+import ModelResults from "./ModelResults.jsx";
 import { checkLink } from "./scan.js";
 
 // The help page lives at #help, so it needs no server routes and the browser's
@@ -77,6 +78,7 @@ export default function App({ check = checkLink }) {
           }}
         />
         <PhishingCharts />
+        <ModelResults />
       </div>
     </main>
   );
