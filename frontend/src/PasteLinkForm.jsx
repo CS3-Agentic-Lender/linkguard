@@ -16,8 +16,9 @@ export const CHECK_ANOTHER = "Check another link";
  * pasted text off and resolves with the /scan reply for the card, or rejects
  * with a LinkError saying what's wrong with the pasted text. The link is only ever held as text: it is never
  * opened, fetched, previewed or shown as a clickable link.
+ * `onResult(reply)`, if given, is told about each reply the card shows.
  */
-export default function PasteLinkForm({ check }) {
+export default function PasteLinkForm({ check, onResult }) {
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   // The /scan reply the card shows, or null before the first check.
@@ -34,7 +35,9 @@ export default function PasteLinkForm({ check }) {
     setError("");
     setReply(null);
     try {
-      setReply(await check(link));
+      const answer = await check(link);
+      setReply(answer);
+      onResult?.(answer);
     } catch (failure) {
       if (failure instanceof LinkError) {
         // The pasted text stays in the box, so the user can fix it.
