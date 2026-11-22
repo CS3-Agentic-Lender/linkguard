@@ -245,6 +245,58 @@ h1 {
   margin: var(--space-4) 0 0;
 }
 
+/* "Copy result": an outlined button straight under the result card, outside its live
+   region. It sits on the page background, with the page's text, error and focus colours. */
+.copy-result {
+  margin: var(--space-4) 0 0;
+}
+
+.copy-result__button {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.copy-result__button:focus-visible,
+.copy-result__text:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.copy-result__message {
+  margin: var(--space-2) 0 0;
+}
+
+.copy-result__message--error {
+  color: var(--color-error);
+  font-weight: var(--font-weight-semibold);
+}
+
+.copy-result__label {
+  display: block;
+  margin: var(--space-2) 0 var(--space-1);
+  font-weight: var(--font-weight-semibold);
+}
+
+.copy-result__text {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-2);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
 /* Placeholder and failure: smaller and with no level word, so they never look like a result. */
 .result-card__notice {
   display: flex;
