@@ -31,11 +31,11 @@
 
 | Measure | Test set | Training set | Cross-validation during tuning |
 |---|---|---|---|
-| **Phishing recall (main measure)** | **0.566** | 0.616 | 0.605 Â± 0.014 |
-| Precision | 0.889 | | 0.903 Â± 0.005 |
-| F1 | 0.692 | 0.732 | 0.725 Â± 0.009 |
-| ROC-AUC | 0.823 | | 0.835 Â± 0.003 |
-| Accuracy | 0.785 | | 0.804 Â± 0.005 |
+| **Phishing recall (main measure)** | **0.566** | 0.616 | 0.605 ± 0.014 |
+| Precision | 0.889 | | 0.903 ± 0.005 |
+| F1 | 0.692 | 0.732 | 0.725 ± 0.009 |
+| ROC-AUC | 0.823 | | 0.835 ± 0.003 |
+| Accuracy | 0.785 | | 0.804 ± 0.005 |
 | False alarm rate (legitimate links flagged) | 0.052 | | |
 
 The cross-validation column is copied from the tuning report ([`ml/reports/tuning.md`](tuning.md)), for comparison only.
