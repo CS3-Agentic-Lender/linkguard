@@ -10,18 +10,38 @@ export const COPY_FAILED = "Couldn't copy. Select the text and copy it yourself.
 export const COPY_TEXT_LABEL = "Text to copy";
 export const COPY_INTRO = "LinkGuard checked this link: ";
 export const COPY_WARNING = "Do not open this link unless LinkGuard said it was safe.";
+// Wording agreed on the "copied link stops being tappable" story.
+export const COPY_DEFANGED = "The link is written like this on purpose, so it can't be opened by a tap.";
 // How long the button says "Copied" before it goes back to "Copy result".
 export const COPIED_MS = 3000;
 
 /**
+ * The link written so messaging apps don't turn it into something to tap: a leading
+ * "http" becomes "hxxp" (so "https" becomes "hxxps") and every dot becomes "[.]".
+ * Without a working scheme or a plain dot, apps no longer see a web address in it.
+ * Only the copied text uses this; the result card still shows the link as pasted.
+ */
+export function defang(url) {
+  return url.replace(/^http/i, "hxxp").replaceAll(".", "[.]");
+}
+
+/**
  * The plain text the copy button puts on the clipboard, in the story's order: the
- * link, the risk level, the reasons one per line, that level's advice, then the
- * warning. `level` is the result card's class ("safe", "suspicious" or "high").
+ * link (defanged, with a line saying why), the risk level, the reasons one per line,
+ * that level's advice, then the warning. `level` is the result card's class
+ * ("safe", "suspicious" or "high").
  */
 export function copyText(reply, level) {
   const reasons = level === "safe" ? [] : readableReasons(reply.reasons);
   const advice = [...LEVEL_ADVICE[level], ...EVERY_RESULT];
-  return [`${COPY_INTRO}${reply.url ?? ""}`, reply.risk_level, ...reasons, ...advice, COPY_WARNING].join("\n");
+  return [
+    `${COPY_INTRO}${defang(reply.url ?? "")}`,
+    COPY_DEFANGED,
+    reply.risk_level,
+    ...reasons,
+    ...advice,
+    COPY_WARNING,
+  ].join("\n");
 }
 
 /**
