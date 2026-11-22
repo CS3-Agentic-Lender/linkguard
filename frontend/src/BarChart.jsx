@@ -37,14 +37,16 @@ function groupClass(label) {
 
 export default function BarChart({ chart }) {
   const titleId = `chart-${chart.id}-title`;
-  const takeawayId = `chart-${chart.id}-takeaway`;
 
+  // The title names the figure. The takeaway is plain text straight after it, so a
+  // screen reader reads it once, in order. It is not also the figure's description:
+  // NVDA read a description and then the same paragraph again, so it said it twice.
   return (
-    <figure className="chart" aria-labelledby={titleId} aria-describedby={takeawayId}>
+    <figure className="chart" aria-labelledby={titleId}>
       <h3 id={titleId} className="chart-title">
         {chart.title}
       </h3>
-      <p id={takeawayId} className="chart-takeaway">
+      <p className="chart-takeaway">
         {chart.takeaway}
       </p>
 

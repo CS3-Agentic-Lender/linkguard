@@ -73,7 +73,6 @@ describe("phishing charts page, from the real summary file", () => {
 
     for (const [index, chart] of charts().entries()) {
       const expected = summary.charts[index];
-      expect(chart).toHaveAccessibleDescription(expected.takeaway);
       expect(within(chart).getByText(expected.takeaway)).toBeVisible();
 
       const table = within(chart).getByRole("table", { name: captionFor(expected) });
@@ -82,6 +81,20 @@ describe("phishing charts page, from the real summary file", () => {
         expect(row).toHaveTextContent(formatShare(group.value, group.count));
         expect(row).toHaveTextContent(formatCount(group.count, group.total));
       }
+    }
+  });
+
+  // ALG-179: NVDA read each takeaway twice, once as the figure's description and once
+  // as the paragraph. The takeaway is now only the paragraph, so it is read once.
+  it("gives each takeaway to a screen reader once, as the text under the title", () => {
+    render(<PhishingCharts />);
+
+    for (const [index, chart] of charts().entries()) {
+      const expected = summary.charts[index];
+      expect(chart).not.toHaveAttribute("aria-describedby");
+      expect(chart).toHaveAccessibleDescription("");
+      expect(within(chart).getAllByText(expected.takeaway)).toHaveLength(1);
+      expect(chart.querySelector(".chart-takeaway").previousElementSibling).toHaveTextContent(expected.title);
     }
   });
 
